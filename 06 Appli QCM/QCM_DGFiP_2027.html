@@ -448,6 +448,27 @@ html { background: var(--paper); }
 .opt.chosen .lab { color: var(--accent); }
 .opt .t .small { font-weight: 400; }
 
+/* Session : tient dans l'écran, la correction s'affiche à côté de la question */
+.page.fit { padding-block: var(--s3) var(--s2); }
+.quiz { display: grid; gap: var(--s4); grid-template-columns: minmax(0, 1fr) 320px; align-items: start; }
+.quiz > .sheet { gap: var(--s3); padding: var(--s4) var(--s5); }
+.quiz .side { display: flex; flex-direction: column; gap: var(--s3); }
+.quiz .corr-in { display: none; }
+.quiz .opt { min-height: 44px; padding-block: 5px; }
+.quiz .opts { gap: 6px; }
+.q-act { justify-content: flex-end; }
+@media (max-width: 879px) {
+  .quiz { grid-template-columns: minmax(0, 1fr); }
+  .quiz .side { display: none; }
+  .quiz .corr-in { display: block; }
+  .quiz .opts.locked .opt:not(.right):not(.wrong) { display: none; }
+  .quiz .question { font-size: var(--t-base); }
+  .quiz .callout { padding: var(--s3); font-size: var(--t-md); }
+  .quiz .expl .src { display: none; }
+  .quiz .q-act { position: sticky; bottom: var(--s2); }
+}
+@media (max-width: 719px) { .quiz .q-act { bottom: calc(64px + env(safe-area-inset-bottom, 0px)); } }
+
 /* Examen */
 .exambar b { font-family: var(--f-display); font-size: 1.1rem; font-weight: 600; }
 .exambar .clock:has(.low) { background: var(--bad); border-color: var(--bad); color: var(--paper); }
@@ -495,10 +516,10 @@ input[type=checkbox] { width: 18px; height: 18px; }
     <div class="wrap appbar-in">
       <button type="button" class="brand" data-go="jour">
         <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6" fill="currentColor"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg></span>
-        <span class="brand-t"><b>QCM DGFiP 2027</b><small id="sub-brand">Épreuve écrite n° 2 · partie QCM</small></span>
+        <span class="brand-t"><b>QCM DGFiP 2027</b></span>
       </button>
       <div class="appbar-r">
-        <span class="stamp" id="stamp" title="Compte à rebours"></span>
+        <span class="stamp" id="stamp"></span>
         <div class="seg" id="seg" role="group" aria-label="Programme"></div>
         <button type="button" class="theme-btn" id="theme" aria-label="Changer de thème"></button>
       </div>
@@ -1767,7 +1788,7 @@ function rng(seed){ let s=seed>>>0||1; return ()=>{ s^=s<<13; s>>>=0; s^=s>>17; 
 function shuffle(arr, r=Math.random){ const a=arr.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(r()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true,2600); }
 function daysTo(iso){ const [y,m,d]=iso.split("-").map(Number); return dayNum(new Date(y,m-1,d)) - dayNum(); }
-const SITES = {"fr.wikipedia.org":"Wikipédia","www.vie-publique.fr":"Vie publique","www.service-public.fr":"Service-public.fr","www.service-public.gouv.fr":"Service-public.fr","www.conseil-constitutionnel.fr":"Conseil constitutionnel","european-union.europa.eu":"Union européenne","www.europarl.europa.eu":"Parlement européen","www.consilium.europa.eu":"Conseil de l'UE","commission.europa.eu":"Commission européenne","www.ecb.europa.eu":"BCE","curia.europa.eu":"CJUE","www.cnil.fr":"CNIL","cyber.gouv.fr":"ANSSI","www.cybermalveillance.gouv.fr":"Cybermalveillance.gouv.fr","www.economie.gouv.fr":"Ministère de l'Économie","www.budget.gouv.fr":"Budget.gouv.fr","www.impots.gouv.fr":"impots.gouv.fr","www.insee.fr":"Insee","www.ccomptes.fr":"Cour des comptes","www.collectivites-locales.gouv.fr":"Collectivités locales","www.fonction-publique.gouv.fr":"Fonction publique","pix.fr":"Pix","www.data.gouv.fr":"data.gouv.fr"};
+const SITES = {"fr.wikipedia.org":"Wikipédia","www.vie-publique.fr":"Vie publique","www.service-public.fr":"Service-public.fr","www.service-public.gouv.fr":"Service-public.fr","www.conseil-constitutionnel.fr":"Conseil constitutionnel","european-union.europa.eu":"Union européenne","www.europarl.europa.eu":"Parlement européen","www.consilium.europa.eu":"Conseil de l'UE","commission.europa.eu":"Commission européenne","www.ecb.europa.eu":"BCE","curia.europa.eu":"CJUE","www.cnil.fr":"CNIL","cyber.gouv.fr":"ANSSI","www.cybermalveillance.gouv.fr":"Cybermalveillance.gouv.fr","www.economie.gouv.fr":"Ministère de l'Économie","www.budget.gouv.fr":"Budget.gouv.fr","www.impots.gouv.fr":"impots.gouv.fr","www.insee.fr":"Insee","www.ccomptes.fr":"Cour des comptes","www.collectivites-locales.gouv.fr":"Collectivités locales","www.fonction-publique.gouv.fr":"Fonction publique","pix.fr":"Pix","www.data.gouv.fr":"data.gouv.fr","www.touteleurope.eu":"Toute l'Europe","touteleurope.eu":"Toute l'Europe","www.17cyber.gouv.fr":"17Cyber","accessibilite.numerique.gouv.fr":"Accessibilité numérique"};
 function linkLabel(u){
   try{
     const x = new URL(u);
@@ -1803,7 +1824,7 @@ function explHtml(c, cls, title){
 
 // ---------- État ----------
 const DEFAULT_SET = {mod:"insp",size:30,newMax:20,pen:0.25,act:true};
-function blank(){ return {v:2,u:0,cards:{},exams:[],custom:[],del:[],daily:null,run:null,set:{...DEFAULT_SET}}; }
+function blank(){ return {v:2,u:0,cards:{},exams:[],custom:[],del:[],daily:null,run:null,seen:null,set:{...DEFAULT_SET}}; }
 let S = load();
 function load(){
   try { const raw = localStorage.getItem(KEY); if(raw){ return normalize(JSON.parse(raw)); } } catch(e){}
@@ -1851,6 +1872,8 @@ function merge(a, b){
   out.del = [...new Set([...(newer.del||[]), ...(other.del||[])])];
   const cu = new Map(); [...(other.custom||[]), ...(newer.custom||[])].forEach(c=>cu.set(c.id,c));
   out.custom = [...cu.values()].filter(c=>!out.del.includes(c.id));
+  const sa = newer.seen, sb = other.seen;
+  if(sa && sb && sa.day===sb.day) out.seen = {day:sa.day, ids:[...new Set([...sa.ids, ...sb.ids])]};
   out.u = newer.u;
   return out;
 }
@@ -1898,12 +1921,11 @@ function eligible(c){ return !c.d && themesOn().includes(c.t) && (S.set.act || !
 function rec(id){ return S.cards[id]; }
 function newRec(){ return {d:0,i:0,e:2.5,r:0,p:0,l:0,k:[0,0]}; }
 // Répétition espacée (SM-2 adapté au calendrier du concours) : 3 j, 7 j, puis intervalle × facilité, plafonné à 40 j.
-function review(id, ok, relearn){
+function review(id, ok){
   const r = S.cards[id] || newRec();
   r.k[0]++; if(ok) r.k[1]++;
   const today = dayNum();
   r.l = Date.now();
-  if(relearn){ r.d = today+1; S.cards[id]=r; return; }
   const q = ok ? 4 : 1;
   r.e = Math.max(1.3, r.e + (0.1 - (5-q)*(0.08 + (5-q)*0.02)));
   if(!ok){ r.r=0; r.p++; r.i=1; }
@@ -1921,17 +1943,23 @@ function status(id){
 
 // ---------- Sessions ----------
 let session = null;
+// Questions déjà posées aujourd'hui (sessions et examens) : jamais deux fois le même jour.
+function seenToday(){ const d = dayNum(); if(!S.seen || S.seen.day!==d) S.seen = {day:d, ids:[]}; return S.seen; }
+function wasSeen(id){ return !!S.seen && S.seen.day===dayNum() && S.seen.ids.includes(id); }
+function markSeen(ids){ const s = seenToday(); for(const id of ids) if(!s.ids.includes(id)) s.ids.push(id); }
 function buildDaily(size, onlyTheme, exclude){
   const today = dayNum();
-  const seedR = rng(hash("j"+today+(onlyTheme||"")+(exclude?exclude.size:"")));
-  const pool = allCards().filter(c => eligible(c) && (!onlyTheme || c.t===onlyTheme) && !(exclude && exclude.has(c.id)));
+  const seen = new Set(seenToday().ids);
+  const seedR = rng(hash("j"+today+(onlyTheme||"")+seen.size+(exclude?exclude.size:"")));
+  const pool = allCards().filter(c => eligible(c) && (!onlyTheme || c.t===onlyTheme) && !seen.has(c.id) && !(exclude && exclude.has(c.id)));
   const due = pool.filter(c => rec(c.id) && rec(c.id).l && rec(c.id).d <= today)
                   .sort((a,b)=> rec(a.id).d - rec(b.id).d || rec(a.id).e - rec(b.id).e);
   let picked = due.slice(0, size);
   const newMax = onlyTheme ? size : S.set.newMax;
+  // tirage pondéré des nouvelles questions : UE et administration d'abord
+  const bag = pool.filter(c => !rec(c.id) || !rec(c.id).l)
+    .map(c => ({c, w: -Math.log(seedR()) / (WEIGHT[c.t]||1)})).sort((x,y)=>x.w-y.w).map(x=>x.c);
   if(picked.length < size){
-    const fresh = pool.filter(c => !rec(c.id) || !rec(c.id).l);
-    const bag = fresh.map(c => ({c, w: -Math.log(seedR()) / (WEIGHT[c.t]||1)})).sort((x,y)=>x.w-y.w).map(x=>x.c);
     picked = picked.concat(bag.slice(0, Math.min(newMax, size - picked.length)));
   }
   if(picked.length < size){
@@ -1939,7 +1967,8 @@ function buildDaily(size, onlyTheme, exclude){
     picked = picked.concat(rest.slice(0, size - picked.length));
   }
   if(picked.length < size){
-    picked = picked.concat(shuffle(pool.filter(c => !picked.includes(c)), seedR).slice(0, size - picked.length));
+    const set = new Set(picked);
+    picked = picked.concat(bag.filter(c => !set.has(c)).slice(0, size - picked.length));
   }
   return interleave(picked, seedR).map(c=>c.id);
 }
@@ -1956,11 +1985,11 @@ function startDaily(){
     S.daily = {day:today, ids:buildDaily(S.set.size), pos:0, ok:0, n:0};
     save();
   }
-  session = {kind:"daily", label:"Session du jour", ids:S.daily.ids.slice(), pos:S.daily.pos, relearn:new Set(S.daily.relearn||[]), ok:S.daily.ok||0, n:S.daily.n||0, seen:{}};
-  session.picked = null;
+  session = {kind:"daily", label:"Session du jour", ids:S.daily.ids.slice(), pos:S.daily.pos, ok:S.daily.ok||0, n:S.daily.n||0, picked:null};
 }
 function startExtra(ids, label){
-  session = {kind:"extra", label, ids, pos:0, relearn:new Set(), ok:0, n:0, seen:{}, picked:null};
+  if(!ids.length){ toast("Plus de question disponible aujourd'hui."); return; }
+  session = {kind:"extra", label, ids, pos:0, ok:0, n:0, picked:null};
   go("jour");
 }
 function permFor(id, salt){ return shuffle([0,1,2,3], rng(hash(id+"|"+salt))); }
@@ -1986,14 +2015,15 @@ function saveStatus(){ return remote.status==="compte" ? "sur ton compte" : remo
 function renderPills(){
   const e = EXAMS[S.set.mod==="ctrl"?"ctrl":"insp"];
   const d = daysTo(e.date);
-  $("#stamp").innerHTML = `<b>J-${Math.max(d,0)}</b><span>écrit ${e.l.toLowerCase()} · ${e.dl}</span>`;
+  $("#stamp").innerHTML = `<b>J-${Math.max(d,0)}</b>`;
+  $("#stamp").title = `Écrit ${e.l.toLowerCase()} · ${e.dl}`;
   $("#seg").innerHTML = segHtml();
-  $("#sub-brand").textContent = `Épreuve écrite n° 2 · partie QCM · module ${MODULES[S.set.mod].l.toLowerCase()}`;
   const st = $("#save-st"); if(st) st.textContent = saveStatus();
 }
 function render(){
   invalidate(); renderTabs();
   const m = $("#main");
+  m.classList.toggle("fit", tab==="jour");
   ({jour:viewJour, examen:viewExam, progres:viewProgres, banque:viewBanque, plus:viewPlus, ajout:viewAjout, reglages:viewReglages})[tab](m);
   renderPills();
 }
@@ -2004,10 +2034,8 @@ function viewJour(m){
   if(session.pos >= session.ids.length) return viewSessionEnd(m);
   const id = session.ids[session.pos];
   const c = cardMap().get(id);
-  if(!c){ session.pos++; return viewJour(m); }
+  if(!c || (session.picked==null && wasSeen(id))){ session.pos++; persistSession(); return viewJour(m); }
   const perm = permFor(id, session.kind+dayNum());
-  const relearn = session.ids.indexOf(id) < session.pos;
-  const r = rec(id);
   const total = session.ids.length;
   const answered = session.picked != null;
   const optsHtml = perm.map((oi, k) => {
@@ -2019,27 +2047,15 @@ function viewJour(m){
     return `<button class="${cls}" data-pick="${k}" ${answered?"disabled":""}><span class="box">${box}</span><span class="t">${esc(c.o[oi])}</span><span class="lab">${lab}</span></button>`;
   }).join("");
   const ok = answered && perm[session.picked]===c.a;
-  const left = total - session.pos, wrongN = session.n - session.ok;
-  const back = answered && r ? r.d - dayNum() : null;
+  const expl = answered ? explHtml(c, ok?"ok":"bad", ok?"Bonne réponse":"Pas tout à fait") : "";
   // Répartition de la session par thème (faites / prévues)
   const by = {}; session.ids.forEach((x,k)=>{ const cc=cardMap().get(x); if(!cc) return; const b=(by[cc.t]=by[cc.t]||[0,0]); b[1]++; if(k<session.pos) b[0]++; });
   m.innerHTML = `
-  <section class="hero">
-    <span class="eyebrow">${session.kind==="daily"?"Session du jour · révision espacée":esc(session.label)}</span>
-    <h1 class="h-page">Encore <mark class="hl">${plural(left,"question")}</mark>, environ ${Math.max(1,Math.round(left*40/60))} min</h1>
-    <div class="row small muted" style="gap:14px">
-      <span class="row" style="gap:6px"><span class="dot ok"></span>${plural(session.ok,"juste")}</span>
-      <span class="row" style="gap:6px"><span class="dot bad"></span>${plural(wrongN,"fausse")}</span>
-      <span class="row" style="gap:6px"><span class="dot"></span>${left} à faire</span>
-    </div>
-  </section>
-  <div class="split">
+  <div class="quiz">
     <article class="sheet">
       <div class="row between">
         <div class="row" style="gap:6px">
           <span class="badge acc">${esc(THEMES[c.t].l)}</span>
-          ${!r||!r.l?'<span class="badge out">Nouvelle</span>':''}
-          ${relearn?'<span class="badge bad">À reprendre</span>':''}
           ${c.act?'<span class="badge warn">Actualité datée</span>':''}
           ${c.mine?'<span class="badge ok">Ma carte</span>':''}
         </div>
@@ -2048,46 +2064,36 @@ function viewJour(m){
       <div class="meter" aria-hidden="true"><i style="width:${(session.pos/total)*100}%"></i></div>
       <p class="question">${esc(c.q)}</p>
       <div class="opts ${answered?"locked":""}">${optsHtml}</div>
-      ${answered?explHtml(c, ok?"ok":"bad", ok?"Bonne réponse":"Pas tout à fait"):""}
-      <div class="row between">
-        ${answered
-          ? `<span class="small muted">${back!=null&&back>0?`Elle reviendra <b style="color:var(--ink)">${back===1?"demain":"dans "+back+" jours"}</b>.`:""}</span>
-             <div class="row"><span class="small muted hide-sm"><kbd>Entrée</kbd></span><button class="btn pri" data-act="next">Question suivante ${ico("arrow")}</button></div>`
-          : `<span class="small muted hide-sm"><kbd>1</kbd> à <kbd>4</kbd> pour répondre</span><button class="btn ghost" data-act="skip">Passer</button>`}
-      </div>
+      ${answered?`<div class="corr-in">${expl}</div>`:""}
+      <div class="row q-act">${answered
+        ? `<button class="btn pri" data-act="next">Question suivante ${ico("arrow")}</button>`
+        : `<button class="btn ghost" data-act="skip">Passer</button>`}</div>
     </article>
-    <aside class="stack">
+    <aside class="side">
+      ${answered?`<div class="corr-side">${expl}</div>`:""}
       <section class="sheet tight">
-        <h2 class="h-card">Cette session</h2>
-        <ul class="mini">${Object.entries(by).map(([t,[d,n]])=>`<li><span>${THEMES[t].l}</span><span class="mono muted">${d} / ${n}</span><div class="meter"><i style="width:${n?d*100/n:0}%"></i></div></li>`).join("")}</ul>
-        <p class="small muted">UE et administration passent en premier : ce sont les deux thèmes les moins réussis par les candidats en 2026.</p>
-      </section>
-      <section class="sheet tight flat hide-sm">
-        <h2 class="h-card">Raccourcis</h2>
-        <div class="small muted stack" style="gap:6px">
-          <span><kbd>1</kbd> à <kbd>4</kbd> pour répondre</span>
-          <span><kbd>Entrée</kbd> question suivante</span>
+        <div class="row between">
+          <h2 class="h-card">${session.kind==="daily"?"Session du jour":esc(session.label)}</h2>
+          <span class="row small mono" style="gap:12px"><span class="row" style="gap:5px" title="Justes"><span class="dot ok"></span>${session.ok}</span><span class="row" style="gap:5px" title="Fausses"><span class="dot bad"></span>${session.n-session.ok}</span></span>
         </div>
+        <ul class="mini">${Object.entries(by).map(([t,[d,n]])=>`<li><span>${THEMES[t].l}</span><span class="mono muted">${d} / ${n}</span><div class="meter"><i style="width:${n?d*100/n:0}%"></i></div></li>`).join("")}</ul>
       </section>
     </aside>
   </div>`;
 }
 function viewSessionEnd(m){
   const rate = session.n ? Math.round(session.ok*100/session.n) : 0;
+  const more = buildDaily(10).length > 0;
   m.innerHTML = `
   <section class="hero">
-    <span class="eyebrow">${session.kind==="daily"?"Session du jour":esc(session.label)}</span>
     <h1 class="h-page">${session.kind==="daily"?"Session du jour terminée":"Série terminée"}</h1>
     <p class="lede">${plural(session.n,"réponse")} · <mark class="hl">${rate} %</mark> de réussite</p>
   </section>
-  <article class="sheet">
-    <p>${session.kind==="daily"?"Les questions manquées reviendront demain. Tu peux continuer ou passer à un examen blanc.":"Tu peux enchaîner sur une nouvelle série ou passer à un examen blanc."}</p>
-    <div class="row">
-      <button class="btn pri" data-act="more">Encore 10 questions</button>
-      <button class="btn" data-go="examen">Examen blanc</button>
-      <button class="btn" data-go="progres">Progrès</button>
-    </div>
-  </article>`;
+  <div class="row">
+    ${more?`<button class="btn pri" data-act="more">Encore 10 questions</button>`:""}
+    <button class="btn${more?"":" pri"}" data-go="examen">Examen blanc</button>
+    <button class="btn" data-go="progres">Progrès</button>
+  </div>`;
 }
 function pick(k){
   if(!session || session.picked!=null) return;
@@ -2096,11 +2102,9 @@ function pick(k){
   const perm = permFor(id, session.kind+dayNum());
   session.picked = k;
   const ok = perm[k]===c.a;
-  const isRelearn = session.relearn.has(id) && session.seen[id];
-  review(id, ok, isRelearn);
-  session.seen[id]=1;
+  review(id, ok);
+  markSeen([id]);
   session.n++; if(ok) session.ok++;
-  if(!ok && !session.relearn.has(id)){ session.relearn.add(id); session.ids.push(id); }
   persistSession();
   render();
 }
@@ -2109,7 +2113,7 @@ function next(){
   session.pos++; session.picked = null; persistSession(); render();
 }
 function persistSession(){
-  if(session.kind==="daily"){ S.daily = {day:dayNum(), ids:session.ids, pos:session.pos, ok:session.ok, n:session.n, relearn:[...session.relearn]}; }
+  if(session.kind==="daily"){ S.daily = {day:dayNum(), ids:session.ids, pos:session.pos, ok:session.ok, n:session.n}; }
   save();
 }
 
@@ -2119,10 +2123,13 @@ let lastResult = null;
 function buildExam(kind){
   const E = EXAMS[kind];
   const usable = allCards().filter(c=>!c.d && !c.mine && (S.set.act || !c.act));
+  const seen = new Set(seenToday().ids);
   let ids = [];
   for(const [t,n] of E.plan){
     const pool = t==="cg" ? usable.filter(c=>["admin","ue","num","hg"].includes(c.t)) : usable.filter(c=>c.t===t);
-    ids = ids.concat(shuffle(pool).slice(0,n).map(c=>c.id));
+    // questions pas encore vues aujourd'hui d'abord ; les autres seulement si la banque du thème est épuisée
+    const fresh = shuffle(pool.filter(c=>!seen.has(c.id))), old = shuffle(pool.filter(c=>seen.has(c.id)));
+    ids = ids.concat(fresh.concat(old).slice(0,n).map(c=>c.id));
   }
   return ids;
 }
@@ -2130,6 +2137,7 @@ function startExam(kind){
   const E = EXAMS[kind];
   lastResult = null;
   S.run = {id:"x"+Date.now().toString(36), kind, ids:buildExam(kind), ans:{}, start:Date.now(), dur:E.min*60000, pos:0, pen:S.set.pen};
+  markSeen(S.run.ids);
   save(); render();
 }
 function examLeft(){ return S.run ? S.run.start + S.run.dur - Date.now() : 0; }
@@ -2141,9 +2149,7 @@ function viewExam(m){
   const last = S.exams.slice(0,6);
   m.innerHTML = `
   <section class="hero">
-    <span class="eyebrow">Examen blanc</span>
-    <h1 class="h-page">Le jour J, en <mark class="hl">conditions réelles</mark></h1>
-    <p class="lede">Chrono, pénalité par réponse fausse et abstention possible. Les erreurs repartent dans tes révisions.</p>
+    <h1 class="h-page">Examen blanc</h1>
   </section>
   <div class="grid" style="--min:260px">
     ${Object.entries(EXAMS).map(([k,E])=>`
@@ -2179,7 +2185,7 @@ function viewExamRun(m){
   <div class="exambar">
     <div class="stack" style="gap:0">
       <b>Examen blanc · ${E.l.toLowerCase()}</b>
-      <small>${R.ids.length} questions · pénalité −${fmtNum(R.pen)} par réponse fausse</small>
+      <small>pénalité −${fmtNum(R.pen)}</small>
     </div>
     <div class="row">
       <span class="clock" title="Temps restant">${ico("clock")}<span id="timer">${fmtClock(examLeft())}</span></span>
@@ -2192,7 +2198,7 @@ function viewExamRun(m){
       <p class="question">${esc(c.q)}</p>
       <div class="opts">
         ${perm.map((oi,k)=>`<button class="opt ${a===k?"chosen":""}" data-xpick="${k}" aria-pressed="${a===k}"><span class="box">${k+1}</span><span class="t">${esc(c.o[oi])}</span><span class="lab">${a===k?"Cochée":""}</span></button>`).join("")}
-        <button class="opt ann ${a===-1?"chosen":""}" data-xpick="-1" aria-pressed="${a===-1}"><span class="box">Ann</span><span class="t">Je m'abstiens <span class="muted small">· 0 point, aucune pénalité</span></span><span class="lab">${a===-1?"Cochée":""}</span></button>
+        <button class="opt ann ${a===-1?"chosen":""}" data-xpick="-1" aria-pressed="${a===-1}"><span class="box">Ann</span><span class="t">Je m'abstiens</span><span class="lab">${a===-1?"Cochée":""}</span></button>
       </div>
       <div class="row between">
         <button class="btn" data-xnav="-1" ${R.pos===0?"disabled":""}>Précédente</button>
@@ -2203,7 +2209,6 @@ function viewExamRun(m){
       <div class="row between"><h2 class="h-card">Feuille de réponse</h2><span class="small muted mono">${nAns+nAb} / ${R.ids.length}</span></div>
       <div class="omr">${R.ids.map((i,k)=>`<button class="${R.ans[i]>=0?"done":R.ans[i]===-1?"abst":""} ${k===R.pos?"cur":""}" data-xgo="${k}" aria-label="Question ${k+1}">${k+1}</button>`).join("")}</div>
       <div class="legend"><span><i class="done"></i>cochée</span><span><i class="abst"></i>abstention</span><span><i></i>vide</span></div>
-      <p class="small muted">${nAns} cochées · ${nAb} « Ann » · ${R.ids.length-nAns-nAb} vides</p>
     </aside>
   </div>`;
   tick = setInterval(()=>{ const t=$("#timer"); if(!t || !S.run){ clearInterval(tick); return; } const left=examLeft(); t.textContent=fmtClock(left); t.classList.toggle("low", left<5*60000); if(left<=0){ clearInterval(tick); finishExam(true); } }, 1000);
@@ -2219,7 +2224,7 @@ function finishExam(timeout){
     if(a==null || a===-1){ ab++; by[t][3]++; continue; }
     const perm = permFor(id, R.id);
     if(perm[a]===c.a){ ok++; by[t][1]++; } else { ko++; by[t][2]++; wrong.push(id);
-      const r = S.cards[id] || newRec(); r.d = dayNum(); r.r = 0; r.i = 1; r.p++; r.l = Date.now(); S.cards[id] = r; }
+      const r = S.cards[id] || newRec(); r.d = dayNum()+1; r.r = 0; r.i = 1; r.p++; r.l = Date.now(); S.cards[id] = r; }
   }
   const raw = ok - R.pen*ko;
   const note = Math.max(0, raw) / R.ids.length * 20;
@@ -2249,10 +2254,7 @@ function viewExamResult(m, x){
     <div class="tw"><table class="t">
       <thead><tr><th>Thème</th><th class="num">Justes</th><th class="num">Fausses</th><th class="num">Ann</th><th class="num">Réussite</th><th class="num">Jury 2026</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
-    <div class="row">
-      ${x.wrong.length?`<button class="btn pri" data-act="revwrong">Revoir mes ${plural(x.wrong.length,"erreur")}</button>`:""}
-      <button class="btn" data-act="examhome">Retour</button>
-    </div>
+    <div class="row"><button class="btn" data-act="examhome">Retour</button></div>
   </article>
   ${x.ids?`<article class="sheet"><h2 class="h-sec">Correction</h2><div class="stack" style="gap:var(--s2)">${x.ids.map((id,k)=>{ const c=cardMap().get(id); if(!c) return ""; const a=x.ans[id]; const perm=permFor(id,x.id); const st = a==null||a===-1 ? "abst" : perm[a]===c.a ? "ok" : "ko";
     return `<div class="item"><button class="head" data-toggle><span class="badge ${st==="ok"?"ok":st==="ko"?"bad":"warn"}">${ico(st==="ok"?"check":st==="ko"?"cross":"info")}Q${k+1} · ${st==="ok"?"juste":st==="ko"?"fausse":"abstention"}</span> ${esc(c.q)}</button><div class="body" hidden><ol>${perm.map((oi,j)=>`<li class="${oi===c.a?"good":""}">${esc(c.o[oi])}${oi===c.a?' <span class="badge ok">Bonne réponse</span>':""}${a===j&&oi!==c.a?' <span class="badge bad">Ta réponse</span>':""}</li>`).join("")}</ol>${explHtml(c)}</div></div>`; }).join("")}</div></article>`:""}`;
@@ -2286,9 +2288,7 @@ function viewProgres(m){
   const [x0, x1] = S.exams;
   m.innerHTML = `
   <section class="hero">
-    <span class="eyebrow">Progrès · module ${MODULES[S.set.mod].l.toLowerCase()}</span>
     <h1 class="h-page">${above ? `Tu dépasses le jury dans <mark class="hl">${above} ${above>1?"thèmes":"thème"} sur ${withJury.length}</mark>` : `Objectif : <mark class="hl">dépasser le jury</mark> thème par thème`}</h1>
-    <p class="lede">Ta réussite en révision, comparée à la moyenne des candidats 2026 publiée dans le rapport du jury.</p>
   </section>
   <div class="stats">
     <div class="stat"><span>Réussite en révision</span><b>${fmtPct(pct(totalOk,totalAns))}</b><span>${plural(totalAns,"réponse")}</span></div>
@@ -2310,8 +2310,8 @@ function viewProgres(m){
     </div>
     ${weak?`<div class="callout">
       <span class="ic">${ico("bolt")}</span>
-      <div><h4>Prochaine étape</h4><p>Une série de 30 questions « ${THEMES[weak.t].l} » pour rattraper la moyenne du jury (${fmtNum(THEMES[weak.t].jury,1)} %).</p>
-      <div class="row" style="margin-top:10px"><button class="btn pri sm" data-theme-session="${weak.t}">Lancer 30 questions</button></div></div>
+      <div><h4>À travailler : ${THEMES[weak.t].l}</h4>
+      <div class="row" style="margin-top:10px"><button class="btn pri sm" data-theme-session="${weak.t}">30 questions</button></div></div>
     </div>`:""}
   </article>
   <article class="sheet">
@@ -2333,7 +2333,6 @@ function viewBanque(m){
      && (!f || (c.q+" "+c.o.join(" ")+" "+c.e+" "+(c.x||"")+" "+c.s).toLowerCase().includes(f)));
   m.innerHTML = `
   <section class="hero">
-    <span class="eyebrow">Banque · ${allCards().length} questions</span>
     <h1 class="h-page">Banque de questions</h1>
   </section>
   <section class="stack">
@@ -2366,9 +2365,7 @@ function viewAjout(m){
   const mine = S.custom.slice().reverse();
   m.innerHTML = `
   <section class="hero">
-    <span class="eyebrow">Plus · cartes perso</span>
     <h1 class="h-page">Ajouter une carte d'actualité</h1>
-    <p class="lede">Elle rejoint tes révisions espacées comme les questions de la banque.</p>
   </section>
   <section class="stack" style="gap:var(--s5)">
     <form class="sheet" id="addform" novalidate>
@@ -2420,7 +2417,6 @@ function viewReglages(m){
   const s = S.set;
   m.innerHTML = `
   <section class="hero">
-    <span class="eyebrow">Plus · réglages</span>
     <h1 class="h-page">Réglages</h1>
   </section>
   <section class="stack" style="gap:var(--s5)">
@@ -2450,7 +2446,6 @@ function viewReglages(m){
 function viewPlus(m){
   m.innerHTML = `
   <section class="hero">
-    <span class="eyebrow">Plus</span>
     <h1 class="h-page">Cartes perso et réglages</h1>
   </section>
   <article class="sheet tight">
@@ -2458,11 +2453,10 @@ function viewPlus(m){
       <h2 class="h-card">Programme</h2>
       <div class="seg" role="group" aria-label="Programme">${segHtml()}</div>
     </div>
-    <p class="small muted">Module ${MODULES[S.set.mod].l.toLowerCase()} : ${MODULES[S.set.mod].t.map(t=>THEMES[t].s).join(", ")}. Progression enregistrée <span id="save-st"></span>.</p>
   </article>
   <div class="grid" style="--min:240px">
-    <button type="button" class="sheet tight plus-link" data-go="ajout"><span class="ic">${ico("plus")}</span><b>Ajouter une carte</b><span>Actualité ou question perso · ${plural(S.custom.length,"carte")}</span></button>
-    <button type="button" class="sheet tight plus-link" data-go="reglages"><span class="ic">${ico("sliders")}</span><b>Réglages</b><span>Questions par jour, pénalité, sauvegarde</span></button>
+    <button type="button" class="sheet tight plus-link" data-go="ajout"><span class="ic">${ico("plus")}</span><b>Ajouter une carte</b><span>${plural(S.custom.length,"carte")}</span></button>
+    <button type="button" class="sheet tight plus-link" data-go="reglages"><span class="ic">${ico("sliders")}</span><b>Réglages</b><span>Session, pénalité, sauvegarde</span></button>
   </div>`;
 }
 
@@ -2486,11 +2480,10 @@ document.addEventListener("click", e => {
   if(d.del){ delCard(d.del); return; }
   switch(d.act){
     case "next": next(); break;
-    case "skip": { session.skipped = session.skipped || {}; const id = session.ids[session.pos]; if(!session.skipped[id]){ session.skipped[id]=1; session.ids.push(id); } next(); break; }
-    case "more": { const done = new Set(session ? session.ids : []); startExtra(buildDaily(10, null, done), "10 questions de plus"); break; }
+    case "skip": markSeen([session.ids[session.pos]]); next(); break;
+    case "more": startExtra(buildDaily(10), "10 questions de plus"); break;
     case "endask": $("#endbox").innerHTML = `<div class="confirm">Rendre la copie maintenant ? <button class="btn danger" data-act="end">Oui, rendre</button><button class="btn" data-act="rerender">Continuer</button></div>`; break;
     case "end": finishExam(false); break;
-    case "revwrong": if(lastResult) startExtra(lastResult.wrong.slice(), "Erreurs de l'examen blanc"); break;
     case "examhome": lastResult=null; render(); break;
     case "bqmore": bq.lim += 40; render(); break;
     case "rerender": render(); break;

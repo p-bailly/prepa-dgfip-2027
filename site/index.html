@@ -37,28 +37,17 @@
 *, *::before, *::after { box-sizing: border-box; }
 html { background: var(--paper); -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 1rem; line-height: 1.55; }
-.wrap { max-width: 880px; margin: 0 auto; padding: 56px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 32px; }
-.hero { display: flex; flex-direction: column; gap: 8px; padding-left: 16px; border-left: 3px solid var(--qcm); }
-.eyebrow { font-size: .75rem; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
-h1 { margin: 0; font-family: var(--f-display); font-size: clamp(1.75rem, 5vw, 2.5rem); font-weight: 600; line-height: 1.15; letter-spacing: -.01em; text-wrap: balance; }
-mark { background: linear-gradient(transparent 52%, var(--hl) 52%, var(--hl) 92%, transparent 92%); color: inherit; padding: 0 .12em; }
-.lede { margin: 0; color: var(--muted); max-width: 60ch; }
-.apps { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
-.app { --ink-app: var(--qcm); --soft: var(--qcm-soft); display: flex; flex-direction: column; gap: 12px; padding: 24px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow); color: inherit; text-decoration: none; position: relative; }
-.app.qrc { --ink-app: var(--qrc); --soft: var(--qrc-soft); }
+.wrap { max-width: 640px; min-height: 100vh; min-height: 100dvh; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 16px; }
+.apps { display: flex; flex-direction: column; gap: 12px; margin-block: auto; }
+.app { --ink-app: var(--qcm); display: flex; align-items: center; gap: 16px; padding: 18px 20px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow); color: inherit; text-decoration: none; }
+.app.qrc { --ink-app: var(--qrc); }
 .app:hover { border-color: var(--ink-app); box-shadow: var(--shadow-lift); }
 .app:focus-visible { outline: 2px solid var(--ink-app); outline-offset: 2px; }
-.app img { width: 48px; height: 48px; border-radius: 12px; }
-.app h2 { margin: 0; font-family: var(--f-display); font-size: 1.375rem; font-weight: 700; }
-.app p { margin: 0; color: var(--muted); }
-.app .go { margin-top: auto; display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; min-height: 44px; padding: 0 18px; border-radius: 10px; background: var(--ink-app); color: var(--paper); font-weight: 600; font-size: .9375rem; }
-.app .go svg { width: 18px; height: 18px; }
-.app ul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
-.app li { font-size: .75rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--soft); color: var(--ink-app); }
-footer { font-size: .8125rem; color: var(--muted); }
-.stamp { display: inline-flex; gap: 6px; align-items: baseline; padding: 3px 9px 4px; background: var(--hl); color: var(--hl-ink); border-radius: 4px; transform: rotate(-1.5deg); font-size: .75rem; align-self: flex-start; }
-.stamp b { font-family: var(--f-num); font-size: .95rem; }
-.top { display: flex; justify-content: flex-end; margin-bottom: -16px; }
+.app img { width: 48px; height: 48px; border-radius: 12px; flex: none; }
+.app h2 { margin: 0; flex: 1; font-family: var(--f-display); font-size: 1.375rem; font-weight: 700; }
+.app svg { width: 22px; height: 22px; flex: none; color: var(--ink-app); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.top { display: flex; justify-content: flex-end; }
 .theme-btn { width: 40px; height: 40px; flex: none; display: grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); cursor: pointer; }
 .theme-btn:hover { border-color: var(--qcm); color: var(--qcm); }
 .theme-btn:focus-visible { outline: 2px solid var(--qcm); outline-offset: 2px; }
@@ -68,29 +57,19 @@ footer { font-size: .8125rem; color: var(--muted); }
 <body>
 <main class="wrap">
   <div class="top"><button type="button" class="theme-btn" id="theme" aria-label="Changer de thème"></button></div>
-  <section class="hero">
-    <span class="eyebrow">Concours DGFiP 2027</span>
-    <h1>Deux outils pour préparer <mark>l'écrit</mark></h1>
-    <p class="lede">Des QCM en révision espacée et des exercices de comptabilité corrigés pas à pas. Ta progression reste enregistrée dans ton navigateur.</p>
-    <span class="stamp" id="stamp" hidden></span>
-  </section>
+  <h1 class="sr">Prépa DGFiP 2027</h1>
   <div class="apps">
     <a class="app" href="qcm/">
       <img src="qcm.svg" alt="">
       <h2>QCM DGFiP 2027</h2>
-      <p>Épreuve écrite n° 2, partie QCM : session du jour, examen blanc chronométré, progrès comparés au jury.</p>
-      <ul><li>Inspecteur</li><li>Contrôleur</li></ul>
-      <span class="go">Ouvrir le QCM <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
     </a>
     <a class="app qrc" href="qrc/">
       <img src="qrc.svg" alt="">
       <h2>Atelier QRC compta</h2>
-      <p>Comptabilité et analyse financière : exercices à variantes, écritures au journal, fiches de méthode et sujets réels.</p>
-      <ul><li>Inspecteur</li><li>Contrôleur</li></ul>
-      <span class="go">Ouvrir l'atelier <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
     </a>
   </div>
-  <footer>Outil personnel de révision, sans lien avec la DGFiP.</footer>
 </main>
 <script>
 // Bascule clair / sombre, mémorisée (clé commune au QCM, à l'atelier QRC et à l'accueil)
@@ -107,14 +86,6 @@ footer { font-size: .8125rem; color: var(--muted); }
   b.addEventListener("click", function () { var v = cur() === "dark" ? "light" : "dark"; root.setAttribute("data-theme", v); try { localStorage.setItem(K, v); } catch (e) {} show(); });
   if (mq && mq.addEventListener) mq.addEventListener("change", show);
 })();
-</script>
-<script>
-  // Compte à rebours jusqu'à l'écrit inspecteur (7 décembre 2026)
-  (function () {
-    var t = new Date(); t.setHours(0, 0, 0, 0);
-    var j = Math.round((new Date(2026, 11, 7) - t) / 86400000), s = document.getElementById("stamp");
-    if (j > 0) { s.innerHTML = "<b>J-" + j + "</b><span>écrit inspecteur · 7 déc.</span>"; s.hidden = false; }
-  })();
 </script>
 </body>
 </html>
