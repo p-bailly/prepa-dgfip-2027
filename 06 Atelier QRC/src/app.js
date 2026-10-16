@@ -209,7 +209,7 @@
   }
   function scoreHtml(ex) {
     var R = ex.res, t = T[ex.typeId], s = st(ex.typeId);
-    return '<div class="score" role="status"><span class="big">' + Math.round(R.score * 100) + '<small> %</small></span><div class="stack" style="gap:4px"><b>' + R.ok + ' sur ' + R.nq + ' résultats exacts' + (R.js !== null ? ' · écritures : ' + pct(R.js) : '') + '</b><span class="small muted">Temps : ' + mmss(ex.secs) + ' (objectif ' + t.minutes + ' min)' + (ex.secs > t.minutes * 60 ? ' : trop lent, recommence pour gagner en vitesse' : '') + '</span><div><span class="badge ' + (R.score >= 0.8 ? 'ok' : (R.score >= 0.5 ? 'warn' : 'bad')) + '">Prochaine révision : ' + nextTxt(s) + '</span></div></div></div>';
+    return '<div class="score" role="status"><span class="big">' + Math.round(R.score * 100) + '<small> %</small></span><div class="stack" style="gap:4px"><b>' + R.ok + ' sur ' + R.nq + ' résultats exacts' + (R.js !== null ? ' · écritures : ' + pct(R.js) : '') + '</b><span class="small muted">Temps : ' + mmss(ex.secs) + ' (objectif ' + t.minutes + ' min)' + (ex.secs > t.minutes * 60 ? ' : trop lent' : '') + '</span><div><span class="badge ' + (R.score >= 0.8 ? 'ok' : (R.score >= 0.5 ? 'warn' : 'bad')) + '">Prochaine révision : ' + nextTxt(s) + '</span></div></div></div>';
   }
   function exHtml(ex, mode) {
     var t = T[ex.typeId], d = ex.data;
@@ -219,12 +219,12 @@
     if (ex.note) h += '<div class="callout warn"><span class="ic">' + ico('flag') + '</span><p>' + esc(ex.note) + '</p></div>';
     h += '<article class="sheet"><div class="enonce">' + d.enonce + '</div></article>';
     if (ex.res) h += scoreHtml(ex);
-    h += '<article class="sheet"><h2 class="h-sec">Résultats chiffrés</h2><p class="small muted">Saisis les montants sans séparateur ou avec des espaces ; virgule décimale. Pourcentages en %.</p><div class="answers">' + d.questions.map(function (q) { return qHtml(ex, q); }).join('') + '</div></article>';
+    h += '<article class="sheet"><h2 class="h-sec">Résultats chiffrés</h2><div class="answers">' + d.questions.map(function (q) { return qHtml(ex, q); }).join('') + '</div></article>';
     h += '<article class="sheet">';
     if (d.journal.length) {
       var eq = ex.res ? ex.res.jr.every(function (r) { return r.equilibre; }) : null;
-      h += '<div class="row between"><h2 class="h-sec">' + (d.journal.length > 1 ? 'Écritures au journal' : 'Écriture au journal') + '</h2>' + (eq === null ? '' : '<span class="badge ' + (eq ? 'ok' : 'bad') + '">' + ico('scale') + (eq ? 'Équilibrée' : 'Déséquilibrée') + '</span>') + '</div><p class="small muted">Une ligne par compte ; numéros du PCG, anciens ou nouveaux.</p>' + d.journal.map(function (en, i) { return jedHtml(ex, en, i); }).join('');
-    } else h += '<p class="small muted">Pas d’écriture comptable dans cet exercice : la conclusion rédigée compte autant que les calculs.</p>';
+      h += '<div class="row between"><h2 class="h-sec">' + (d.journal.length > 1 ? 'Écritures au journal' : 'Écriture au journal') + '</h2>' + (eq === null ? '' : '<span class="badge ' + (eq ? 'ok' : 'bad') + '">' + ico('scale') + (eq ? 'Équilibrée' : 'Déséquilibrée') + '</span>') + '</div>' + d.journal.map(function (en, i) { return jedHtml(ex, en, i); }).join('');
+    }
     if (mode !== 'exam') {
       h += '<div class="row">';
       if (!ex.checked) h += '<button type="button" class="btn pri" data-act="check">Vérifier mes réponses</button>';
@@ -253,8 +253,8 @@
     var el = eligible(), nEx = 0, sum = 0, due = 0, solid = 0;
     el.forEach(function (t) { var s = st(t.id); nEx += s.n; sum += s.sum; if (s.n && isDue(s)) due++; if ((s.box || 0) >= 4) solid++; });
     var cfg = EXAMS[profil()], ep = S.prog.epreuves.filter(function (e) { return e.p === profil(); });
-    var h = '<section class="hero"><span class="eyebrow">Concours ' + cfg.label + ' · écrit le ' + dateTxt(cfg.date) + '</span><h1 class="h-page">Où en es-tu ? ' + (due ? '<mark class="hl">' + due + ' type' + (due > 1 ? 's' : '') + '</mark> à revoir aujourd’hui' : !nEx ? '<mark class="hl">' + el.length + ' types</mark> à découvrir' : 'Rien à revoir aujourd’hui') + '</h1><p class="lede">L’atelier suit tes résultats par type d’exercice et te ressort en priorité ceux que tu rates, ceux que tu fais trop lentement et ceux dont la révision est due (1, 3, 7, 14 puis 30 jours après chaque réussite).</p></section>';
-    h += '<div class="stats"><div class="stat"><span>Exercices corrigés</span><b>' + nEx + '</b></div><div class="stat"><span>Score moyen</span><b>' + (nEx ? Math.round(sum / nEx * 100) + ' <small>%</small>' : '—') + '</b></div><div class="stat"><span>Types maîtrisés</span><b>' + solid + ' <small>/ ' + el.length + '</small></b><span>niveau 4 ou plus</span></div><div class="stat"><span>Épreuves blanches</span><b>' + ep.length + '</b>' + (ep.length ? '<span>dernière : ' + pct(ep[0].s) + '</span>' : '') + '</div></div>';
+    var h = '<section class="hero"><h1 class="h-page">' + (due ? '<mark class="hl">' + due + ' type' + (due > 1 ? 's' : '') + '</mark> à revoir aujourd’hui' : !nEx ? '<mark class="hl">' + el.length + ' types</mark> à découvrir' : 'Rien à revoir aujourd’hui') + '</h1></section>';
+    h += '<div class="stats"><div class="stat"><span>Exercices corrigés</span><b>' + nEx + '</b></div><div class="stat"><span>Score moyen</span><b>' + (nEx ? Math.round(sum / nEx * 100) + ' <small>%</small>' : '—') + '</b></div><div class="stat"><span>Types maîtrisés</span><b>' + solid + ' <small>/ ' + el.length + '</small></b></div><div class="stat"><span>Épreuves blanches</span><b>' + ep.length + '</b>' + (ep.length ? '<span>dernière : ' + pct(ep[0].s) + '</span>' : '') + '</div></div>';
     h += '<section class="stack"><div class="row between"><h2 class="h-sec">À travailler maintenant</h2><button type="button" class="btn ghost sm" data-act="auto">Point faible</button></div><div class="reco">' + recommend(3).map(function (t, i) { var dc = { weak: 'bad', due: 'warn', good: 'ok', '': '' }[dotCls(t)]; return '<button type="button" data-train="' + t.id + '"' + (i === 0 ? ' class="first"' : '') + '><span class="eyebrow">' + esc(t.famille) + '</span><b>' + esc(t.nom) + '</b><span class="why"><span class="dot ' + dc + '"></span>' + esc(why(t)) + '</span>' + ico('arrow') + '</button>'; }).join('') + '</div></section>';
     h += '<article class="sheet"><h2 class="h-sec">Progression par type</h2><div class="tw"><table class="t"><thead><tr><th>Type d’exercice</th><th>Niveau</th><th class="num hide-sm">Moyenne</th><th class="num hide-sm">Dernier</th><th>Révision</th></tr></thead><tbody>';
     el.forEach(function (t) {
@@ -274,7 +274,7 @@
     var el = eligible();
     if (S.trainType && !el.some(function (t) { return t.id === S.trainType; })) { S.trainType = null; S.train = null; }
     if (!S.train) { S.trainType = recommend(1)[0].id; S.train = makeEx(S.trainType); }
-    var h = '<section class="hero"><span class="eyebrow">Mode entraînement</span><h1 class="h-page">Un type, une variante, un chrono</h1><p class="lede">Choisis un type ou laisse l’atelier choisir ton point faible. Saisis tes résultats et tes écritures, puis vérifie : le corrigé détaille chaque calcul, les écritures et l’interprétation attendue.</p></section>';
+    var h = '';
     var fams = []; el.forEach(function (t) { if (fams.indexOf(t.famille) < 0) fams.push(t.famille); });
     var sel = '<select class="input pick" id="pick-type" aria-label="Type d’exercice">' + fams.map(function (f) {
       return '<optgroup label="' + esc(f) + '">' + el.filter(function (t) { return t.famille === f; }).map(function (t) { return '<option value="' + t.id + '"' + (S.trainType === t.id ? ' selected' : '') + '>' + esc(t.nom) + ' · ' + nextTxt(st(t.id)) + '</option>'; }).join('') + '</optgroup>';
@@ -300,7 +300,6 @@
       return '<h4>' + esc(f) + '</h4>' + el.filter(function (t) { return t.famille === f; }).map(function (t) { return '<a href="#fiches" data-fiche="' + t.id + '"' + (t.id === S.fiche ? ' aria-current="true"' : '') + '>' + esc(t.nom) + ' <span class="badge mono">' + t.minutes + ' min</span></a>'; }).join('');
     }).join('') + '</div></nav>';
     h += '<article class="sheet"><div class="reading"><div class="hero"><span class="eyebrow">Fiche · ' + esc(cur.famille) + '</span><h1 class="h-page">' + esc(cur.nom) + '</h1><p class="lede">' + esc(fi.objectif) + '</p></div>';
-    if (profil() === 'C') h += '<p class="small muted">Filtre contrôleur actif : IS, devises, augmentation de capital et provisions pour risques sont masqués.</p>';
     h += '<h4>Étapes</h4><ol class="steps">' + fi.etapes.map(function (x) { return '<li><span>' + esc(x) + '</span></li>'; }).join('') + '</ol>';
     h += '<h4>Pièges</h4><ul class="traps">' + fi.pieges.map(function (x) { return '<li>' + ico('cross') + '<span>' + esc(x) + '</span></li>'; }).join('') + '</ul>';
     if (fi.comptes.length) h += '<h4>Comptes</h4><div class="accts">' + fi.comptes.map(acctHtml).join('') + '</div>';
@@ -310,14 +309,14 @@
   function viewAnnales() {
     if (S.annale) return exHtml(S.annale, 'annale');
     var list = ANNALES.filter(function (a) { return profil() === 'I' || a.ctrl; });
-    var h = '<section class="hero"><span class="eyebrow">Sujets réels</span><h1 class="h-page">Les exercices des annales, corrigés automatiquement</h1><p class="lede">Mêmes données que les sujets 2026 (inspecteur et contrôleur), le sujet test inspecteur et le sujet blanc du dossier. Les corrigés ont été recalculés ; les écarts avec les corrigés publiés sont signalés.</p></section><article class="sheet"><div class="tw"><table class="t"><thead><tr><th>Sujet</th><th class="hide-sm">Type</th><th></th></tr></thead><tbody>';
+    var h = '<section class="hero"><h1 class="h-page">Sujets réels</h1></section><article class="sheet"><div class="tw"><table class="t"><thead><tr><th>Sujet</th><th class="hide-sm">Type</th><th></th></tr></thead><tbody>';
     list.forEach(function (a) { h += '<tr><td><b>' + esc(a.p.nom) + '</b><div class="small muted">' + esc(a.src) + '</div></td><td class="hide-sm">' + esc(T[a.type].nom) + '</td><td class="r"><button type="button" class="btn sm" data-annale="' + a.id + '">Faire</button></td></tr>'; });
     return h + '</tbody></table></div></article>';
   }
   function viewExam() {
     var cfg = EXAMS[profil()], E = S.exam;
     if (!E) {
-      return '<section class="hero"><span class="eyebrow">Épreuve blanche · ' + cfg.label + '</span><h1 class="h-page">' + cfg.txt + '</h1><p class="lede">Tirage au hasard parmi les types du programme ' + cfg.label + ', avec priorité aux types que tu rates ou que tu n’as pas revus. Pas de correction avant la remise de la copie. À la fin du temps, la copie est rendue automatiquement : entraîne-toi à tout traiter, même partiellement, comme le demande le jury.</p></section><div class="row"><button type="button" class="btn pri" data-act="startexam">Commencer l’épreuve ' + ico('arrow') + '</button></div>';
+      return '<section class="hero"><span class="eyebrow">Épreuve blanche · ' + cfg.label + '</span><h1 class="h-page">' + cfg.txt + '</h1></section><div class="row"><button type="button" class="btn pri" data-act="startexam">Commencer l’épreuve ' + ico('arrow') + '</button></div>';
     }
     var h = '<div class="exambar"><div class="row">';
     var rem = E.done ? 0 : E.dur - (Date.now() - E.start) / 1000;
@@ -326,7 +325,7 @@
     h += E.done ? '<button type="button" class="btn sm" data-act="newexam">Nouvelle épreuve</button>' : '<button type="button" class="btn sm" data-act="submit">Rendre la copie</button>';
     h += '</div>';
     if (E.done) {
-      h += '<article class="sheet"><h2 class="h-sec">Résultat de l’épreuve</h2><div class="tw"><table class="t"><thead><tr><th>Exercice</th><th class="num">Score</th><th class="num">Temps passé</th></tr></thead><tbody>' + E.items.map(function (x, i) { return '<tr class="click" data-pill="' + i + '"><td>' + (i + 1) + '. ' + esc(T[x.typeId].nom) + '</td><td class="num">' + pct(x.res.score) + '</td><td class="num">' + mmss(E.spent[i]) + '</td></tr>'; }).join('') + '<tr class="tot"><td>Total</td><td class="num">' + pct(E.score) + '</td><td class="num">' + mmss(E.used) + ' / ' + cfg.min + ':00</td></tr></tbody></table></div><p class="small muted">Les résultats sont intégrés à ta progression ; ouvre chaque exercice pour voir le corrigé.</p></article>';
+      h += '<article class="sheet"><h2 class="h-sec">Résultat de l’épreuve</h2><div class="tw"><table class="t"><thead><tr><th>Exercice</th><th class="num">Score</th><th class="num">Temps passé</th></tr></thead><tbody>' + E.items.map(function (x, i) { return '<tr class="click" data-pill="' + i + '"><td>' + (i + 1) + '. ' + esc(T[x.typeId].nom) + '</td><td class="num">' + pct(x.res.score) + '</td><td class="num">' + mmss(E.spent[i]) + '</td></tr>'; }).join('') + '<tr class="tot"><td>Total</td><td class="num">' + pct(E.score) + '</td><td class="num">' + mmss(E.used) + ' / ' + cfg.min + ':00</td></tr></tbody></table></div></article>';
       h += exHtml(E.items[E.cur], 'review');
     } else h += exHtml(E.items[E.cur], 'exam');
     return h;
@@ -362,8 +361,7 @@
   function render() {
     document.querySelectorAll('#tabs [data-v], #bottomnav [data-v]').forEach(function (b) { if (b.dataset.v === S.view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
     var cfg = EXAMS[profil()], j = daysTo(cfg.date);
-    $('#countdown').textContent = 'Écrit ' + cfg.label + ' le ' + cfg.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
-    $('#stamp').innerHTML = '<b>' + (j > 0 ? 'J-' + j : 'Jour J') + '</b><span>écrit ' + cfg.label + ' · ' + cfg.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) + '</span>';
+    $('#stamp').innerHTML = '<b>' + (j > 0 ? 'J-' + j : 'Jour J') + '</b>'; $('#stamp').title = 'Écrit ' + cfg.label + ' · ' + dateTxt(cfg.date);
     var v = $('#view');
     v.innerHTML = S.view === 'dash' ? viewDash() : S.view === 'train' ? viewTrain() : S.view === 'fiches' ? viewFiches() : S.view === 'annales' ? viewAnnales() : viewExam();
     document.querySelectorAll('[data-p]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.p === profil())); });

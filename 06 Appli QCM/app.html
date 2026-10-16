@@ -139,6 +139,11 @@ mark.hl { background: linear-gradient(transparent 52%, var(--hl) 52%, var(--hl) 
 .theme-btn:hover { border-color: var(--accent); color: var(--accent); }
 .theme-btn svg { width: 18px; height: 18px; }
 
+/* Retour à l'accueil du site (GitHub Pages uniquement) */
+.home-btn { width: 40px; height: 40px; flex: none; display: grid; place-items: center; border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--surface); color: var(--ink); }
+.home-btn:hover { border-color: var(--accent); color: var(--accent); }
+.home-btn svg { width: 18px; height: 18px; }
+
 /* Onglets (≥ 720 px) */
 .tabs { display: flex; gap: var(--s1); overflow-x: auto; scrollbar-width: none; }
 .tabs a { display: inline-flex; align-items: center; gap: 7px; padding: 10px 12px 11px; font-size: var(--t-md); font-weight: 500; color: var(--muted); text-decoration: none; border-bottom: 2px solid transparent; white-space: nowrap; }
@@ -513,6 +518,7 @@ input[type=checkbox] { width: 18px; height: 18px; }
 <div class="app" data-app="qcm">
   <header class="appbar">
     <div class="wrap appbar-in">
+      <a class="home-btn" id="home" href="../" aria-label="Accueil" title="Accueil" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></a>
       <button type="button" class="brand" data-go="jour">
         <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6" fill="currentColor"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg></span>
         <span class="brand-t"><b>QCM DGFiP 2027</b></span>
@@ -530,6 +536,8 @@ input[type=checkbox] { width: 18px; height: 18px; }
 </div>
 <div id="toast" class="toast" hidden></div>
 <script>
+// Retour à l'accueil : seulement sur le site publié
+(function () { var h = document.getElementById("home"); if (h && /github\.io$/.test(location.hostname)) h.hidden = false; })();
 // Bascule clair / sombre, mémorisée (clé commune au QCM, à l'atelier QRC et à l'accueil)
 (function () {
   var K = "prepa-theme", root = document.documentElement, b = document.getElementById("theme");

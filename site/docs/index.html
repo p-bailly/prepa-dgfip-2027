@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Documents · Prépa DGFiP 2027</title>
+<link rel="icon" href="../qcm.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,600;6..72,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Liste des documents · charte « Copie double » (07 Charte DA) */
+:root {
+  --paper: #F5F3EE; --surface: #FFFFFF; --ink: #16213A; --muted: #5A6377; --line: #DAD5CA;
+  --qcm: #2A44C7; --qcm-soft: #E7EBFB; --qrc: #0E6871; --qrc-soft: #E0F0F0; --hl: #FFE45E; --hl-ink: #16213A;
+  --shadow: 0 1px 0 rgba(22, 33, 58, .04), 0 1px 3px rgba(22, 33, 58, .06);
+  --shadow-lift: 0 2px 4px rgba(22, 33, 58, .06), 0 8px 24px rgba(22, 33, 58, .08);
+  --f-display: "Newsreader", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --f-ui: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --f-num: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0F141F; --surface: #171E2C; --ink: #E8ECF4; --muted: #9BA4B8; --line: #2B3447;
+    --qcm: #93A5FF; --qcm-soft: #1F2850; --qrc: #62C3CB; --qrc-soft: #12313A; --hl: #5A4E12; --hl-ink: #FFF3B8;
+    --shadow: 0 1px 0 rgba(0, 0, 0, .3); --shadow-lift: 0 8px 28px rgba(0, 0, 0, .45);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0F141F; --surface: #171E2C; --ink: #E8ECF4; --muted: #9BA4B8; --line: #2B3447;
+  --qcm: #93A5FF; --qcm-soft: #1F2850; --qrc: #62C3CB; --qrc-soft: #12313A; --hl: #5A4E12; --hl-ink: #FFF3B8;
+  --shadow: 0 1px 0 rgba(0, 0, 0, .3); --shadow-lift: 0 8px 28px rgba(0, 0, 0, .45);
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { background: var(--paper); -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 1rem; line-height: 1.5; }
+.wrap { max-width: 640px; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 24px; }
+.top { display: flex; align-items: center; gap: 12px; }
+h1 { margin: 0; flex: 1; font-family: var(--f-display); font-size: 1.75rem; font-weight: 600; }
+h2 { margin: 0 0 8px; font-size: .75rem; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+ul { margin: 0; padding: 0; list-style: none; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow); overflow: hidden; }
+li + li { border-top: 1px solid var(--line); }
+li a { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 12px 16px; color: inherit; text-decoration: none; }
+li a:hover { background: var(--qcm-soft); }
+li a:hover span { color: var(--qcm); }
+li a:focus-visible { outline: 2px solid var(--qcm); outline-offset: -2px; }
+li small { flex: none; font-family: var(--f-num); font-size: .75rem; color: var(--muted); }
+.theme-btn, .back { width: 40px; height: 40px; flex: none; display: grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--ink); cursor: pointer; }
+.theme-btn:hover, .back:hover { border-color: var(--qcm); color: var(--qcm); }
+.theme-btn:focus-visible, .back:focus-visible { outline: 2px solid var(--qcm); outline-offset: 2px; }
+.theme-btn svg, .back svg { width: 18px; height: 18px; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="top">
+    <a class="back" href="../" aria-label="Accueil" title="Accueil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></a>
+    <h1>Documents</h1>
+    <button type="button" class="theme-btn" id="theme" aria-label="Changer de thème"></button>
+  </div>
+  <section>
+    <h2>Fiches</h2>
+    <ul>
+      <li><a href="fiches/00_Vue_d_ensemble_et_annales.pdf" target="_blank" rel="noopener"><span>Vue d'ensemble et annales</span><small>185 Ko</small></a></li>
+      <li><a href="fiches/01_Fiches_QCM_commun.pdf" target="_blank" rel="noopener"><span>Fiches QCM commun</span><small>414 Ko</small></a></li>
+      <li><a href="fiches/02_QCM_entrainement_et_corriges.pdf" target="_blank" rel="noopener"><span>QCM d'entraînement et corrigés</span><small>410 Ko</small></a></li>
+      <li><a href="fiches/03_Fiches_QRC_comptabilite_analyse_financiere.pdf" target="_blank" rel="noopener"><span>Fiches QRC comptabilité et analyse financière</span><small>504 Ko</small></a></li>
+      <li><a href="fiches/04_QRC_entrainement_et_corriges.pdf" target="_blank" rel="noopener"><span>QRC d'entraînement et corrigés</span><small>371 Ko</small></a></li>
+      <li><a href="fiches/05_Note_de_synthese_methode.pdf" target="_blank" rel="noopener"><span>Note de synthèse : méthode</span><small>206 Ko</small></a></li>
+      <li><a href="fiches/06_Sujets_blancs_note_de_synthese_corriges.pdf" target="_blank" rel="noopener"><span>Sujets blancs de note de synthèse corrigés</span><small>325 Ko</small></a></li>
+      <li><a href="fiches/07_Controleur.pdf" target="_blank" rel="noopener"><span>Spécificités contrôleur</span><small>181 Ko</small></a></li>
+      <li><a href="fiches/08_Sources.pdf" target="_blank" rel="noopener"><span>Sources</span><small>107 Ko</small></a></li>
+    </ul>
+  </section>
+  <section>
+    <h2>Sujets inspecteur</h2>
+    <ul>
+      <li><a href="sujets/IFiP_2026_Epreuve1_Note_de_synthese.pdf" target="_blank" rel="noopener"><span>2026 · Note de synthèse</span><small>3,1 Mo</small></a></li>
+      <li><a href="sujets/IFiP_2026_Epreuve2_QCM-QRC_Comptabilite.pdf" target="_blank" rel="noopener"><span>2026 · QCM-QRC comptabilité</span><small>443 Ko</small></a></li>
+      <li><a href="sujets/IFiP_2026_Epreuve2_QCM-QRC_Finances_publiques.pdf" target="_blank" rel="noopener"><span>2026 · QCM-QRC finances publiques</span><small>501 Ko</small></a></li>
+      <li><a href="sujets/IFiP_Sujet_test_Epreuve1_Note_de_synthese_avec_corrige.pdf" target="_blank" rel="noopener"><span>Sujet test · Note de synthèse, avec corrigé</span><small>1,0 Mo</small></a></li>
+      <li><a href="sujets/IFiP_Sujet_test_Epreuve2_Comptabilite_avec_corrige.pdf" target="_blank" rel="noopener"><span>Sujet test · Comptabilité, avec corrigé</span><small>242 Ko</small></a></li>
+    </ul>
+  </section>
+  <section>
+    <h2>Sujets contrôleur</h2>
+    <ul>
+      <li><a href="sujets/CFiP_2026_Epreuve1_Analyse_de_dossier.pdf" target="_blank" rel="noopener"><span>2026 · Analyse de dossier</span><small>2,7 Mo</small></a></li>
+      <li><a href="sujets/CFiP_2026_Epreuve2_QCM-QRC_Comptabilite.pdf" target="_blank" rel="noopener"><span>2026 · QCM-QRC comptabilité</span><small>437 Ko</small></a></li>
+      <li><a href="sujets/CFiP_Sujet_test_Epreuve1_Analyse_de_dossier.pdf" target="_blank" rel="noopener"><span>Sujet test · Analyse de dossier</span><small>1,5 Mo</small></a></li>
+      <li><a href="sujets/CFiP_Sujet_test_Epreuve2_Comptabilite.pdf" target="_blank" rel="noopener"><span>Sujet test · Comptabilité</span><small>2,3 Mo</small></a></li>
+    </ul>
+  </section>
+  <section>
+    <h2>Rapports de jury 2026</h2>
+    <ul>
+      <li><a href="officiel/Rapport_jury_Inspecteur_2026.pdf" target="_blank" rel="noopener"><span>Inspecteur</span><small>155 Ko</small></a></li>
+      <li><a href="officiel/Rapport_jury_Controleur_2026.pdf" target="_blank" rel="noopener"><span>Contrôleur</span><small>76 Ko</small></a></li>
+    </ul>
+  </section>
+  <section>
+    <h2>Programmes de l'épreuve 2</h2>
+    <ul>
+      <li><a href="officiel/Programme_officiel_Inspecteur_Epreuve2_QCM-QRC.pdf" target="_blank" rel="noopener"><span>Inspecteur · QCM-QRC</span><small>127 Ko</small></a></li>
+      <li><a href="officiel/Programme_officiel_Controleur_Epreuve2_QCM-QRC.pdf" target="_blank" rel="noopener"><span>Contrôleur · QCM-QRC</span><small>57 Ko</small></a></li>
+    </ul>
+  </section>
+  <section>
+    <h2>Guides ENFiP</h2>
+    <ul>
+      <li><a href="officiel/Guide_ENFiP_preparation_concours_externes.pdf" target="_blank" rel="noopener"><span>Préparer les concours externes</span><small>6,7 Mo</small></a></li>
+      <li><a href="officiel/Guide_ENFiP_Inspecteur_Note_de_synthese.pdf" target="_blank" rel="noopener"><span>Inspecteur · Note de synthèse</span><small>6,2 Mo</small></a></li>
+      <li><a href="officiel/Guide_ENFiP_Inspecteur_QCM-QRC.pdf" target="_blank" rel="noopener"><span>Inspecteur · QCM-QRC</span><small>5,4 Mo</small></a></li>
+      <li><a href="officiel/Guide_ENFiP_Inspecteur_Oral.pdf" target="_blank" rel="noopener"><span>Inspecteur · Oral</span><small>3,6 Mo</small></a></li>
+      <li><a href="officiel/Guide_ENFiP_Controleur_Analyse_de_dossier.pdf" target="_blank" rel="noopener"><span>Contrôleur · Analyse de dossier</span><small>4,8 Mo</small></a></li>
+      <li><a href="officiel/Guide_ENFiP_Controleur_QCM-QRC.pdf" target="_blank" rel="noopener"><span>Contrôleur · QCM-QRC</span><small>5,8 Mo</small></a></li>
+    </ul>
+  </section>
+</main>
+<script>
+// Bascule clair / sombre, mémorisée (clé commune au QCM, à l'atelier QRC et à l'accueil)
+(function () {
+  var K = "prepa-theme", root = document.documentElement, b = document.getElementById("theme");
+  var SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+  var SUN = SVG + '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>';
+  var MOON = SVG + '<path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z"/></svg>';
+  var mq = window.matchMedia ? matchMedia("(prefers-color-scheme: dark)") : null;
+  function cur() { return root.getAttribute("data-theme") || (mq && mq.matches ? "dark" : "light"); }
+  function show() { var d = cur() === "dark", l = d ? "Passer en mode clair" : "Passer en mode sombre"; b.innerHTML = d ? SUN : MOON; b.setAttribute("aria-label", l); b.title = l; }
+  try { var t = localStorage.getItem(K); if (t === "dark" || t === "light") root.setAttribute("data-theme", t); } catch (e) {}
+  show();
+  b.addEventListener("click", function () { var v = cur() === "dark" ? "light" : "dark"; root.setAttribute("data-theme", v); try { localStorage.setItem(K, v); } catch (e) {} show(); });
+  if (mq && mq.addEventListener) mq.addEventListener("change", show);
+})();
+</script>
+</body>
+</html>

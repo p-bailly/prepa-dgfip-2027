@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Prépa DGFiP 2027</title>
-<meta name="description" content="Deux outils de révision pour le concours DGFiP 2027 : QCM et atelier QRC de comptabilité.">
+<meta name="description" content="Révision du concours DGFiP 2027 : QCM, atelier QRC de comptabilité, fiches et annales.">
 <link rel="icon" href="qcm.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -41,6 +41,9 @@ body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(
 .apps { display: flex; flex-direction: column; gap: 12px; margin-block: auto; }
 .app { --ink-app: var(--qcm); display: flex; align-items: center; gap: 16px; padding: 18px 20px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow); color: inherit; text-decoration: none; }
 .app.qrc { --ink-app: var(--qrc); }
+.app.doc { --ink-app: var(--ink); }
+.tile { width: 48px; height: 48px; border-radius: 12px; flex: none; display: grid; place-items: center; background: var(--ink); color: var(--paper); }
+.app .tile svg { width: 26px; height: 26px; color: inherit; }
 .app:hover { border-color: var(--ink-app); box-shadow: var(--shadow-lift); }
 .app:focus-visible { outline: 2px solid var(--ink-app); outline-offset: 2px; }
 .app img { width: 48px; height: 48px; border-radius: 12px; flex: none; }
@@ -67,6 +70,11 @@ body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(
     <a class="app qrc" href="qrc/">
       <img src="qrc.svg" alt="">
       <h2>Atelier QRC compta</h2>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </a>
+    <a class="app doc" href="docs/">
+      <span class="tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3.5H7A1.5 1.5 0 0 0 5.5 5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3.5V8h4.5M9 12.5h6M9 16h4"/></svg></span>
+      <h2>Documents</h2>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
     </a>
   </div>

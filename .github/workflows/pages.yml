@@ -2,6 +2,7 @@
 #   /      page d'accueil (site/index.html)
 #   /qcm/  QCM DGFiP 2027
 #   /qrc/  Atelier QRC compta
+#   /docs/ fiches, sujets, guides et rapports de jury (PDF)
 name: Pages
 
 on:
@@ -37,6 +38,7 @@ jobs:
         run: |
           mkdir -p _site/qcm _site/qrc
           cp site/index.html _site/
+          cp -r site/docs _site/docs
           cp "07 Charte DA/logos/qcm.svg" "07 Charte DA/logos/qrc.svg" _site/
           cp "06 Appli QCM/QCM_DGFiP_2027.html" _site/qcm/index.html
           cp "06 Atelier QRC/Atelier QRC compta.html" _site/qrc/index.html

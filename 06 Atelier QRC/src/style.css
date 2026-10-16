@@ -430,6 +430,10 @@ table.t tr.tot td { font-weight: 600; border-top: 1.5px solid var(--ink); }
    ===================================================================== */
 html { background: var(--paper); }
 .brand { cursor: pointer; }
+/* Retour à l'accueil du site (GitHub Pages uniquement) */
+.home-btn { width: 40px; height: 40px; flex: none; display: grid; place-items: center; border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--surface); color: var(--ink); }
+.home-btn:hover { border-color: var(--accent); color: var(--accent); }
+.home-btn svg { width: 18px; height: 18px; }
 .foot { color: var(--muted); font-size: var(--t-xs); padding-block: 0 var(--s6); display: flex; flex-wrap: wrap; gap: 4px 14px; }
 @media (max-width: 559px) { .hide-sm { display: none; } }
 @media (max-width: 519px) { .tw { margin-inline: calc(var(--s4) * -1); padding-inline: var(--s4); } }
