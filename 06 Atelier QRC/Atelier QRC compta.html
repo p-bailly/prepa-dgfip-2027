@@ -7,239 +7,577 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600;6..72,700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
 html{-webkit-text-size-adjust:100%}body{margin:0}img{max-width:100%}[hidden]{display:none!important}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-/* Concept : un cahier de comptabilité numérique — papier gris-vert, encre bleu de Prusse, journal réglé. */
+/* --- Copie de « 07 Charte DA/tokens.css » puis « composants.css » : les mettre à jour ensemble. --- */
+/* =====================================================================
+   Charte « Copie double » · Prépa DGFiP 2027
+   Socle commun aux deux applis : QCM DGFiP 2027 et Atelier QRC compta.
+   Concept : la copie d'examen. Papier crème, encre bleue, chiffres en
+   machine à écrire, surligneur jaune pour ce qui compte.
+   Chaque appli choisit sa couleur d'encre avec <body data-app="qcm|qrc">.
+   ===================================================================== */
+
+/* Polices (à charger dans le <head>) :
+   https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600;6..72,700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap */
+
 :root {
-  --bg: #eef1ef; --surface: #ffffff; --sunk: #f6f8f7; --ink: #15202a; --muted: #586773; --line: #d3dbdc; --rule: #e3e9e9;
-  --accent: #1e4f7a; --accent-ink: #ffffff; --accent-soft: #e2ecf5;
-  --ok: #1d7448; --ok-soft: #e1f2e8; --bad: #b2321f; --bad-soft: #fbe6e2; --warn: #9a5a00; --warn-soft: #fbefd9;
-  --f-display: 'IBM Plex Sans Condensed', 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif;
-  --f-body: 'IBM Plex Sans', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --f-num: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
-  --r: 6px;
+  /* Papier et encre */
+  --paper: #F5F3EE;
+  --surface: #FFFFFF;
+  --sunk: #F0EDE6;
+  --ink: #16213A;
+  --muted: #5A6377;
+  --line: #DAD5CA;
+  --rule: #E8E4DB;
+  --shadow: 0 1px 0 rgba(22, 33, 58, .04), 0 1px 3px rgba(22, 33, 58, .06);
+  --shadow-lift: 0 2px 4px rgba(22, 33, 58, .06), 0 8px 24px rgba(22, 33, 58, .08);
+
+  /* Encre de chaque appli (accent d'action) */
+  --qcm: #2A44C7;      --qcm-soft: #E7EBFB;
+  --qrc: #0E6871;      --qrc-soft: #E0F0F0;
+  --accent: var(--qcm); --accent-soft: var(--qcm-soft); --on-accent: #FFFFFF;
+
+  /* Surligneur : signature de la marque, jamais pour un état */
+  --hl: #FFE45E;       --hl-ink: #16213A;
+
+  /* États (toujours doublés d'un pictogramme ou d'un mot) */
+  --ok: #217A3C;       --ok-soft: #E2F2E5;
+  --bad: #B8322A;      --bad-soft: #FAE6E2;
+  --warn: #8F5600;     --warn-soft: #FBEFD5;
+
+  /* Typographie */
+  --f-display: "Newsreader", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --f-ui: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --f-num: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --t-xs: .75rem;   /* 12 : mentions, axes */
+  --t-sm: .8125rem; /* 13 : métadonnées, légendes */
+  --t-md: .9375rem; /* 15 : interface */
+  --t-base: 1rem;   /* 16 : texte courant, énoncés */
+  --t-lg: 1.125rem; /* 18 : question, sous-titre */
+  --t-xl: 1.375rem; /* 22 : titre de section */
+  --t-2xl: 1.75rem; /* 28 : titre de page */
+  --t-3xl: 2.5rem;  /* 40 : chiffre clé */
+
+  /* Espacements (base 4) et rayons */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px;
+  --r-sm: 6px; --r-md: 10px; --r-lg: 14px; --r-pill: 999px;
+  --tap: 44px;
+  --content: 960px;
 }
+
+[data-app="qrc"] { --accent: var(--qrc); --accent-soft: var(--qrc-soft); }
+
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0f151a; --surface: #161f26; --sunk: #121a20; --ink: #e4ebef; --muted: #98a6b0; --line: #2a3843; --rule: #22303a;
-    --accent: #84b6e3; --accent-ink: #0d1a26; --accent-soft: #1b2e40;
-    --ok: #63c894; --ok-soft: #15301f; --bad: #f2917f; --bad-soft: #3a1c17; --warn: #e3ab55; --warn-soft: #33270f;
+    --paper: #0F141F; --surface: #171E2C; --sunk: #121825; --ink: #E8ECF4; --muted: #9BA4B8;
+    --line: #2B3447; --rule: #222A3A;
+    --shadow: 0 1px 0 rgba(0, 0, 0, .3); --shadow-lift: 0 8px 28px rgba(0, 0, 0, .45);
+    --qcm: #93A5FF; --qcm-soft: #1F2850; --qrc: #62C3CB; --qrc-soft: #12313A; --on-accent: #0F141F;
+    --hl: #5A4E12; --hl-ink: #FFF3B8;
+    --ok: #6BCB86; --ok-soft: #143222; --bad: #FF8A7D; --bad-soft: #3B1D1E; --warn: #E8B158; --warn-soft: #36290F;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0f151a; --surface: #161f26; --sunk: #121a20; --ink: #e4ebef; --muted: #98a6b0; --line: #2a3843; --rule: #22303a;
-  --accent: #84b6e3; --accent-ink: #0d1a26; --accent-soft: #1b2e40;
-  --ok: #63c894; --ok-soft: #15301f; --bad: #f2917f; --bad-soft: #3a1c17; --warn: #e3ab55; --warn-soft: #33270f;
+  --paper: #0F141F; --surface: #171E2C; --sunk: #121825; --ink: #E8ECF4; --muted: #9BA4B8;
+  --line: #2B3447; --rule: #222A3A;
+  --shadow: 0 1px 0 rgba(0, 0, 0, .3); --shadow-lift: 0 8px 28px rgba(0, 0, 0, .45);
+  --qcm: #93A5FF; --qcm-soft: #1F2850; --qrc: #62C3CB; --qrc-soft: #12313A; --on-accent: #0F141F;
+  --hl: #5A4E12; --hl-ink: #FFF3B8;
+  --ok: #6BCB86; --ok-soft: #143222; --bad: #FF8A7D; --bad-soft: #3B1D1E; --warn: #E8B158; --warn-soft: #36290F;
   color-scheme: dark;
 }
-* { box-sizing: border-box; }
-body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.5; }
-.wrap { max-width: 920px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-h1, h2, h3, h4 { font-family: var(--f-display); text-wrap: balance; margin: 0; line-height: 1.2; }
-h2 { font-size: 1.45rem; font-weight: 700; }
-h3 { font-size: 1.12rem; font-weight: 600; }
-h4 { font-size: .98rem; font-weight: 600; }
+
+/* ---------- Base ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: var(--t-base); line-height: 1.55; }
+h1, h2, h3, h4 { margin: 0; text-wrap: balance; }
 p { margin: 0; }
-button { font: inherit; color: inherit; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.num, .mono, .acct, input.n { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: var(--accent); text-underline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+[hidden] { display: none !important; }
+.num, .mono { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+.wrap { max-width: var(--content); margin: 0 auto; padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px)); }
 
-/* ---- En-tête ---- */
-.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); border-bottom: 1px solid var(--line); }
-.bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 10px; flex-wrap: wrap; }
-.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.mark { display: inline-grid; grid-template-columns: 1fr 1fr; width: 38px; height: 30px; border-top: 2px solid var(--accent); font-family: var(--f-num); font-size: .72rem; font-weight: 600; color: var(--accent); flex: none; }
-.mark span { display: grid; place-items: center; }
-.mark span:first-child { border-right: 2px solid var(--accent); }
-.brand-t { display: flex; flex-direction: column; min-width: 0; }
-.brand-t b { font-family: var(--f-display); font-size: 1.12rem; letter-spacing: .01em; }
-.brand-t small { color: var(--muted); font-size: .8rem; }
-.seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
-.seg button { border: 0; background: transparent; padding: 6px 12px; cursor: pointer; font-size: .86rem; }
-.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
-.tabs { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
-.tabs::-webkit-scrollbar { display: none; }
-.tabs button { border: 0; background: none; padding: 9px 12px 10px; cursor: pointer; white-space: nowrap; color: var(--muted); border-bottom: 3px solid transparent; font-weight: 500; }
-.tabs button[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); }
-main { padding-block: 22px 40px; display: flex; flex-direction: column; gap: 22px; }
-.foot { color: var(--muted); font-size: .8rem; padding-block: 0 32px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+/* Titres : serif pour la voix « copie », sans-serif pour l'outil */
+.h-page { font-family: var(--f-display); font-size: var(--t-2xl); font-weight: 600; line-height: 1.15; letter-spacing: -.01em; }
+.h-sec { font-family: var(--f-display); font-size: var(--t-xl); font-weight: 600; line-height: 1.2; }
+.h-card { font-size: var(--t-base); font-weight: 600; }
+.eyebrow { font-size: var(--t-xs); font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.lede { color: var(--muted); max-width: 64ch; }
+.small { font-size: var(--t-sm); }
+.muted { color: var(--muted); }
 
-/* ---- Blocs ---- */
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.lede { color: var(--muted); max-width: 68ch; }
-.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-.btn { border: 1px solid var(--line); background: var(--surface); padding: 8px 14px; border-radius: var(--r); cursor: pointer; font-weight: 500; }
+/* Surligné : un mot ou un chiffre par écran, pas plus */
+mark.hl { background: linear-gradient(transparent 52%, var(--hl) 52%, var(--hl) 92%, transparent 92%); color: inherit; padding: 0 .12em; margin: 0 -.06em; }
+
+/* ---------- Barre d'appli ---------- */
+.appbar { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--paper) 88%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.appbar-in { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); min-height: 60px; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1 1 auto; text-decoration: none; color: inherit; }
+.brand-t { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.brand-t b { font-family: var(--f-display); font-size: 1.15rem; font-weight: 700; letter-spacing: -.005em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand-t small { font-size: var(--t-xs); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.appbar-r { display: flex; align-items: center; gap: var(--s3); flex: none; }
+
+/* Logo : tuile d'encre 32 px, pictogramme blanc trait 2 px */
+.logo { width: 34px; height: 34px; border-radius: 9px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; flex: none; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .18); }
+.logo svg { width: 22px; height: 22px; }
+.logo.lg { width: 64px; height: 64px; border-radius: 16px; }
+.logo.lg svg { width: 40px; height: 40px; }
+.logo.qcm { background: var(--qcm); }
+.logo.qrc { background: var(--qrc); }
+
+/* Tampon compte à rebours : signature, en surligneur */
+.stamp { display: inline-flex; align-items: baseline; gap: 6px; padding: 3px 9px 4px; background: var(--hl); color: var(--hl-ink); border-radius: 4px; transform: rotate(-1.5deg); font-size: var(--t-xs); white-space: nowrap; }
+.stamp b { font-family: var(--f-num); font-size: .95rem; font-weight: 600; letter-spacing: -.02em; }
+
+/* Bascule de profil */
+.seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--sunk); border: 1px solid var(--line); border-radius: var(--r-pill); }
+.seg button { border: 0; background: none; padding: 5px 12px; border-radius: var(--r-pill); font-size: var(--t-sm); font-weight: 600; color: var(--muted); cursor: pointer; min-height: 30px; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+
+/* Onglets (≥ 720 px) */
+.tabs { display: flex; gap: var(--s1); overflow-x: auto; scrollbar-width: none; }
+.tabs a { display: inline-flex; align-items: center; gap: 7px; padding: 10px 12px 11px; font-size: var(--t-md); font-weight: 500; color: var(--muted); text-decoration: none; border-bottom: 2px solid transparent; white-space: nowrap; }
+.tabs a svg { width: 18px; height: 18px; opacity: .8; }
+.tabs a:hover { color: var(--ink); }
+.tabs a[aria-current="page"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--accent); }
+.tabs a[aria-current="page"] svg { color: var(--accent); opacity: 1; }
+.tabs .count { font-family: var(--f-num); font-size: var(--t-xs); background: var(--accent-soft); color: var(--accent); padding: 0 6px; border-radius: var(--r-pill); }
+
+/* Barre du bas (< 720 px) : à portée de pouce */
+.bottomnav { display: none; }
+@media (max-width: 719px) {
+  .tabs { display: none; }
+  .bottomnav { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; position: fixed; inset: auto 0 0 0; z-index: 30; background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .bottomnav a { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 2px 7px; min-height: 56px; font-size: 11px; font-weight: 500; color: var(--muted); text-decoration: none; position: relative; }
+  .bottomnav a svg { width: 22px; height: 22px; }
+  .bottomnav a[aria-current="page"] { color: var(--accent); font-weight: 600; }
+  .bottomnav a[aria-current="page"]::before { content: ""; position: absolute; top: 0; left: 30%; right: 30%; height: 2px; border-radius: 0 0 2px 2px; background: var(--accent); }
+  body { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+  .appbar-in { min-height: 54px; }
+  .brand-t small, .stamp span { display: none; }
+  .appbar .seg { display: none; } /* le profil passe dans « Plus » sur mobile */
+}
+
+/* ---------- Mise en page ---------- */
+.page { display: flex; flex-direction: column; gap: var(--s5); padding-block: var(--s5) var(--s7); }
+.stack { display: flex; flex-direction: column; gap: var(--s3); }
+.row { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; }
+.between { justify-content: space-between; }
+.grid { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(var(--min, 200px), 1fr)); }
+.split { display: grid; gap: var(--s5); grid-template-columns: minmax(0, 1fr) 300px; align-items: start; }
+@media (max-width: 879px) { .split { grid-template-columns: minmax(0, 1fr); } }
+
+/* Feuille : la carte de base */
+.sheet { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--s5); box-shadow: var(--shadow); display: flex; flex-direction: column; gap: var(--s4); min-width: 0; }
+.sheet.tight { padding: var(--s4); gap: var(--s3); }
+.sheet.flat { box-shadow: none; background: var(--sunk); border-color: transparent; }
+@media (max-width: 519px) { .sheet { padding: var(--s4); border-radius: var(--r-md); } }
+
+/* Héros de page : marge rouge discrète de copie double */
+.hero { display: flex; flex-direction: column; gap: var(--s2); padding-left: var(--s4); border-left: 3px solid var(--accent); }
+
+/* ---------- Boutons ---------- */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: var(--tap); padding: 0 18px; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--surface); font-size: var(--t-md); font-weight: 600; cursor: pointer; text-decoration: none; color: var(--ink); white-space: nowrap; }
+.btn svg { width: 18px; height: 18px; }
 .btn:hover { border-color: var(--accent); }
-.btn.pri { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-.btn.ghost { background: transparent; }
-.btn.danger { color: var(--bad); }
-.btn:disabled { opacity: .5; cursor: default; }
-.chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: .78rem; font-weight: 600; background: var(--sunk); color: var(--muted); border: 1px solid var(--line); white-space: nowrap; }
-.chip.ok { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
-.chip.bad { background: var(--bad-soft); color: var(--bad); border-color: transparent; }
-.chip.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
-.chip.acc { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
-.eyebrow { font-family: var(--f-display); text-transform: uppercase; letter-spacing: .08em; font-size: .74rem; color: var(--muted); font-weight: 600; }
+.btn.pri { background: var(--accent); border-color: var(--accent); color: var(--on-accent); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .15); }
+.btn.pri:hover { filter: brightness(1.08); }
+.btn.ghost { background: none; border-color: transparent; color: var(--accent); }
+.btn.ghost:hover { background: var(--accent-soft); }
+.btn.danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, var(--line)); }
+.btn.sm { min-height: 34px; padding: 0 12px; font-size: var(--t-sm); border-radius: var(--r-sm); }
+.btn.block { width: 100%; }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }
+kbd { font-family: var(--f-num); font-size: 11px; padding: 1px 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: var(--surface); color: var(--muted); }
 
-/* ---- Tableau de bord ---- */
-.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
-.stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; }
-.stat b { display: block; font-family: var(--f-num); font-size: 1.5rem; font-weight: 600; }
-.stat span { color: var(--muted); font-size: .82rem; }
-.reco { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
-.reco button { text-align: left; border: 1px solid var(--line); background: var(--sunk); border-radius: var(--r); padding: 12px; cursor: pointer; display: flex; flex-direction: column; gap: 6px; }
-.reco button:hover { border-color: var(--accent); }
-.reco .why { color: var(--muted); font-size: .85rem; }
-.types { width: 100%; border-collapse: collapse; }
-.types th { text-align: left; font-size: .76rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; padding: 6px 8px; border-bottom: 1px solid var(--line); }
-.types td { padding: 8px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
-.types tr.click { cursor: pointer; }
-.types tr.click:hover td { background: var(--sunk); }
-.boxes { display: inline-flex; gap: 3px; }
-.boxes i { width: 9px; height: 9px; border-radius: 2px; background: var(--line); display: inline-block; }
-.boxes i.on { background: var(--accent); }
-.fam { color: var(--muted); font-size: .8rem; }
-.hide-sm { }
-@media (max-width: 560px) { .hide-sm { display: none; } }
+/* ---------- Badges ---------- */
+.badge { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: var(--r-pill); font-size: var(--t-xs); font-weight: 600; line-height: 1.5; background: var(--sunk); color: var(--muted); white-space: nowrap; }
+.badge svg { width: 12px; height: 12px; }
+.badge.acc { background: var(--accent-soft); color: var(--accent); }
+.badge.ok { background: var(--ok-soft); color: var(--ok); }
+.badge.bad { background: var(--bad-soft); color: var(--bad); }
+.badge.warn { background: var(--warn-soft); color: var(--warn); }
+.badge.out { background: none; border: 1px solid var(--line); }
+.badge.mono { font-family: var(--f-num); font-weight: 500; }
 
-/* ---- Exercice ---- */
-.exhead { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
-.exhead h2 { font-size: 1.3rem; }
-.meta { color: var(--muted); font-size: .82rem; }
-.clock { font-family: var(--f-num); font-variant-numeric: tabular-nums; padding: 4px 10px; border-radius: var(--r); background: var(--sunk); border: 1px solid var(--line); white-space: nowrap; }
-.clock.over { color: var(--bad); border-color: var(--bad); }
-.enonce { display: flex; flex-direction: column; gap: 10px; max-width: 72ch; }
-.enonce ul, .enonce ol, .steps ul { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
-.consigne { font-weight: 500; border-left: 3px solid var(--accent); padding-left: 10px; }
-.note { font-size: .88rem; color: var(--warn); background: var(--warn-soft); padding: 8px 12px; border-radius: var(--r); }
-.tw { overflow-x: auto; max-width: 100%; }
-table { border-collapse: collapse; font-size: .9rem; }
-.tw table { min-width: 100%; }
-.tw th { text-align: left; font-weight: 600; color: var(--muted); font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--line); padding: 6px 8px; }
-.tw td { padding: 6px 8px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+/* ---------- Chiffres clés ---------- */
+.stats { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--s3) var(--s4); display: flex; flex-direction: column; gap: 2px; }
+.stat b { font-family: var(--f-num); font-size: 1.6rem; font-weight: 600; line-height: 1.2; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.stat b small { font-size: .9rem; color: var(--muted); font-weight: 500; }
+.stat span { font-size: var(--t-sm); color: var(--muted); }
+.stat .delta { font-family: var(--f-num); font-size: var(--t-xs); font-weight: 600; }
+.delta.up { color: var(--ok); } .delta.down { color: var(--bad); }
+
+/* ---------- Progression ---------- */
+.meter { height: 6px; border-radius: var(--r-pill); background: var(--rule); overflow: hidden; }
+.meter > i { display: block; height: 100%; background: var(--accent); border-radius: inherit; }
+.track { position: relative; height: 12px; border-radius: var(--r-pill); background: var(--rule); }
+.track .fill { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--accent); }
+.track .fill.ok { background: var(--ok); } .track .fill.bad { background: var(--bad); }
+.track .jury { position: absolute; top: -5px; bottom: -5px; width: 2px; margin-left: -1px; background: var(--ink); border-radius: 1px; }
+.track .jury::after { content: attr(data-l); position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%); font-family: var(--f-num); font-size: 10px; color: var(--muted); white-space: nowrap; }
+.pips { display: inline-flex; gap: 3px; }
+.pips i { width: 10px; height: 10px; border-radius: 3px; background: var(--rule); border: 1px solid var(--line); }
+.pips i.on { background: var(--accent); border-color: var(--accent); }
+
+/* ---------- Retours (correction) ---------- */
+.callout { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: var(--s3); padding: var(--s4); border-radius: var(--r-md); background: var(--accent-soft); }
+.callout .ic { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--on-accent); }
+.callout .ic svg { width: 16px; height: 16px; }
+.callout.ok { background: var(--ok-soft); } .callout.ok .ic { background: var(--ok); }
+.callout.bad { background: var(--bad-soft); } .callout.bad .ic { background: var(--bad); }
+.callout.warn { background: var(--warn-soft); } .callout.warn .ic { background: var(--warn); }
+.callout h4 { font-size: var(--t-base); font-weight: 600; margin-bottom: 2px; }
+.callout.ok h4 { color: var(--ok); } .callout.bad h4 { color: var(--bad); } .callout.warn h4 { color: var(--warn); }
+
+/* ---------- Tableaux ---------- */
+.tw { overflow-x: auto; margin-inline: calc(var(--s5) * -1); padding-inline: var(--s5); }
+table.t { width: 100%; border-collapse: collapse; font-size: var(--t-md); }
+table.t th { text-align: left; font-size: var(--t-xs); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.t td { padding: 10px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+table.t tr:last-child td { border-bottom: 0; }
+table.t .r { text-align: right; }
+table.t td.num, table.t th.num { text-align: right; font-family: var(--f-num); font-variant-numeric: tabular-nums; white-space: nowrap; }
+table.t tbody tr.click { cursor: pointer; }
+table.t tbody tr.click:hover td { background: var(--sunk); }
+table.t tr.tot td { font-weight: 600; border-top: 1.5px solid var(--ink); }
+
+/* ---------- Champs ---------- */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > span { font-size: var(--t-sm); font-weight: 600; }
+.input { min-height: var(--tap); width: 100%; min-width: 0; padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); font-size: var(--t-base); }
+.input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.input.n { font-family: var(--f-num); text-align: right; font-variant-numeric: tabular-nums; }
+.input.is-ok { border-color: var(--ok); background: var(--ok-soft); }
+.input.is-bad { border-color: var(--bad); background: var(--bad-soft); }
+
+/* Puces de filtre */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button { display: inline-flex; align-items: center; gap: 7px; min-height: 34px; padding: 0 12px; border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--surface); font-size: var(--t-sm); font-weight: 500; cursor: pointer; }
+.chips button[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); flex: none; }
+.dot.ok { background: var(--ok); } .dot.bad { background: var(--bad); } .dot.warn { background: var(--warn); }
+
+/* Chrono */
+.clock { display: inline-flex; align-items: center; gap: 8px; font-family: var(--f-num); font-weight: 600; font-size: 1.05rem; font-variant-numeric: tabular-nums; padding: 6px 12px; border-radius: var(--r-pill); background: var(--surface); border: 1px solid var(--line); }
+.clock svg { width: 16px; height: 16px; color: var(--muted); }
+.clock.low { color: var(--bad); border-color: var(--bad); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .btn, .opt, .chips button, .tabs a { transition: background-color .15s, border-color .15s, color .15s; }
+}
+
+/* =====================================================================
+   Composants propres à chaque appli, construits sur tokens.css.
+   ===================================================================== */
+
+/* ---------- QCM : options de réponse (cases de la feuille optique) ---------- */
+.question { font-size: var(--t-lg); font-weight: 600; line-height: 1.45; }
+.opts { display: flex; flex-direction: column; gap: var(--s2); }
+.opt { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: var(--s3); align-items: center; width: 100%; min-height: 54px; padding: 9px 14px 9px 10px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); text-align: left; cursor: pointer; }
+.opt .box { width: 32px; height: 32px; border: 2px solid var(--ink); border-radius: 7px; display: grid; place-items: center; font-family: var(--f-num); font-weight: 600; font-size: .9rem; }
+.opt .box svg { width: 18px; height: 18px; stroke-width: 2.6; }
+.opt .t { overflow-wrap: anywhere; }
+.opt .lab { font-size: var(--t-xs); font-weight: 600; white-space: nowrap; }
+.opt:hover:not([disabled]) { border-color: var(--accent); }
+.opt[disabled] { cursor: default; }
+.opt.chosen { border-color: var(--accent); background: var(--accent-soft); }
+.opt.chosen .box { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.opt.right { border-color: var(--ok); background: var(--ok-soft); }
+.opt.right .box { background: var(--ok); border-color: var(--ok); color: var(--surface); }
+.opt.right .lab { color: var(--ok); }
+.opt.wrong { border-color: var(--bad); background: var(--bad-soft); }
+.opt.wrong .box { background: var(--bad); border-color: var(--bad); color: var(--surface); }
+.opt.wrong .lab { color: var(--bad); }
+.opts.locked .opt:not(.right):not(.wrong) { opacity: .55; }
+.opt.ann { border-style: dashed; }
+.opt.ann .box { font-size: .62rem; letter-spacing: .02em; }
+.srcs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--s2); }
+.srcs a { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-sm); font-weight: 600; padding: 4px 10px; border-radius: var(--r-pill); background: var(--surface); border: 1px solid var(--line); text-decoration: none; }
+.srcs a svg { width: 14px; height: 14px; }
+
+/* Barre d'examen collante */
+.exambar { position: sticky; top: 108px; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: var(--s3); flex-wrap: wrap; padding: 10px 12px 10px 16px; border-radius: var(--r-lg); background: var(--ink); color: var(--paper); box-shadow: var(--shadow-lift); }
+.exambar .clock { background: transparent; border-color: color-mix(in srgb, var(--paper) 30%, transparent); color: inherit; }
+.exambar .clock svg { color: inherit; opacity: .7; }
+.exambar .btn { background: var(--paper); color: var(--ink); border-color: transparent; }
+.exambar small { opacity: .7; font-size: var(--t-xs); }
+@media (max-width: 719px) { .exambar { top: 62px; } }
+
+/* Feuille de réponse */
+.omr { display: grid; grid-template-columns: repeat(auto-fill, minmax(36px, 1fr)); gap: 6px; }
+.omr button { position: relative; height: 36px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); font-family: var(--f-num); font-size: var(--t-xs); font-weight: 500; cursor: pointer; color: var(--muted); }
+.omr button.done { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.omr button.abst { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); }
+.omr button.cur { outline: 2px solid var(--ink); outline-offset: 2px; color: var(--ink); font-weight: 700; }
+.omr button.flag::after { content: ""; position: absolute; top: -1px; right: -1px; border-style: solid; border-width: 0 9px 9px 0; border-color: transparent var(--hl) transparent transparent; filter: drop-shadow(0 0 .5px var(--warn)); border-top-right-radius: 6px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: var(--t-xs); color: var(--muted); }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 5px; border: 1px solid var(--line); background: var(--surface); }
+.legend i.done { background: var(--accent); border-color: var(--accent); }
+.legend i.abst { background: var(--warn-soft); border-color: var(--warn); }
+.legend i.flag { background: var(--hl); border-color: var(--warn); }
+.legend i.jury { width: 2px; border: 0; background: var(--ink); }
+
+/* Barres de thèmes */
+.bars { display: flex; flex-direction: column; gap: 30px; padding-bottom: 12px; }
+.bar-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.bar-row .lab { display: flex; justify-content: space-between; gap: var(--s2); flex-wrap: wrap; align-items: baseline; }
+.bar-row .lab b { font-weight: 600; font-size: var(--t-md); }
+.bar-row .lab span { font-family: var(--f-num); font-size: var(--t-sm); color: var(--muted); }
+.bar-row .lab span strong { color: var(--ink); font-weight: 600; }
+
+/* Liste de thèmes en latéral */
+.mini { display: flex; flex-direction: column; gap: 12px; }
+.mini li { list-style: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; font-size: var(--t-sm); }
+.mini li .meter { grid-column: 1 / -1; }
+.mini ul, ul.mini { margin: 0; padding: 0; }
+
+/* ---------- QRC : énoncé, saisie et journal ---------- */
+.kv { width: 100%; border-collapse: collapse; font-size: var(--t-md); }
+.kv td { padding: 8px 0; border-bottom: 1px dashed var(--line); vertical-align: top; }
+.kv td:first-child { color: var(--muted); padding-right: var(--s4); }
+.kv td:last-child { font-family: var(--f-num); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.kv tr:last-child td { border-bottom: 0; }
+.consigne { display: flex; flex-direction: column; gap: 6px; padding: var(--s3) var(--s4); border-radius: var(--r-md); background: var(--sunk); font-weight: 500; }
+.consigne ol { margin: 0; padding-left: 1.3em; }
+
+.answers { display: flex; flex-direction: column; gap: var(--s2); }
+.ans { display: grid; grid-template-columns: minmax(0, 1fr) minmax(140px, 200px); gap: 6px var(--s3); align-items: center; padding: 10px 12px; border-radius: var(--r-md); border: 1px solid var(--rule); background: var(--surface); }
+.ans label { font-size: var(--t-md); font-weight: 500; }
+.ans .in { position: relative; }
+.ans .in::after { content: "€"; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-family: var(--f-num); font-size: var(--t-sm); color: var(--muted); }
+.ans .in .input { padding-right: 28px; }
+.ans .fb { grid-column: 1 / -1; display: flex; gap: 6px; align-items: flex-start; font-size: var(--t-sm); }
+.ans .fb svg { width: 16px; height: 16px; flex: none; margin-top: 2px; }
+.ans.ok { border-color: color-mix(in srgb, var(--ok) 45%, transparent); background: var(--ok-soft); }
+.ans.ok .fb { color: var(--ok); }
+.ans.bad { border-color: color-mix(in srgb, var(--bad) 45%, transparent); background: var(--bad-soft); }
+.ans.bad .fb { color: var(--bad); }
+.ans.warn { border-color: color-mix(in srgb, var(--warn) 45%, transparent); background: var(--warn-soft); }
+.ans.warn .fb { color: var(--warn); }
+@media (max-width: 519px) { .ans { grid-template-columns: 1fr; } }
+
+/* Journal : la page réglée du livre-journal */
+.journal { border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; background: var(--surface); }
+.j-head { display: flex; align-items: center; gap: var(--s3); padding: 10px 14px; background: var(--sunk); border-bottom: 1px solid var(--line); font-size: var(--t-sm); }
+.j-head b { font-family: var(--f-num); font-weight: 600; }
+.j-head span { font-style: italic; color: var(--muted); }
+.j-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 1fr) 22px; gap: 0 10px; }
+.j-grid > * { padding: 7px 0; display: flex; align-items: center; min-width: 0; }
+.j-grid .hd { font-size: var(--t-xs); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); padding-block: 8px; }
+.j-grid .hd.r { justify-content: flex-end; }
+.j-row { display: contents; }
+.j-row > * { border-bottom: 1px solid var(--rule); }
+.j-acc { gap: 10px; }
+.j-acc .input { min-height: 38px; width: 6.2rem; flex: none; font-family: var(--f-num); font-weight: 600; color: var(--accent); }
+.j-acc small { color: var(--muted); font-size: var(--t-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.j-row.cr .j-acc { padding-left: 28px; }
+.j-row .input.n { min-height: 38px; }
+.j-st svg { width: 18px; height: 18px; }
+.j-st.ok { color: var(--ok); } .j-st.bad { color: var(--bad); } .j-st.warn { color: var(--warn); }
+.j-body { padding: 0 14px; }
+.j-foot { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 1fr) 22px; gap: 0 10px; padding: 10px 14px; border-top: 1.5px solid var(--ink); font-family: var(--f-num); font-size: var(--t-md); font-weight: 600; font-variant-numeric: tabular-nums; }
+.j-foot .r { text-align: right; padding-right: 12px; }
+.j-foot .lbl { font-family: var(--f-ui); font-size: var(--t-sm); display: flex; align-items: center; gap: 6px; color: var(--ok); }
+.j-foot .lbl svg { width: 16px; height: 16px; }
+.j-add { border: 0; background: none; color: var(--accent); font-weight: 600; font-size: var(--t-sm); padding: 10px 14px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.j-add svg { width: 16px; height: 16px; }
+@media (max-width: 559px) {
+  .j-grid, .j-foot { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 18px; }
+  .j-grid .hd:first-child { display: none; }
+  .j-acc { grid-column: 1 / -1; border-bottom: 0 !important; padding-bottom: 0 !important; }
+  .j-row.cr .j-acc { padding-left: 16px; }
+  .j-foot .lbl { grid-column: 1 / -1; padding-bottom: 6px; }
+  .j-grid .hd:nth-child(2) { grid-column: 1; }
+}
+
+/* Score de l'exercice */
+.score { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s4); align-items: center; padding: var(--s4); border-radius: var(--r-md); background: var(--accent-soft); }
+.score .big { font-family: var(--f-num); font-size: var(--t-3xl); font-weight: 600; line-height: 1; letter-spacing: -.03em; color: var(--accent); }
+.score .big small { font-size: 1rem; color: var(--muted); font-weight: 500; }
+
+/* Recommandations */
+.reco { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+.reco a { display: flex; flex-direction: column; gap: 6px; padding: var(--s4); border-radius: var(--r-md); border: 1px solid var(--line); background: var(--surface); text-decoration: none; color: inherit; position: relative; }
+.reco a:hover { border-color: var(--accent); box-shadow: var(--shadow-lift); }
+.reco a b { font-size: var(--t-base); font-weight: 600; padding-right: 22px; }
+.reco a .why { display: flex; gap: 6px; align-items: center; font-size: var(--t-sm); color: var(--muted); }
+.reco a > svg { position: absolute; top: 16px; right: 14px; width: 18px; height: 18px; color: var(--accent); }
+.reco a.first { border-color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
+
+/* Fiches */
+.toc { display: flex; flex-direction: column; gap: 2px; }
+.toc h4 { font-size: var(--t-xs); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 14px 0 4px 10px; }
+.toc h4:first-child { margin-top: 0; }
+.toc a { display: flex; justify-content: space-between; gap: 8px; align-items: center; padding: 8px 10px; border-radius: var(--r-sm); font-size: var(--t-md); color: var(--ink); text-decoration: none; }
+.toc a:hover { background: var(--sunk); }
+.toc a[aria-current="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.reading { max-width: 70ch; display: flex; flex-direction: column; gap: var(--s4); }
+.reading h3 { font-family: var(--f-display); font-size: var(--t-xl); font-weight: 600; }
+.reading h4 { font-size: var(--t-xs); font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); margin-top: var(--s2); }
+.steps { counter-reset: st; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s3); }
+.steps li { counter-increment: st; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: var(--s3); }
+.steps li::before { content: counter(st); width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--accent); color: var(--accent); display: grid; place-items: center; font-family: var(--f-num); font-size: var(--t-xs); font-weight: 600; margin-top: 1px; }
+.traps { list-style: none; margin: 0; padding: var(--s4); display: flex; flex-direction: column; gap: 10px; border-radius: var(--r-md); background: var(--bad-soft); }
+.traps li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 10px; font-size: var(--t-md); }
+.traps li svg { width: 16px; height: 16px; color: var(--bad); margin-top: 3px; stroke-width: 2.4; }
+.accts { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; }
+.accts span { display: flex; gap: 10px; align-items: baseline; padding: 8px 10px; border-radius: var(--r-sm); background: var(--sunk); font-size: var(--t-sm); }
+.accts b { font-family: var(--f-num); color: var(--accent); font-weight: 600; min-width: 3.4em; }
+
+/* =====================================================================
+   Propre à l'Atelier QRC
+   ===================================================================== */
+html { background: var(--paper); }
+.brand { cursor: pointer; }
+.foot { color: var(--muted); font-size: var(--t-xs); padding-block: 0 var(--s6); display: flex; flex-wrap: wrap; gap: 4px 14px; }
+@media (max-width: 559px) { .hide-sm { display: none; } }
+@media (max-width: 519px) { .tw { margin-inline: calc(var(--s4) * -1); padding-inline: var(--s4); } }
+.small b, .lede b { color: var(--ink); }
+
+/* Tableau de bord */
+.reco > button { display: flex; flex-direction: column; gap: 6px; padding: var(--s4); border-radius: var(--r-md); border: 1px solid var(--line); background: var(--surface); text-align: left; cursor: pointer; position: relative; }
+.reco > button:hover { border-color: var(--accent); box-shadow: var(--shadow-lift); }
+.reco > button b { font-size: var(--t-base); font-weight: 600; padding-right: 22px; }
+.reco > button .why { display: flex; gap: 6px; align-items: center; font-size: var(--t-sm); color: var(--muted); }
+.reco > button > svg { position: absolute; top: 16px; right: 14px; width: 18px; height: 18px; color: var(--accent); }
+.reco > button.first { border-color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
+table.t tr.click:focus-visible { outline-offset: -2px; }
+.seg-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2) var(--s3); }
+.seg-row .seg { flex-wrap: wrap; border-radius: var(--r-md); }
+
+/* Exercice */
+.ex { display: flex; flex-direction: column; gap: var(--s5); }
+.ex-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: var(--s3); }
+.clock:has(.over) { color: var(--bad); border-color: var(--bad); }
+.clock .muted { font-weight: 400; }
+.enonce { display: flex; flex-direction: column; gap: var(--s3); max-width: 76ch; }
+.enonce ul, .enonce ol, .part ul { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
+.part { display: flex; flex-direction: column; gap: var(--s2); }
+.part > h3 { font-size: var(--t-base); font-weight: 600; }
+.ans .in::after { content: attr(data-u); }
+.ans .in[data-u="K€"] .input { padding-right: 36px; }
+.ans .in[data-u=""] .input { padding-right: 12px; }
+.ans select.input { font-family: var(--f-ui); text-align: left; padding-right: 12px; }
+.ans .in:has(select)::after { content: none; }
+.ans .fb b { font-family: var(--f-num); font-weight: 600; }
+.score .big small { font-size: 1rem; }
+
+/* Saisie du journal */
+.j-acc small:empty::before { content: "Intitulé du compte"; opacity: .55; }
+.j-st { justify-content: center; }
+.j-foot .lbl.warn { color: var(--warn); }
+.j-foot .lbl.muted { color: var(--muted); }
+.jfb { padding: 10px 14px 12px; display: flex; flex-direction: column; gap: 4px; font-size: var(--t-sm); border-top: 1px solid var(--rule); }
+.jfb .l { display: flex; gap: 6px; align-items: flex-start; }
+.jfb .l svg { width: 16px; height: 16px; flex: none; margin-top: 2px; }
+.jfb .l.ok { color: var(--ok); } .jfb .l.bad { color: var(--bad); }
+.jfb .mono { font-weight: 600; }
+
+/* Tableaux produits par le moteur (énoncés et corrigés) */
+.tw table { width: 100%; border-collapse: collapse; font-size: var(--t-md); }
+.tw th { text-align: left; font-size: var(--t-xs); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.tw td { padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
 .tw td.num { text-align: right; white-space: nowrap; font-family: var(--f-num); font-variant-numeric: tabular-nums; }
-.tw tr.tot td { font-weight: 600; border-top: 1px solid var(--line); }
-table.kv td:first-child { color: var(--muted); }
-table.kv td:last-child { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
-table.calc td:nth-child(2) { color: var(--muted); font-family: var(--f-num); font-size: .84rem; }
-.two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-@media (max-width: 680px) { .two { grid-template-columns: 1fr; } }
+.tw tr.tot td { font-weight: 600; border-top: 1.5px solid var(--ink); }
+.tw table.kv td { padding: 8px 0; border-bottom: 1px dashed var(--line); }
+.tw table.kv td:first-child { width: 46%; padding-right: var(--s4); }
+.tw table.kv tr:last-child td { border-bottom: 0; }
+.tw table.kv td:last-child { white-space: normal; }
+table.calc td:nth-child(2) { white-space: normal; text-align: left; }
+table.calc td:nth-child(2) { color: var(--muted); font-family: var(--f-num); font-size: var(--t-sm); }
+table.calc td:first-child { min-width: 7.5em; }
+table.aff td:nth-child(odd) { white-space: normal; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); }
+@media (max-width: 679px) { .two { grid-template-columns: 1fr; } }
 
-/* Journal réglé */
-table.journal td { border-bottom: 1px solid var(--rule); }
-table.journal tr.jdate td { text-align: center; color: var(--muted); font-family: var(--f-num); font-size: .82rem; border-bottom: 1px dashed var(--line); padding-top: 12px; }
-table.journal tr.jdate td:first-child { text-align: left; color: var(--ink); }
-table.journal tr.jdate td:nth-child(2) span { font-family: var(--f-body); font-style: italic; }
-table.journal .acct { font-weight: 600; color: var(--accent); }
+/* Journal réglé du corrigé */
+table.journal { border: 0; border-radius: 0; overflow: visible; background: none; }
+table.journal tr.jdate td { color: var(--muted); font-family: var(--f-num); font-size: var(--t-sm); border-bottom: 1px solid var(--line); padding-top: 14px; background: var(--sunk); }
+table.journal tr.jdate td:first-child { color: var(--ink); }
+table.journal tr.jdate td:nth-child(2) span { font-family: var(--f-ui); font-style: italic; }
+table.journal .acct { font-family: var(--f-num); font-weight: 600; color: var(--accent); }
 table.journal tr.jc td:nth-child(2) { padding-left: 28px; }
 table.journal td:nth-child(3), table.journal td:nth-child(4) { text-align: right; font-family: var(--f-num); white-space: nowrap; width: 8.5em; }
 
-/* Saisie */
-.qs { display: grid; gap: 10px; }
-.q { display: grid; grid-template-columns: minmax(0, 1fr) minmax(130px, 210px); gap: 6px 12px; align-items: center; padding: 8px 10px; border-radius: var(--r); background: var(--sunk); border: 1px solid transparent; }
-.q label { font-size: .92rem; }
-.q .in { display: flex; align-items: center; gap: 6px; }
-.q .unit { color: var(--muted); font-size: .82rem; min-width: 1.6em; }
-.q .fb { grid-column: 1 / -1; font-size: .84rem; }
-.q.ok { border-color: var(--ok); background: var(--ok-soft); }
-.q.bad { border-color: var(--bad); background: var(--bad-soft); }
-.q.ok .fb { color: var(--ok); }
-.q.bad .fb { color: var(--bad); }
-@media (max-width: 520px) { .q { grid-template-columns: 1fr; } }
-input.n, select.n, input.ac { width: 100%; min-width: 0; padding: 7px 9px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); color: var(--ink); font-size: .95rem; }
-input.n { text-align: right; }
-select.n { font-family: var(--f-body); }
-.jed { border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
-.jed-h { display: flex; justify-content: space-between; gap: 8px; padding: 8px 10px; background: var(--sunk); border-bottom: 1px dashed var(--line); font-size: .88rem; flex-wrap: wrap; }
-.jed-h b { font-family: var(--f-num); }
-.jed-h span { font-style: italic; color: var(--muted); }
-.jgrid { display: grid; grid-template-columns: minmax(64px, 6.5rem) minmax(0, 1fr) minmax(0, 1fr); gap: 4px 6px; padding: 8px 10px; align-items: center; }
-.jgrid .hd { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
-.jgrid .hd.r { text-align: right; }
-input.ac { font-family: var(--f-num); }
-.jfb { padding: 6px 10px 10px; display: flex; flex-direction: column; gap: 3px; font-size: .84rem; }
-.jfb .l { display: flex; gap: 8px; flex-wrap: wrap; }
-.jfb .l.ok { color: var(--ok); }
-.jfb .l.bad { color: var(--bad); }
-.jadd { border: 0; background: none; color: var(--accent); cursor: pointer; padding: 0 10px 10px; font-size: .85rem; text-align: left; }
-.score { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 12px 14px; border-radius: var(--r); background: var(--accent-soft); }
-.score b { font-family: var(--f-num); font-size: 1.6rem; }
-.steps { display: flex; flex-direction: column; gap: 14px; }
-.steps section { display: flex; flex-direction: column; gap: 8px; }
-.interp { border-left: 3px solid var(--ok); padding: 4px 0 4px 12px; max-width: 74ch; }
-
-/* Sélecteur de types */
-.picker { display: flex; flex-wrap: wrap; gap: 6px; }
-.picker button { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 11px; cursor: pointer; font-size: .85rem; }
-.picker button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-.picker button .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: var(--line); }
-.picker button .dot.due { background: var(--warn); }
-.picker button .dot.weak { background: var(--bad); }
-.picker button .dot.good { background: var(--ok); }
-
 /* Épreuve */
-.exambar { position: sticky; top: calc(var(--hh, 100px) + 6px); z-index: 5; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 8px 10px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: space-between; }
+#app .exambar { top: calc(var(--hh, 104px) + 8px); }
 .exambar .pills { display: flex; gap: 4px; flex-wrap: wrap; }
-.exambar .pills button { border: 1px solid var(--line); background: var(--sunk); border-radius: var(--r); padding: 4px 10px; cursor: pointer; font-size: .84rem; }
-.exambar .pills button[aria-current="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-.big { font-family: var(--f-num); font-size: 1.25rem; font-weight: 600; }
+.exambar .pills button { border: 1px solid color-mix(in srgb, var(--paper) 30%, transparent); background: transparent; color: inherit; border-radius: var(--r-sm); padding: 4px 10px; min-height: 34px; cursor: pointer; font-size: var(--t-sm); }
+.exambar .pills button[aria-current="true"] { background: var(--paper); color: var(--ink); border-color: var(--paper); font-weight: 600; }
+.exambar .big { font-family: var(--f-num); font-size: 1.25rem; font-weight: 600; }
+.exambar .btn.pri { background: var(--paper); color: var(--ink); border-color: transparent; }
 
 /* Fiches */
-details.fiche { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
-details.fiche summary { padding: 12px 14px; cursor: pointer; display: flex; justify-content: space-between; gap: 10px; align-items: center; list-style: none; }
-details.fiche summary::-webkit-details-marker { display: none; }
-details.fiche summary h3 { font-size: 1.02rem; }
-details.fiche[open] summary { border-bottom: 1px solid var(--rule); }
-.fbody { padding: 12px 14px 16px; display: flex; flex-direction: column; gap: 12px; max-width: 76ch; }
-.fbody ol, .fbody ul { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 5px; }
-.fbody .pieges li::marker { color: var(--bad); }
-.famh { margin-top: 6px; }
-.confirm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: .9rem; }
-@media (prefers-reduced-motion: no-preference) { .panel.enter { animation: rise .25s ease-out; } @keyframes rise { from { transform: translateY(4px); } to { transform: none; } } }
-@media (max-width: 699px) { .top { position: static; } .exambar { top: env(safe-area-inset-top, 0px); } }
-table.kv td:first-child { width: 46%; }
-table.kv td.num, table.calc td:nth-child(2) { white-space: normal; text-align: left; }
-table.calc td:first-child { min-width: 7.5em; }
-table.aff td:nth-child(odd) { white-space: normal; }
-.pickrow select.pick { flex: 1 1 260px; width: auto; }
-@media (max-width: 520px) {
-  .panel { padding: 14px 12px; }
-  .tw table { font-size: .78rem; }
-  .tw td, .tw th { padding: 5px 4px; }
+.fl { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: var(--s5); align-items: start; }
+.toc-wrap { position: sticky; top: calc(var(--hh, 104px) + 16px); }
+.toc-wrap select { display: none; }
+.toc .badge { flex: none; }
+.reading .traps svg { flex: none; }
+@media (max-width: 819px) {
+  .fl { grid-template-columns: minmax(0, 1fr); }
+  .toc-wrap { position: static; }
+  .toc { display: none; }
+  .toc-wrap select { display: block; }
+}
+
+.confirm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: var(--t-md); padding: 10px 12px; border-radius: var(--r-md); border: 1px solid var(--bad); background: var(--bad-soft); }
+@media (prefers-reduced-motion: no-preference) { .ex.enter { animation: rise .25s ease-out; } @keyframes rise { from { transform: translateY(4px); } to { transform: none; } } }
+@media (max-width: 519px) {
+  .tw table { font-size: var(--t-sm); }
+  .tw td, .tw th { padding: 6px 5px; }
   table.journal td:nth-child(3), table.journal td:nth-child(4) { width: auto; }
   table.journal tr.jc td:nth-child(2) { padding-left: 12px; }
   table.calc td:first-child { min-width: 0; }
-  table.calc td:nth-child(2) { font-size: .74rem; }
+  table.calc td:nth-child(2) { font-size: var(--t-xs); }
 }
+.pickrow select.pick { flex: 1 1 260px; width: auto; }
 
 </style>
 </head>
 <body>
-<div id="app">
-  <header class="top">
-    <div class="wrap bar">
-      <div class="brand">
-        <span class="mark" aria-hidden="true"><span>D</span><span>C</span></span>
-        <div class="brand-t"><b>Atelier QRC compta</b><small id="countdown">Concours DGFiP · comptabilité et analyse financière</small></div>
-      </div>
-      <div class="seg" id="profil" role="group" aria-label="Programme">
-        <button type="button" data-p="I">Inspecteur</button>
-        <button type="button" data-p="C">Contrôleur</button>
+<div id="app" data-app="qrc">
+  <header class="appbar">
+    <div class="wrap appbar-in">
+      <a class="brand" href="#dash" data-v="dash">
+        <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M3 6.5h18M12 6.5V21" stroke-width="2.4"/><path d="M5 11h4.5M5 14.5h3M14.5 11h4.5M14.5 14.5h3M14.5 18h4" stroke-width="1.7"/></svg></span>
+        <span class="brand-t"><b>Atelier QRC compta</b><small id="countdown">Comptabilité et analyse financière</small></span>
+      </a>
+      <div class="appbar-r">
+        <span class="stamp" id="stamp" title="Compte à rebours"></span>
+        <div class="seg" id="profil" role="group" aria-label="Programme">
+          <button type="button" data-p="I" title="Programme inspecteur">Insp.</button>
+          <button type="button" data-p="C" title="Programme contrôleur">Contr.</button>
+        </div>
       </div>
     </div>
     <nav class="wrap tabs" id="tabs" aria-label="Sections">
-      <button type="button" data-v="dash">Progression</button>
-      <button type="button" data-v="train">Entraînement</button>
-      <button type="button" data-v="exam">Épreuve</button>
-      <button type="button" data-v="fiches">Fiches</button>
-      <button type="button" data-v="annales">Sujets réels</button>
+      <a href="#dash" data-v="dash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 17a8 8 0 1 1 15 0"/><path d="m12 13 3.5-4"/><circle cx="12" cy="13.5" r="1.2"/></svg>Progression</a>
+      <a href="#train" data-v="train"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5.5 18.5 9.5 9 19H5v-4z"/><path d="m12.5 7.5 4 4"/></svg>Entraînement</a>
+      <a href="#exam" data-v="exam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 2M10 3h4M19 6.5l-1.5 1.5"/></svg>Épreuve</a>
+      <a href="#fiches" data-v="fiches"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 5.5c2.5-1 5-1 7.5.5v13c-2.5-1.5-5-1.5-7.5-.5zM19.5 5.5c-2.5-1-5-1-7.5.5v13c2.5-1.5 5-1.5 7.5-.5z"/></svg>Fiches</a>
+      <a href="#annales" data-v="annales"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="4" rx="1"/><path d="M5 8.5v10a1.5 1.5 0 0 0 1.5 1.5h11a1.5 1.5 0 0 0 1.5-1.5v-10M10 12.5h4"/></svg>Sujets réels</a>
     </nav>
   </header>
-  <main class="wrap" id="view"></main>
+  <main class="wrap page" id="view"></main>
   <footer class="wrap foot"><span id="store">Progression enregistrée sur cet appareil.</span> <span>Comptes du PCG 2025 (ANC 2022-06) ; les anciens numéros (675, 775, 777…) sont acceptés.</span></footer>
+  <nav class="bottomnav" id="bottomnav" aria-label="Sections">
+    <a href="#dash" data-v="dash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 17a8 8 0 1 1 15 0"/><path d="m12 13 3.5-4"/><circle cx="12" cy="13.5" r="1.2"/></svg><span>Progression</span></a>
+    <a href="#train" data-v="train"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5.5 18.5 9.5 9 19H5v-4z"/><path d="m12.5 7.5 4 4"/></svg><span>S’entraîner</span></a>
+    <a href="#exam" data-v="exam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 2M10 3h4M19 6.5l-1.5 1.5"/></svg><span>Épreuve</span></a>
+    <a href="#fiches" data-v="fiches"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 5.5c2.5-1 5-1 7.5.5v13c-2.5-1.5-5-1.5-7.5-.5zM19.5 5.5c-2.5-1-5-1-7.5.5v13c2.5-1.5 5-1.5 7.5-.5z"/></svg><span>Fiches</span></a>
+    <a href="#annales" data-v="annales"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="4" rx="1"/><path d="M5 8.5v10a1.5 1.5 0 0 0 1.5 1.5h11a1.5 1.5 0 0 0 1.5-1.5v-10M10 12.5h4"/></svg><span>Annales</span></a>
+  </nav>
 </div>
+
 <script>
 'use strict';
 /* ===== Noyau : aléa, arrondis, formats, vérification ===== */
@@ -2126,7 +2464,7 @@ ANNALES = [
     I: { label: 'inspecteur', date: new Date(2026, 11, 7), n: 4, min: 70, txt: '4 exercices en 1 h 10' },
     C: { label: 'contrôleur', date: new Date(2027, 0, 11), n: 3, min: 60, txt: '3 exercices en 1 h' }
   };
-  var S = { prog: blank(), view: 'dash', train: null, trainType: null, annale: null, exam: null, confirmReset: false };
+  var S = { prog: blank(), view: 'dash', train: null, trainType: null, annale: null, exam: null, fiche: null, confirmReset: false };
   var uid = 0;
   var COURT = { affectation: 'Affectation', tva_ca3: 'TVA CA3', tva_coef: 'Coef. TVA', tva_regul: 'Régul. TVA', amort: 'Amortissement', derog: 'Dérogatoire', cession: 'Cession', depreciations: 'Dépréciations', regul: 'Régularisations', augcap: 'Capital', seuil: 'Seuil', commande: 'Coût marginal', sig_caf: 'SIG et CAF', bilan_fonc: 'Bilan fonct.', ratios: 'Ratios', is: 'IS', devises: 'Devises' };
   function blank() { return { v: 1, updated: 0, types: {}, epreuves: [], settings: { profil: 'I', pcgOld: false } }; }
@@ -2142,6 +2480,19 @@ ANNALES = [
   function mmss(s) { s = Math.max(0, Math.round(s)); var m = Math.floor(s / 60), r = s % 60; return (m < 10 ? '0' : '') + m + ':' + (r < 10 ? '0' : '') + r; }
   function pct(x) { return Math.round(x * 100) + ' %'; }
   function profil() { return S.prog.settings.profil === 'C' ? 'C' : 'I'; }
+  // Pictogrammes de la charte (trait 1,8 px, 24 × 24)
+  var ICO = {
+    check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+    cross: '<path d="m6.5 6.5 11 11M17.5 6.5l-11 11"/>',
+    info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.8v.2"/>',
+    arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+    clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    scale: '<path d="M12 4v16M7 20h10M4.5 8h15M7 8l-3 6a3 3 0 0 0 6 0zM17 8l-3 6a3 3 0 0 0 6 0z"/>',
+    flag: '<path d="M5.5 21V4.5M5.5 5h11l-2 4 2 4h-11"/>',
+    book: '<path d="M4.5 5.5c2.5-1 5-1 7.5.5v13c-2.5-1.5-5-1.5-7.5-.5zM19.5 5.5c-2.5-1-5-1-7.5.5v13c2.5-1.5 5-1.5 7.5-.5z"/>'
+  };
+  function ico(n) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICO[n] + '</svg>'; }
 
   /* ---------- Stockage : base de l'Artifact (espace privé) + navigateur ---------- */
   var Store = {
@@ -2182,7 +2533,7 @@ ANNALES = [
   };
   function status() {
     var el = $('#store'); if (!el) return;
-    el.textContent = Store.remote && Store.ref ? 'Progression enregistrée dans votre espace privé claude.ai (retrouvée sur tous vos appareils).' : 'Progression enregistrée dans ce navigateur.';
+    el.textContent = Store.remote && Store.ref ? 'Progression enregistrée dans ton espace privé claude.ai (retrouvée sur tous tes appareils).' : 'Progression enregistrée dans ce navigateur.';
   }
 
   /* ---------- Répétition espacée par type ---------- */
@@ -2258,66 +2609,92 @@ ANNALES = [
   function qHtml(ex, q) {
     var r = ex.res && ex.res.qr[q.id], cls = r ? (r.ok ? ' ok' : ' bad') : '';
     var v = ex.answers[q.id] === undefined ? '' : ex.answers[q.id], dis = ex.checked ? ' disabled' : '', id = 'q' + ex.uid + '-' + q.id, inp;
+    var isCls = r ? (r.ok ? ' is-ok' : ' is-bad') : '';
     if (q.kind === 'choice') {
-      inp = '<select class="n" id="' + id + '" data-q="' + q.id + '"' + dis + '><option value="">Choisir…</option>' + q.options.map(function (o, i) { return '<option value="' + i + '"' + (String(i) === String(v) ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>';
+      inp = '<select class="input' + isCls + '" id="' + id + '" data-q="' + q.id + '"' + dis + '><option value="">Choisir…</option>' + q.options.map(function (o, i) { return '<option value="' + i + '"' + (String(i) === String(v) ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>';
     } else {
-      inp = '<input class="n" id="' + id + '" inputmode="decimal" autocomplete="off" data-q="' + q.id + '" value="' + esc(v) + '"' + dis + '><span class="unit">' + unitTxt(q) + '</span>';
+      inp = '<input class="input n' + isCls + '" id="' + id + '" inputmode="decimal" autocomplete="off" data-q="' + q.id + '" value="' + esc(v) + '"' + dis + '>';
     }
-    var fb = r ? '<div class="fb">' + (r.ok ? '✓ Exact' + (q.kind !== 'choice' ? ' : ' + fmtAns(q) : '') : (r.empty ? 'Non répondu' : '✗ Inexact') + ' — attendu : ' + esc(fmtAns(q))) + '</div>' : '';
-    return '<div class="q' + cls + '"><label for="' + id + '">' + esc(q.label) + '</label><div class="in">' + inp + '</div>' + fb + '</div>';
+    var fb = r ? '<div class="fb">' + ico(r.ok ? 'check' : 'cross') + '<span>' + (r.ok ? 'Exact' + (q.kind !== 'choice' ? ' : <b>' + esc(fmtAns(q)) + '</b>' : '') : (r.empty ? 'Non répondu' : 'Inexact') + ' · attendu : <b>' + esc(fmtAns(q)) + '</b>') + '</span></div>' : '';
+    return '<div class="ans' + cls + '"><label for="' + id + '">' + esc(q.label) + '</label><div class="in" data-u="' + unitTxt(q) + '">' + inp + '</div>' + fb + '</div>';
   }
   var ST = { manquant: 'compte absent ou erroné', sens: 'saisi du mauvais côté', montant: 'montant inexact' };
+  // État d'une ligne saisie, une fois l'écriture corrigée : juste, compte juste mais sens ou montant faux, compte inattendu.
+  function rowSt(en, l) {
+    if (!String(l.a || '').trim() && !String(l.d || '').trim() && !String(l.c || '').trim()) return '';
+    var r = U.checkEntry(en, [l]);
+    if (r.detail.some(function (x) { return x.st === 'ok'; })) return 'ok';
+    return r.extra.length ? 'bad' : 'warn';
+  }
+  // Pied d'équilibre : totaux de la saisie
+  function footHtml(ex, i) {
+    var tD = 0, tC = 0, any = false;
+    ex.jl[i].forEach(function (l) { var d = U.parseNum(l.d), c = U.parseNum(l.c); if (!isNaN(d)) { tD += d; any = true; } if (!isNaN(c)) { tC += c; any = true; } });
+    var eq = Math.abs(tD - tC) < 0.005;
+    var lbl = !any ? '<span class="lbl muted">' + ico('scale') + 'Totaux</span>'
+      : eq ? '<span class="lbl">' + ico('check') + 'Total débit = total crédit</span>'
+      : '<span class="lbl warn">' + ico('scale') + 'Écart : ' + U.n(Math.abs(tD - tC), 2) + '</span>';
+    return lbl + '<span class="r">' + U.n(tD, 2) + '</span><span class="r">' + U.n(tC, 2) + '</span><span></span>';
+  }
   function jedHtml(ex, en, i) {
     var r = ex.res && ex.res.jr[i], dis = ex.checked ? ' disabled' : '';
-    var h = '<div class="jed"><div class="jed-h"><b>' + esc(en.date) + '</b><span>' + esc(en.lib) + '</span></div><div class="jgrid"><span class="hd">Compte</span><span class="hd r">Débit</span><span class="hd r">Crédit</span>';
+    var h = '<div class="journal"><div class="j-head"><b>' + esc(en.date) + '</b><span>' + esc(en.lib) + '</span></div><div class="j-body"><div class="j-grid"><span class="hd">Compte</span><span class="hd r">Débit</span><span class="hd r">Crédit</span><span class="hd"></span>';
     ex.jl[i].forEach(function (l, k) {
       var b = ' data-j="' + i + '" data-r="' + k + '"', lab = ' ligne ' + (k + 1) + ' de l’écriture du ' + en.date;
-      h += '<input class="ac" id="j' + ex.uid + '-' + i + '-' + k + 'a" inputmode="numeric" autocomplete="off" aria-label="Compte,' + lab + '"' + b + ' data-f="a" value="' + esc(l.a) + '"' + dis + '>';
-      h += '<input class="n" id="j' + ex.uid + '-' + i + '-' + k + 'd" inputmode="decimal" autocomplete="off" aria-label="Débit,' + lab + '"' + b + ' data-f="d" value="' + esc(l.d) + '"' + dis + '>';
-      h += '<input class="n" id="j' + ex.uid + '-' + i + '-' + k + 'c" inputmode="decimal" autocomplete="off" aria-label="Crédit,' + lab + '"' + b + ' data-f="c" value="' + esc(l.c) + '"' + dis + '>';
+      var rs = r ? rowSt(en, l) : '', cr = String(l.c || '').trim() && !String(l.d || '').trim();
+      h += '<div class="j-row' + (cr ? ' cr' : '') + '"><span class="j-acc"><input class="input" id="j' + ex.uid + '-' + i + '-' + k + 'a" inputmode="numeric" autocomplete="off" aria-label="Compte,' + lab + '"' + b + ' data-f="a" value="' + esc(l.a) + '"' + dis + '><small>' + esc(U.lib(String(l.a || '').trim())) + '</small></span>';
+      h += '<span><input class="input n" id="j' + ex.uid + '-' + i + '-' + k + 'd" inputmode="decimal" autocomplete="off" aria-label="Débit,' + lab + '"' + b + ' data-f="d" value="' + esc(l.d) + '"' + dis + '></span>';
+      h += '<span><input class="input n" id="j' + ex.uid + '-' + i + '-' + k + 'c" inputmode="decimal" autocomplete="off" aria-label="Crédit,' + lab + '"' + b + ' data-f="c" value="' + esc(l.c) + '"' + dis + '></span>';
+      h += '<span class="j-st' + (rs ? ' ' + rs : '') + '"' + (rs ? ' title="' + { ok: 'Ligne juste', warn: 'Compte attendu, sens ou montant à revoir', bad: 'Compte inattendu' }[rs] + '"' : '') + '>' + (rs ? ico(rs === 'ok' ? 'check' : rs === 'bad' ? 'cross' : 'info') : '') + '</span></div>';
     });
-    h += '</div>';
-    if (!ex.checked) h += '<button type="button" class="jadd" data-act="addline" data-j="' + i + '">+ Ajouter une ligne</button>';
+    h += '</div></div>';
+    if (!ex.checked) h += '<button type="button" class="j-add" data-act="addline" data-j="' + i + '">' + ico('plus') + 'Ajouter une ligne</button>';
+    h += '<div class="j-foot" id="jf' + ex.uid + '-' + i + '">' + footHtml(ex, i) + '</div>';
     if (r) {
       h += '<div class="jfb">' + r.detail.map(function (x) {
         var got = x.side === 'd' ? x.got.d : x.got.c;
-        return '<div class="l ' + (x.st === 'ok' ? 'ok' : 'bad') + '">' + (x.st === 'ok' ? '✓' : '✗') + ' <span class="mono">' + x.a + '</span> ' + esc(U.lib(x.a)) + ' · ' + (x.side === 'd' ? 'débit ' : 'crédit ') + U.n(x.mt, 2) + (x.st === 'ok' ? '' : ' — ' + ST[x.st] + (x.st === 'montant' ? ' (saisi : ' + U.n(got, 2) + ')' : '')) + '</div>';
-      }).join('') + r.extra.map(function (x) { return '<div class="l bad">✗ <span class="mono">' + esc(x.a || '?') + '</span> ' + (x.d ? 'débit ' + U.n(x.d, 2) : 'crédit ' + U.n(x.c, 2)) + ' — ligne en trop</div>'; }).join('') + (!r.equilibre ? '<div class="l bad">Votre écriture n’est pas équilibrée (débits ' + U.n(r.tD, 2) + ', crédits ' + U.n(r.tC, 2) + ').</div>' : '') + '</div>';
+        return '<div class="l ' + (x.st === 'ok' ? 'ok' : 'bad') + '">' + ico(x.st === 'ok' ? 'check' : 'cross') + '<span><span class="mono">' + x.a + '</span> ' + esc(U.lib(x.a)) + ' · ' + (x.side === 'd' ? 'débit ' : 'crédit ') + U.n(x.mt, 2) + (x.st === 'ok' ? '' : ' : ' + ST[x.st] + (x.st === 'montant' ? ' (saisi : ' + U.n(got, 2) + ')' : '')) + '</span></div>';
+      }).join('') + r.extra.map(function (x) { return '<div class="l bad">' + ico('cross') + '<span><span class="mono">' + esc(x.a || '?') + '</span> ' + (x.d ? 'débit ' + U.n(x.d, 2) : 'crédit ' + U.n(x.c, 2)) + ' : ligne en trop</span></div>'; }).join('') + (!r.equilibre ? '<div class="l bad">' + ico('scale') + '<span>Ton écriture n’est pas équilibrée (débits ' + U.n(r.tD, 2) + ', crédits ' + U.n(r.tC, 2) + ').</span></div>' : '') + '</div>';
     }
     return h + '</div>';
   }
   function corrHtml(ex) {
-    var d = ex.data, h = '<section class="steps" id="corr' + ex.uid + '"><h3>Corrigé pas à pas</h3>';
-    d.steps.forEach(function (s) { h += '<section><h4>' + esc(s.h) + '</h4>' + s.html + '</section>'; });
-    if (d.journal.length) h += '<section><h4>Écritures au journal</h4>' + U.journalHtml(d.journal) + '</section>';
-    h += '<section><h4>Interprétation (à rédiger sur la copie)</h4><p class="interp">' + d.comment + '</p></section></section>';
+    var d = ex.data, h = '<article class="sheet" id="corr' + ex.uid + '"><h2 class="h-sec">Corrigé pas à pas</h2>';
+    d.steps.forEach(function (s) { h += '<section class="part"><h3>' + esc(s.h) + '</h3>' + s.html + '</section>'; });
+    if (d.journal.length) h += '<section class="part"><h3>Écritures au journal</h3>' + U.journalHtml(d.journal) + '</section>';
+    h += '<div class="callout"><span class="ic">' + ico('info') + '</span><div><h4>Interprétation (à rédiger sur la copie)</h4><p>' + d.comment + '</p></div></div></article>';
     return h;
   }
   function scoreHtml(ex) {
     var R = ex.res, t = T[ex.typeId], s = st(ex.typeId);
-    return '<div class="score" role="status"><b>' + pct(R.score) + '</b><div>' + R.ok + ' sur ' + R.nq + ' résultats exacts' + (R.js !== null ? ' · écritures : ' + pct(R.js) : '') + '<br><span class="meta">Temps : ' + mmss(ex.secs) + ' (objectif ' + t.minutes + ' min)' + (ex.secs > t.minutes * 60 ? ' — trop lent, recommence pour gagner en vitesse' : '') + '</span></div><span class="chip ' + (R.score >= 0.8 ? 'ok' : (R.score >= 0.5 ? 'warn' : 'bad')) + '">Prochaine révision : ' + nextTxt(s) + '</span></div>';
+    return '<div class="score" role="status"><span class="big">' + Math.round(R.score * 100) + '<small> %</small></span><div class="stack" style="gap:4px"><b>' + R.ok + ' sur ' + R.nq + ' résultats exacts' + (R.js !== null ? ' · écritures : ' + pct(R.js) : '') + '</b><span class="small muted">Temps : ' + mmss(ex.secs) + ' (objectif ' + t.minutes + ' min)' + (ex.secs > t.minutes * 60 ? ' : trop lent, recommence pour gagner en vitesse' : '') + '</span><div><span class="badge ' + (R.score >= 0.8 ? 'ok' : (R.score >= 0.5 ? 'warn' : 'bad')) + '">Prochaine révision : ' + nextTxt(s) + '</span></div></div></div>';
   }
   function exHtml(ex, mode) {
     var t = T[ex.typeId], d = ex.data;
-    var h = '<article class="panel enter" id="ex' + ex.uid + '"><div class="exhead"><div><div class="eyebrow">' + esc(t.famille) + ' · ' + (ex.src ? esc(ex.src) : 'variante n° ' + ex.seed) + '</div><h2>' + esc(t.nom) + '</h2></div>';
-    if (mode !== 'exam' && mode !== 'review') h += '<span class="clock" id="clock" data-target="' + t.minutes * 60 + '">' + mmss(elapsed(ex)) + ' / ' + t.minutes + ':00</span>';
-    h += '</div>';
-    if (ex.note) h += '<p class="note">' + esc(ex.note) + '</p>';
-    h += '<div class="enonce">' + d.enonce + '</div>';
-    h += '<section class="steps"><h3>Résultats chiffrés</h3><p class="meta">Saisis les montants sans séparateur ou avec des espaces ; virgule décimale. Pourcentages en %.</p><div class="qs">' + d.questions.map(function (q) { return qHtml(ex, q); }).join('') + '</div></section>';
-    if (d.journal.length) h += '<section class="steps"><h3>Écritures au journal</h3><p class="meta">Une ligne par compte ; numéros du PCG, anciens ou nouveaux.</p>' + d.journal.map(function (en, i) { return jedHtml(ex, en, i); }).join('') + '</section>';
-    else h += '<p class="meta">Pas d’écriture comptable dans cet exercice : la conclusion rédigée compte autant que les calculs.</p>';
+    var h = '<div class="ex enter" id="ex' + ex.uid + '"><section class="ex-head"><div class="hero"><span class="eyebrow">' + esc(t.famille) + ' · ' + (ex.src ? esc(ex.src) : 'variante n° ' + ex.seed) + '</span><h1 class="h-page">' + esc(t.nom) + '</h1></div>';
+    if (mode !== 'exam' && mode !== 'review') h += '<span class="clock" title="Temps passé / objectif">' + ico('clock') + '<span id="clock" data-target="' + t.minutes * 60 + '">' + mmss(elapsed(ex)) + ' / ' + t.minutes + ':00</span></span>';
+    h += '</section>';
+    if (ex.note) h += '<div class="callout warn"><span class="ic">' + ico('flag') + '</span><p>' + esc(ex.note) + '</p></div>';
+    h += '<article class="sheet"><div class="enonce">' + d.enonce + '</div></article>';
     if (ex.res) h += scoreHtml(ex);
+    h += '<article class="sheet"><h2 class="h-sec">Résultats chiffrés</h2><p class="small muted">Saisis les montants sans séparateur ou avec des espaces ; virgule décimale. Pourcentages en %.</p><div class="answers">' + d.questions.map(function (q) { return qHtml(ex, q); }).join('') + '</div></article>';
+    h += '<article class="sheet">';
+    if (d.journal.length) {
+      var eq = ex.res ? ex.res.jr.every(function (r) { return r.equilibre; }) : null;
+      h += '<div class="row between"><h2 class="h-sec">' + (d.journal.length > 1 ? 'Écritures au journal' : 'Écriture au journal') + '</h2>' + (eq === null ? '' : '<span class="badge ' + (eq ? 'ok' : 'bad') + '">' + ico('scale') + (eq ? 'Équilibrée' : 'Déséquilibrée') + '</span>') + '</div><p class="small muted">Une ligne par compte ; numéros du PCG, anciens ou nouveaux.</p>' + d.journal.map(function (en, i) { return jedHtml(ex, en, i); }).join('');
+    } else h += '<p class="small muted">Pas d’écriture comptable dans cet exercice : la conclusion rédigée compte autant que les calculs.</p>';
     if (mode !== 'exam') {
       h += '<div class="row">';
       if (!ex.checked) h += '<button type="button" class="btn pri" data-act="check">Vérifier mes réponses</button>';
       h += '<button type="button" class="btn" data-act="corr">' + (ex.corr ? 'Masquer le corrigé' : 'Voir le corrigé') + '</button>';
       if (mode === 'train') h += '<button type="button" class="btn ghost" data-act="next">Nouvelle variante</button>';
       if (mode === 'annale') h += '<button type="button" class="btn ghost" data-act="backannales">Retour aux sujets</button>';
+      h += '<button type="button" class="btn ghost" data-fiche="' + ex.typeId + '">' + ico('book') + 'Fiche</button>';
       h += '</div>';
     }
+    h += '</article>';
     if (ex.corr) h += corrHtml(ex);
-    return h + '</article>';
+    return h + '</div>';
   }
   function currentEx() {
     if (S.view === 'train') return S.train;
@@ -2328,73 +2705,86 @@ ANNALES = [
 
   /* ---------- Vues ---------- */
   function daysTo(d) { var t = new Date(); t.setHours(0, 0, 0, 0); return Math.round((d - t) / DAY); }
-  function boxes(b) { var h = '<span class="boxes" aria-label="Niveau ' + b + ' sur 5">'; for (var i = 0; i < 5; i++) h += '<i class="' + (i < b ? 'on' : '') + '"></i>'; return h + '</span>'; }
+  function pips(b) { var h = '<span class="pips" role="img" aria-label="Niveau ' + b + ' sur 5">'; for (var i = 0; i < 5; i++) h += '<i class="' + (i < b ? 'on' : '') + '"></i>'; return h + '</span>'; }
+  function dateTxt(d) { return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }); }
   function viewDash() {
-    var el = eligible(), nEx = 0, sum = 0, due = 0;
-    el.forEach(function (t) { var s = st(t.id); nEx += s.n; sum += s.sum; if (isDue(s)) due++; });
-    var cfg = EXAMS[profil()], j = daysTo(cfg.date);
-    var h = '<section class="panel"><div class="eyebrow">Concours ' + cfg.label + ' · ' + (j > 0 ? 'J-' + j : 'jour J') + '</div><h2>Où en es-tu ?</h2><p class="lede">L’outil suit tes résultats par type d’exercice et te ressort en priorité ceux que tu rates, ceux que tu fais trop lentement et ceux dont la révision est due (répétition espacée : 1, 3, 7, 14 puis 30 jours après chaque réussite).</p>';
-    h += '<div class="stats"><div class="stat"><b>' + nEx + '</b><span>exercices corrigés</span></div><div class="stat"><b>' + (nEx ? pct(sum / nEx) : '—') + '</b><span>score moyen</span></div><div class="stat"><b>' + due + '</b><span>types à revoir</span></div><div class="stat"><b>' + S.prog.epreuves.filter(function (e) { return e.p === profil(); }).length + '</b><span>épreuves blanches</span></div></div></section>';
-    h += '<section class="panel"><h3>À travailler maintenant</h3><div class="reco">' + recommend(3).map(function (t) { return '<button type="button" data-train="' + t.id + '"><span class="fam">' + esc(t.famille) + '</span><b>' + esc(t.nom) + '</b><span class="why">' + esc(why(t)) + '</span></button>'; }).join('') + '</div></section>';
-    h += '<section class="panel"><h3>Progression par type</h3><div class="tw"><table class="types"><thead><tr><th>Type d’exercice</th><th>Niveau</th><th class="hide-sm">Moyenne</th><th class="hide-sm">Dernier</th><th>Révision</th></tr></thead><tbody>';
+    var el = eligible(), nEx = 0, sum = 0, due = 0, solid = 0;
+    el.forEach(function (t) { var s = st(t.id); nEx += s.n; sum += s.sum; if (s.n && isDue(s)) due++; if ((s.box || 0) >= 4) solid++; });
+    var cfg = EXAMS[profil()], ep = S.prog.epreuves.filter(function (e) { return e.p === profil(); });
+    var h = '<section class="hero"><span class="eyebrow">Concours ' + cfg.label + ' · écrit le ' + dateTxt(cfg.date) + '</span><h1 class="h-page">Où en es-tu ? ' + (due ? '<mark class="hl">' + due + ' type' + (due > 1 ? 's' : '') + '</mark> à revoir aujourd’hui' : !nEx ? '<mark class="hl">' + el.length + ' types</mark> à découvrir' : 'Rien à revoir aujourd’hui') + '</h1><p class="lede">L’atelier suit tes résultats par type d’exercice et te ressort en priorité ceux que tu rates, ceux que tu fais trop lentement et ceux dont la révision est due (1, 3, 7, 14 puis 30 jours après chaque réussite).</p></section>';
+    h += '<div class="stats"><div class="stat"><span>Exercices corrigés</span><b>' + nEx + '</b></div><div class="stat"><span>Score moyen</span><b>' + (nEx ? Math.round(sum / nEx * 100) + ' <small>%</small>' : '—') + '</b></div><div class="stat"><span>Types maîtrisés</span><b>' + solid + ' <small>/ ' + el.length + '</small></b><span>niveau 4 ou plus</span></div><div class="stat"><span>Épreuves blanches</span><b>' + ep.length + '</b>' + (ep.length ? '<span>dernière : ' + pct(ep[0].s) + '</span>' : '') + '</div></div>';
+    h += '<section class="stack"><div class="row between"><h2 class="h-sec">À travailler maintenant</h2><button type="button" class="btn ghost sm" data-act="auto">Point faible</button></div><div class="reco">' + recommend(3).map(function (t, i) { var dc = { weak: 'bad', due: 'warn', good: 'ok', '': '' }[dotCls(t)]; return '<button type="button" data-train="' + t.id + '"' + (i === 0 ? ' class="first"' : '') + '><span class="eyebrow">' + esc(t.famille) + '</span><b>' + esc(t.nom) + '</b><span class="why"><span class="dot ' + dc + '"></span>' + esc(why(t)) + '</span>' + ico('arrow') + '</button>'; }).join('') + '</div></section>';
+    h += '<article class="sheet"><h2 class="h-sec">Progression par type</h2><div class="tw"><table class="t"><thead><tr><th>Type d’exercice</th><th>Niveau</th><th class="num hide-sm">Moyenne</th><th class="num hide-sm">Dernier</th><th>Révision</th></tr></thead><tbody>';
     el.forEach(function (t) {
       var s = st(t.id), l = (s.last || [])[0], a = avg(s), nt = nextTxt(s);
-      h += '<tr class="click" data-train="' + t.id + '" tabindex="0"><td><b>' + esc(t.nom) + '</b><br><span class="fam">' + esc(t.famille) + (t.ctrl ? '' : ' · inspecteur') + '</span></td><td>' + boxes(s.box || 0) + '</td><td class="hide-sm mono">' + (a === null ? '—' : pct(a)) + '</td><td class="hide-sm mono">' + (l ? pct(l.s) + ' · ' + mmss(l.t) : '—') + '</td><td><span class="chip ' + (nt === 'à revoir' ? 'warn' : (nt === 'nouveau' ? 'acc' : 'ok')) + '">' + nt + '</span></td></tr>';
+      h += '<tr class="click" data-train="' + t.id + '" tabindex="0"><td><b>' + esc(t.nom) + '</b><div class="small muted">' + esc(t.famille) + (t.ctrl ? '' : ' · inspecteur') + '</div></td><td>' + pips(s.box || 0) + '</td><td class="num hide-sm">' + (a === null ? '—' : pct(a)) + '</td><td class="num hide-sm">' + (l ? pct(l.s) + ' · ' + mmss(l.t) : '—') + '</td><td><span class="badge ' + (nt === 'à revoir' ? 'warn' : (nt === 'nouveau' ? 'out' : 'ok')) + '">' + nt + '</span></td></tr>';
     });
-    h += '</tbody></table></div></section>';
-    var ep = S.prog.epreuves.filter(function (e) { return e.p === profil(); }).slice(0, 6);
-    if (ep.length) h += '<section class="panel"><h3>Dernières épreuves blanches</h3><div class="tw"><table class="types"><thead><tr><th>Date</th><th>Score</th><th>Durée</th><th class="hide-sm">Exercices</th></tr></thead><tbody>' + ep.map(function (e) { return '<tr><td class="mono">' + new Date(e.d).toLocaleDateString('fr-FR') + '</td><td class="mono">' + pct(e.s) + '</td><td class="mono">' + mmss(e.t) + '</td><td class="hide-sm">' + e.x.map(function (x) { return esc((T[x.id] || { nom: x.id }).nom) + ' (' + pct(x.s) + ')'; }).join(', ') + '</td></tr>'; }).join('') + '</tbody></table></div></section>';
-    h += '<section class="panel"><h3>Réglages</h3><div class="row"><span>Comptes affichés dans les corrigés :</span><div class="seg" role="group" aria-label="Plan comptable"><button type="button" data-pcg="0" aria-pressed="' + !S.prog.settings.pcgOld + '">PCG 2025 (657, 757)</button><button type="button" data-pcg="1" aria-pressed="' + !!S.prog.settings.pcgOld + '">Ancien PCG (675, 775)</button></div></div>';
-    h += S.confirmReset ? '<div class="confirm"><span>Effacer toute la progression ? Cette action est définitive.</span><button type="button" class="btn danger" data-act="resetyes">Effacer</button><button type="button" class="btn" data-act="resetno">Annuler</button></div>' : '<div class="row"><button type="button" class="btn ghost danger" data-act="reset">Effacer ma progression</button></div>';
-    return h + '</section>';
+    h += '</tbody></table></div></article>';
+    if (ep.length) h += '<article class="sheet"><h2 class="h-sec">Dernières épreuves blanches</h2><div class="tw"><table class="t"><thead><tr><th>Date</th><th class="num">Score</th><th class="num">Durée</th><th class="hide-sm">Exercices</th></tr></thead><tbody>' + ep.slice(0, 6).map(function (e) { return '<tr><td>' + new Date(e.d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) + '</td><td class="num"><b>' + pct(e.s) + '</b></td><td class="num">' + mmss(e.t) + '</td><td class="hide-sm small">' + e.x.map(function (x) { return esc((T[x.id] || { nom: x.id }).nom) + ' (' + pct(x.s) + ')'; }).join(', ') + '</td></tr>'; }).join('') + '</tbody></table></div></article>';
+    h += '<article class="sheet"><h2 class="h-sec">Réglages</h2>';
+    h += '<div class="seg-row"><span>Programme</span><div class="seg" role="group" aria-label="Programme"><button type="button" data-p="I" aria-pressed="' + (profil() === 'I') + '">Inspecteur</button><button type="button" data-p="C" aria-pressed="' + (profil() === 'C') + '">Contrôleur</button></div></div>';
+    h += '<div class="seg-row"><span>Comptes affichés dans les corrigés</span><div class="seg" role="group" aria-label="Plan comptable"><button type="button" data-pcg="0" aria-pressed="' + !S.prog.settings.pcgOld + '">PCG 2025 (657, 757)</button><button type="button" data-pcg="1" aria-pressed="' + !!S.prog.settings.pcgOld + '">Ancien PCG (675, 775)</button></div></div>';
+    h += S.confirmReset ? '<div class="confirm"><span>Effacer toute la progression ? Cette action est définitive.</span><button type="button" class="btn sm danger" data-act="resetyes">Effacer</button><button type="button" class="btn sm" data-act="resetno">Annuler</button></div>' : '<div class="row"><button type="button" class="btn sm danger" data-act="reset">Effacer ma progression</button></div>';
+    return h + '</article>';
   }
   function dotCls(t) { var s = st(t.id), l = (s.last || [])[0]; if (!s.n) return ''; if (l && l.s < 0.6) return 'weak'; if (isDue(s)) return 'due'; return 'good'; }
   function viewTrain() {
     var el = eligible();
     if (S.trainType && !el.some(function (t) { return t.id === S.trainType; })) { S.trainType = null; S.train = null; }
     if (!S.train) { S.trainType = recommend(1)[0].id; S.train = makeEx(S.trainType); }
-    var h = '<section class="panel"><div class="eyebrow">Mode entraînement</div><h2>Un type, une variante, un chrono</h2><p class="lede">Choisis un type ou laisse l’outil choisir ton point faible. Saisis tes résultats et tes écritures, puis vérifie : le corrigé détaille chaque calcul, les écritures et l’interprétation attendue.</p>';
+    var h = '<section class="hero"><span class="eyebrow">Mode entraînement</span><h1 class="h-page">Un type, une variante, un chrono</h1><p class="lede">Choisis un type ou laisse l’atelier choisir ton point faible. Saisis tes résultats et tes écritures, puis vérifie : le corrigé détaille chaque calcul, les écritures et l’interprétation attendue.</p></section>';
     var fams = []; el.forEach(function (t) { if (fams.indexOf(t.famille) < 0) fams.push(t.famille); });
-    var sel = '<select class="n pick" id="pick-type" aria-label="Type d’exercice">' + fams.map(function (f) {
-      return '<optgroup label="' + esc(f) + '">' + el.filter(function (t) { return t.famille === f; }).map(function (t) { return '<option value="' + t.id + '"' + (S.trainType === t.id ? ' selected' : '') + '>' + esc(t.nom) + ' — ' + nextTxt(st(t.id)) + '</option>'; }).join('') + '</optgroup>';
+    var sel = '<select class="input pick" id="pick-type" aria-label="Type d’exercice">' + fams.map(function (f) {
+      return '<optgroup label="' + esc(f) + '">' + el.filter(function (t) { return t.famille === f; }).map(function (t) { return '<option value="' + t.id + '"' + (S.trainType === t.id ? ' selected' : '') + '>' + esc(t.nom) + ' · ' + nextTxt(st(t.id)) + '</option>'; }).join('') + '</optgroup>';
     }).join('') + '</select>';
-    h += '<div class="row pickrow">' + sel + '<button type="button" class="btn" data-act="picked">Nouvel exercice</button><button type="button" class="btn pri" data-act="auto">Point faible</button></div></section>';
+    h += '<div class="sheet tight"><div class="row pickrow">' + sel + '<button type="button" class="btn" data-act="picked">Nouvel exercice</button><button type="button" class="btn pri" data-act="auto">Point faible</button></div></div>';
     if (S.train) h += exHtml(S.train, 'train');
     return h;
+  }
+  function acctHtml(x) {
+    var m = /^(\d[\d \/]*\d|\d)\s+(.+)$/.exec(x);
+    return m ? '<span><b>' + esc(m[1]) + '</b>' + esc(m[2]) + '</span>' : '<span>' + esc(x) + '</span>';
   }
   function viewFiches() {
     var el = eligible(), fams = [];
     el.forEach(function (t) { if (fams.indexOf(t.famille) < 0) fams.push(t.famille); });
-    var h = '<section class="panel"><div class="eyebrow">Fiches-procédure</div><h2>La méthode de chaque type</h2><p class="lede">Étapes dans l’ordre de la copie, pièges relevés dans les corrigés et le rapport du jury, comptes utiles. ' + (profil() === 'C' ? 'Filtre contrôleur actif : IS, devises, augmentation de capital et provisions pour risques sont masqués.' : '') + '</p></section>';
-    fams.forEach(function (f) {
-      h += '<h3 class="famh">' + esc(f) + '</h3>';
-      el.filter(function (t) { return t.famille === f; }).forEach(function (t) {
-        var fi = t.fiche;
-        h += '<details class="fiche"><summary><h3>' + esc(t.nom) + '</h3><span class="chip">' + t.minutes + ' min</span></summary><div class="fbody"><p>' + esc(fi.objectif) + '</p><h4>Étapes</h4><ol>' + fi.etapes.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ol><h4>Pièges</h4><ul class="pieges">' + fi.pieges.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' + (fi.comptes.length ? '<h4>Comptes</h4><ul>' + fi.comptes.map(function (x) { return '<li class="mono">' + esc(x) + '</li>'; }).join('') + '</ul>' : '') + '<div class="row"><button type="button" class="btn pri" data-train="' + t.id + '">S’entraîner sur ce type</button></div></div></details>';
-      });
-    });
-    return h;
+    if (!S.fiche || !el.some(function (t) { return t.id === S.fiche; })) S.fiche = el[0].id;
+    var cur = T[S.fiche], fi = cur.fiche;
+    var h = '<div class="fl"><nav class="sheet tight toc-wrap" aria-label="Fiches">';
+    h += '<select class="input" id="pick-fiche" aria-label="Choisir une fiche">' + fams.map(function (f) {
+      return '<optgroup label="' + esc(f) + '">' + el.filter(function (t) { return t.famille === f; }).map(function (t) { return '<option value="' + t.id + '"' + (t.id === S.fiche ? ' selected' : '') + '>' + esc(t.nom) + '</option>'; }).join('') + '</optgroup>';
+    }).join('') + '</select>';
+    h += '<div class="toc">' + fams.map(function (f) {
+      return '<h4>' + esc(f) + '</h4>' + el.filter(function (t) { return t.famille === f; }).map(function (t) { return '<a href="#fiches" data-fiche="' + t.id + '"' + (t.id === S.fiche ? ' aria-current="true"' : '') + '>' + esc(t.nom) + ' <span class="badge mono">' + t.minutes + ' min</span></a>'; }).join('');
+    }).join('') + '</div></nav>';
+    h += '<article class="sheet"><div class="reading"><div class="hero"><span class="eyebrow">Fiche · ' + esc(cur.famille) + '</span><h1 class="h-page">' + esc(cur.nom) + '</h1><p class="lede">' + esc(fi.objectif) + '</p></div>';
+    if (profil() === 'C') h += '<p class="small muted">Filtre contrôleur actif : IS, devises, augmentation de capital et provisions pour risques sont masqués.</p>';
+    h += '<h4>Étapes</h4><ol class="steps">' + fi.etapes.map(function (x) { return '<li><span>' + esc(x) + '</span></li>'; }).join('') + '</ol>';
+    h += '<h4>Pièges</h4><ul class="traps">' + fi.pieges.map(function (x) { return '<li>' + ico('cross') + '<span>' + esc(x) + '</span></li>'; }).join('') + '</ul>';
+    if (fi.comptes.length) h += '<h4>Comptes</h4><div class="accts">' + fi.comptes.map(acctHtml).join('') + '</div>';
+    h += '<div class="row" style="margin-top:8px"><button type="button" class="btn pri" data-train="' + cur.id + '">S’entraîner sur ce type · ' + cur.minutes + ' min</button><span class="small muted">Ton niveau : ' + pips(st(cur.id).box || 0) + '</span></div>';
+    return h + '</div></article></div>';
   }
   function viewAnnales() {
     if (S.annale) return exHtml(S.annale, 'annale');
     var list = ANNALES.filter(function (a) { return profil() === 'I' || a.ctrl; });
-    var h = '<section class="panel"><div class="eyebrow">Sujets réels</div><h2>Les exercices des annales, corrigés automatiquement</h2><p class="lede">Mêmes données que les sujets 2026 (inspecteur et contrôleur), le sujet test inspecteur et le sujet blanc du dossier. Les corrigés ont été recalculés ; les écarts avec les corrigés publiés sont signalés.</p></section><section class="panel"><div class="tw"><table class="types"><thead><tr><th>Sujet</th><th>Type</th><th></th></tr></thead><tbody>';
-    list.forEach(function (a) { h += '<tr><td><b>' + esc(a.p.nom) + '</b><br><span class="fam">' + esc(a.src) + '</span></td><td>' + esc(T[a.type].nom) + '</td><td><button type="button" class="btn" data-annale="' + a.id + '">Faire</button></td></tr>'; });
-    return h + '</tbody></table></div></section>';
+    var h = '<section class="hero"><span class="eyebrow">Sujets réels</span><h1 class="h-page">Les exercices des annales, corrigés automatiquement</h1><p class="lede">Mêmes données que les sujets 2026 (inspecteur et contrôleur), le sujet test inspecteur et le sujet blanc du dossier. Les corrigés ont été recalculés ; les écarts avec les corrigés publiés sont signalés.</p></section><article class="sheet"><div class="tw"><table class="t"><thead><tr><th>Sujet</th><th class="hide-sm">Type</th><th></th></tr></thead><tbody>';
+    list.forEach(function (a) { h += '<tr><td><b>' + esc(a.p.nom) + '</b><div class="small muted">' + esc(a.src) + '</div></td><td class="hide-sm">' + esc(T[a.type].nom) + '</td><td class="r"><button type="button" class="btn sm" data-annale="' + a.id + '">Faire</button></td></tr>'; });
+    return h + '</tbody></table></div></article>';
   }
   function viewExam() {
     var cfg = EXAMS[profil()], E = S.exam;
     if (!E) {
-      return '<section class="panel"><div class="eyebrow">Épreuve blanche · ' + cfg.label + '</div><h2>' + cfg.txt + '</h2><p class="lede">Tirage au hasard parmi les types du programme ' + cfg.label + ', avec priorité aux types que tu rates ou que tu n’as pas revus. Pas de correction avant la remise de la copie. À la fin du temps, la copie est rendue automatiquement : entraîne-toi à tout traiter, même partiellement, comme le demande le jury.</p><div class="row"><button type="button" class="btn pri" data-act="startexam">Commencer l’épreuve</button></div></section>';
+      return '<section class="hero"><span class="eyebrow">Épreuve blanche · ' + cfg.label + '</span><h1 class="h-page">' + cfg.txt + '</h1><p class="lede">Tirage au hasard parmi les types du programme ' + cfg.label + ', avec priorité aux types que tu rates ou que tu n’as pas revus. Pas de correction avant la remise de la copie. À la fin du temps, la copie est rendue automatiquement : entraîne-toi à tout traiter, même partiellement, comme le demande le jury.</p></section><div class="row"><button type="button" class="btn pri" data-act="startexam">Commencer l’épreuve ' + ico('arrow') + '</button></div>';
     }
-    var h = '<div class="exambar">';
+    var h = '<div class="exambar"><div class="row">';
     var rem = E.done ? 0 : E.dur - (Date.now() - E.start) / 1000;
-    h += E.done ? '<span class="big">' + pct(E.score) + '</span>' : '<span class="big" id="cd">' + mmss(rem) + '</span>';
-    h += '<div class="pills">' + E.items.map(function (x, i) { return '<button type="button" data-pill="' + i + '" aria-current="' + (i === E.cur) + '">' + (i + 1) + '. ' + esc(COURT[x.typeId] || x.typeId) + (E.done ? ' · ' + pct(x.res.score) : '') + '</button>'; }).join('') + '</div>';
-    h += E.done ? '<button type="button" class="btn" data-act="newexam">Nouvelle épreuve</button>' : '<button type="button" class="btn pri" data-act="submit">Rendre la copie</button>';
+    h += E.done ? '<span class="big">' + pct(E.score) + '</span>' : '<span class="clock" title="Temps restant">' + ico('clock') + '<span id="cd">' + mmss(rem) + '</span></span>';
+    h += '<div class="pills">' + E.items.map(function (x, i) { return '<button type="button" data-pill="' + i + '" aria-current="' + (i === E.cur) + '">' + (i + 1) + '. ' + esc(COURT[x.typeId] || x.typeId) + (E.done ? ' · ' + pct(x.res.score) : '') + '</button>'; }).join('') + '</div></div>';
+    h += E.done ? '<button type="button" class="btn sm" data-act="newexam">Nouvelle épreuve</button>' : '<button type="button" class="btn sm" data-act="submit">Rendre la copie</button>';
     h += '</div>';
     if (E.done) {
-      h += '<section class="panel"><h3>Résultat de l’épreuve</h3><div class="tw"><table class="types"><thead><tr><th>Exercice</th><th>Score</th><th>Temps passé</th></tr></thead><tbody>' + E.items.map(function (x, i) { return '<tr class="click" data-pill="' + i + '"><td>' + (i + 1) + '. ' + esc(T[x.typeId].nom) + '</td><td class="mono">' + pct(x.res.score) + '</td><td class="mono">' + mmss(E.spent[i]) + '</td></tr>'; }).join('') + '<tr class="tot"><td>Total</td><td class="mono">' + pct(E.score) + '</td><td class="mono">' + mmss(E.used) + ' / ' + cfg.min + ':00</td></tr></tbody></table></div><p class="meta">Les résultats sont intégrés à ta progression ; ouvre chaque exercice pour voir le corrigé.</p></section>';
+      h += '<article class="sheet"><h2 class="h-sec">Résultat de l’épreuve</h2><div class="tw"><table class="t"><thead><tr><th>Exercice</th><th class="num">Score</th><th class="num">Temps passé</th></tr></thead><tbody>' + E.items.map(function (x, i) { return '<tr class="click" data-pill="' + i + '"><td>' + (i + 1) + '. ' + esc(T[x.typeId].nom) + '</td><td class="num">' + pct(x.res.score) + '</td><td class="num">' + mmss(E.spent[i]) + '</td></tr>'; }).join('') + '<tr class="tot"><td>Total</td><td class="num">' + pct(E.score) + '</td><td class="num">' + mmss(E.used) + ' / ' + cfg.min + ':00</td></tr></tbody></table></div><p class="small muted">Les résultats sont intégrés à ta progression ; ouvre chaque exercice pour voir le corrigé.</p></article>';
       h += exHtml(E.items[E.cur], 'review');
     } else h += exHtml(E.items[E.cur], 'exam');
     return h;
@@ -2428,22 +2818,25 @@ ANNALES = [
 
   /* ---------- Rendu et événements ---------- */
   function render() {
-    document.querySelectorAll('#tabs button').forEach(function (b) { if (b.dataset.v === S.view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
-    document.querySelectorAll('#profil button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.p === profil())); });
+    document.querySelectorAll('#tabs [data-v], #bottomnav [data-v]').forEach(function (b) { if (b.dataset.v === S.view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
     var cfg = EXAMS[profil()], j = daysTo(cfg.date);
-    $('#countdown').textContent = 'Écrit ' + cfg.label + ' le ' + cfg.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) + (j > 0 ? ' · J-' + j : '');
+    $('#countdown').textContent = 'Écrit ' + cfg.label + ' le ' + cfg.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    $('#stamp').innerHTML = '<b>' + (j > 0 ? 'J-' + j : 'Jour J') + '</b><span>écrit ' + cfg.label + ' · ' + cfg.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) + '</span>';
     var v = $('#view');
     v.innerHTML = S.view === 'dash' ? viewDash() : S.view === 'train' ? viewTrain() : S.view === 'fiches' ? viewFiches() : S.view === 'annales' ? viewAnnales() : viewExam();
+    document.querySelectorAll('[data-p]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.p === profil())); });
     measure();
   }
-  function measure() { var t = $('.top'); if (t) document.documentElement.style.setProperty('--hh', t.offsetHeight + 'px'); }
+  function measure() { var t = $('.appbar'); if (t) document.documentElement.style.setProperty('--hh', t.offsetHeight + 'px'); }
   function startTrain(id) { S.view = 'train'; S.trainType = id; S.train = makeEx(id); render(); var a = $('#ex' + S.train.uid); if (a) a.scrollIntoView({ block: 'start' }); }
   function go(v) { S.view = v; S.confirmReset = false; render(); window.scrollTo(0, 0); }
 
   document.addEventListener('click', function (ev) {
-    var b = ev.target.closest('button, tr[data-train], tr[data-pill]'); if (!b) return;
+    var b = ev.target.closest('button, a[data-v], a[data-fiche], tr[data-train], tr[data-pill]'); if (!b) return;
     var ds = b.dataset, ex = currentEx();
+    if (b.tagName === 'A') ev.preventDefault();
     if (ds.v) return go(ds.v);
+    if (ds.fiche) { S.fiche = ds.fiche; return go('fiches'); }
     if (ds.p) { S.prog.settings.profil = ds.p; Store.save(); if (S.exam && !S.exam.done) { } else S.exam = null; return render(); }
     if (ds.train) return startTrain(ds.train);
     if (ds.annale) { var a = ANNALES.filter(function (x) { return x.id === ds.annale; })[0]; S.annale = makeEx(a.type, { params: a.p, src: a.src, note: a.note }); render(); window.scrollTo(0, 0); return; }
@@ -2481,9 +2874,15 @@ ANNALES = [
   function onInput(ev) {
     var t = ev.target;
     if (t.id === 'pick-type') { if (ev.type === 'change') startTrain(t.value); return; }
+    if (t.id === 'pick-fiche') { if (ev.type === 'change') { S.fiche = t.value; render(); } return; }
     var ex = currentEx(); if (!ex || ex.checked) return;
     if (t.dataset.q) ex.answers[t.dataset.q] = t.value;
-    else if (t.dataset.j !== undefined && t.dataset.f) ex.jl[Number(t.dataset.j)][Number(t.dataset.r)][t.dataset.f] = t.value;
+    else if (t.dataset.j !== undefined && t.dataset.f) {
+      ex.jl[Number(t.dataset.j)][Number(t.dataset.r)][t.dataset.f] = t.value;
+      // Intitulé du compte et pied d'équilibre suivent la saisie
+      if (t.dataset.f === 'a') { var sm = t.nextElementSibling; if (sm) sm.textContent = U.lib(t.value.trim()); }
+      var jf = $('#jf' + ex.uid + '-' + t.dataset.j); if (jf) jf.innerHTML = footHtml(ex, Number(t.dataset.j));
+    }
   }
   document.addEventListener('input', onInput);
   document.addEventListener('change', onInput);

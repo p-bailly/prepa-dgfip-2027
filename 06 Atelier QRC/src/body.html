@@ -1,23 +1,33 @@
-<div id="app">
-  <header class="top">
-    <div class="wrap bar">
-      <div class="brand">
-        <span class="mark" aria-hidden="true"><span>D</span><span>C</span></span>
-        <div class="brand-t"><b>Atelier QRC compta</b><small id="countdown">Concours DGFiP · comptabilité et analyse financière</small></div>
-      </div>
-      <div class="seg" id="profil" role="group" aria-label="Programme">
-        <button type="button" data-p="I">Inspecteur</button>
-        <button type="button" data-p="C">Contrôleur</button>
+<div id="app" data-app="qrc">
+  <header class="appbar">
+    <div class="wrap appbar-in">
+      <a class="brand" href="#dash" data-v="dash">
+        <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M3 6.5h18M12 6.5V21" stroke-width="2.4"/><path d="M5 11h4.5M5 14.5h3M14.5 11h4.5M14.5 14.5h3M14.5 18h4" stroke-width="1.7"/></svg></span>
+        <span class="brand-t"><b>Atelier QRC compta</b><small id="countdown">Comptabilité et analyse financière</small></span>
+      </a>
+      <div class="appbar-r">
+        <span class="stamp" id="stamp" title="Compte à rebours"></span>
+        <div class="seg" id="profil" role="group" aria-label="Programme">
+          <button type="button" data-p="I" title="Programme inspecteur">Insp.</button>
+          <button type="button" data-p="C" title="Programme contrôleur">Contr.</button>
+        </div>
       </div>
     </div>
     <nav class="wrap tabs" id="tabs" aria-label="Sections">
-      <button type="button" data-v="dash">Progression</button>
-      <button type="button" data-v="train">Entraînement</button>
-      <button type="button" data-v="exam">Épreuve</button>
-      <button type="button" data-v="fiches">Fiches</button>
-      <button type="button" data-v="annales">Sujets réels</button>
+      <a href="#dash" data-v="dash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 17a8 8 0 1 1 15 0"/><path d="m12 13 3.5-4"/><circle cx="12" cy="13.5" r="1.2"/></svg>Progression</a>
+      <a href="#train" data-v="train"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5.5 18.5 9.5 9 19H5v-4z"/><path d="m12.5 7.5 4 4"/></svg>Entraînement</a>
+      <a href="#exam" data-v="exam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 2M10 3h4M19 6.5l-1.5 1.5"/></svg>Épreuve</a>
+      <a href="#fiches" data-v="fiches"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 5.5c2.5-1 5-1 7.5.5v13c-2.5-1.5-5-1.5-7.5-.5zM19.5 5.5c-2.5-1-5-1-7.5.5v13c2.5-1.5 5-1.5 7.5-.5z"/></svg>Fiches</a>
+      <a href="#annales" data-v="annales"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="4" rx="1"/><path d="M5 8.5v10a1.5 1.5 0 0 0 1.5 1.5h11a1.5 1.5 0 0 0 1.5-1.5v-10M10 12.5h4"/></svg>Sujets réels</a>
     </nav>
   </header>
-  <main class="wrap" id="view"></main>
+  <main class="wrap page" id="view"></main>
   <footer class="wrap foot"><span id="store">Progression enregistrée sur cet appareil.</span> <span>Comptes du PCG 2025 (ANC 2022-06) ; les anciens numéros (675, 775, 777…) sont acceptés.</span></footer>
+  <nav class="bottomnav" id="bottomnav" aria-label="Sections">
+    <a href="#dash" data-v="dash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 17a8 8 0 1 1 15 0"/><path d="m12 13 3.5-4"/><circle cx="12" cy="13.5" r="1.2"/></svg><span>Progression</span></a>
+    <a href="#train" data-v="train"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5.5 18.5 9.5 9 19H5v-4z"/><path d="m12.5 7.5 4 4"/></svg><span>S’entraîner</span></a>
+    <a href="#exam" data-v="exam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 2M10 3h4M19 6.5l-1.5 1.5"/></svg><span>Épreuve</span></a>
+    <a href="#fiches" data-v="fiches"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 5.5c2.5-1 5-1 7.5.5v13c-2.5-1.5-5-1.5-7.5-.5zM19.5 5.5c-2.5-1-5-1-7.5.5v13c2.5-1.5 5-1.5 7.5-.5z"/></svg><span>Fiches</span></a>
+    <a href="#annales" data-v="annales"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="4" rx="1"/><path d="M5 8.5v10a1.5 1.5 0 0 0 1.5 1.5h11a1.5 1.5 0 0 0 1.5-1.5v-10M10 12.5h4"/></svg><span>Annales</span></a>
+  </nav>
 </div>
