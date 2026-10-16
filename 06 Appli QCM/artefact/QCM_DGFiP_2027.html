@@ -3096,7 +3096,7 @@ function rng(seed){ let s=seed>>>0||1; return ()=>{ s^=s<<13; s>>>=0; s^=s>>17; 
 function shuffle(arr, r=Math.random){ const a=arr.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(r()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 function toast(msg){ const t=$("#toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true,2600); }
 function daysTo(iso){ const [y,m,d]=iso.split("-").map(Number); return dayNum(new Date(y,m-1,d)) - dayNum(); }
-const SITES = {"fr.wikipedia.org":"Wikipédia","www.vie-publique.fr":"Vie publique","www.service-public.fr":"Service-public.fr","www.service-public.gouv.fr":"Service-public.fr","www.conseil-constitutionnel.fr":"Conseil constitutionnel","european-union.europa.eu":"Union européenne","www.europarl.europa.eu":"Parlement européen","www.consilium.europa.eu":"Conseil de l'UE","commission.europa.eu":"Commission européenne","www.ecb.europa.eu":"BCE","curia.europa.eu":"CJUE","www.cnil.fr":"CNIL","cyber.gouv.fr":"ANSSI","www.cybermalveillance.gouv.fr":"Cybermalveillance.gouv.fr","www.economie.gouv.fr":"Ministère de l'Économie","www.budget.gouv.fr":"Budget.gouv.fr","www.impots.gouv.fr":"impots.gouv.fr","www.insee.fr":"Insee","www.ccomptes.fr":"Cour des comptes","www.collectivites-locales.gouv.fr":"Collectivités locales","www.fonction-publique.gouv.fr":"Fonction publique","pix.fr":"Pix","www.data.gouv.fr":"data.gouv.fr"};
+const SITES = {"fr.wikipedia.org":"Wikipédia","www.vie-publique.fr":"Vie publique","www.service-public.fr":"Service-public.fr","www.service-public.gouv.fr":"Service-public.fr","www.conseil-constitutionnel.fr":"Conseil constitutionnel","european-union.europa.eu":"Union européenne","www.europarl.europa.eu":"Parlement européen","www.consilium.europa.eu":"Conseil de l'UE","commission.europa.eu":"Commission européenne","www.ecb.europa.eu":"BCE","curia.europa.eu":"CJUE","www.cnil.fr":"CNIL","cyber.gouv.fr":"ANSSI","www.cybermalveillance.gouv.fr":"Cybermalveillance.gouv.fr","www.economie.gouv.fr":"Ministère de l'Économie","www.budget.gouv.fr":"Budget.gouv.fr","www.impots.gouv.fr":"impots.gouv.fr","www.insee.fr":"Insee","www.ccomptes.fr":"Cour des comptes","www.collectivites-locales.gouv.fr":"Collectivités locales","www.fonction-publique.gouv.fr":"Fonction publique","pix.fr":"Pix","www.data.gouv.fr":"data.gouv.fr","www.touteleurope.eu":"Toute l'Europe","touteleurope.eu":"Toute l'Europe","www.17cyber.gouv.fr":"17Cyber","accessibilite.numerique.gouv.fr":"Accessibilité numérique"};
 function linkLabel(u){
   try{
     const x = new URL(u);
@@ -3258,9 +3258,10 @@ function buildDaily(size, onlyTheme, exclude){
                   .sort((a,b)=> rec(a.id).d - rec(b.id).d || rec(a.id).e - rec(b.id).e);
   let picked = due.slice(0, size);
   const newMax = onlyTheme ? size : S.set.newMax;
+  // tirage pondéré des nouvelles questions : UE et administration d'abord
+  const bag = pool.filter(c => !rec(c.id) || !rec(c.id).l)
+    .map(c => ({c, w: -Math.log(seedR()) / (WEIGHT[c.t]||1)})).sort((x,y)=>x.w-y.w).map(x=>x.c);
   if(picked.length < size){
-    const fresh = pool.filter(c => !rec(c.id) || !rec(c.id).l);
-    const bag = fresh.map(c => ({c, w: -Math.log(seedR()) / (WEIGHT[c.t]||1)})).sort((x,y)=>x.w-y.w).map(x=>x.c);
     picked = picked.concat(bag.slice(0, Math.min(newMax, size - picked.length)));
   }
   if(picked.length < size){
@@ -3268,7 +3269,8 @@ function buildDaily(size, onlyTheme, exclude){
     picked = picked.concat(rest.slice(0, size - picked.length));
   }
   if(picked.length < size){
-    picked = picked.concat(shuffle(pool.filter(c => !picked.includes(c)), seedR).slice(0, size - picked.length));
+    const set = new Set(picked);
+    picked = picked.concat(bag.filter(c => !set.has(c)).slice(0, size - picked.length));
   }
   return interleave(picked, seedR).map(c=>c.id);
 }
