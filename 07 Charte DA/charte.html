@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Charte Copie double</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="composants.css">
+<style>
+  .doc { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: var(--s6); max-width: 1180px; }
+  .side { position: sticky; top: 16px; align-self: start; display: flex; flex-direction: column; gap: 2px; padding-top: var(--s7); }
+  .side a { font-size: var(--t-sm); color: var(--muted); text-decoration: none; padding: 5px 10px; border-left: 2px solid var(--line); }
+  .side a:hover { color: var(--ink); border-left-color: var(--accent); }
+  .side .eyebrow { padding: 0 10px 8px; }
+  @media (max-width: 899px) { .doc { grid-template-columns: minmax(0, 1fr); } .side { display: none; } }
+  .cover { padding-block: var(--s7) var(--s6); display: flex; flex-direction: column; gap: var(--s4); border-bottom: 1px solid var(--line); }
+  .cover h1 { font-family: var(--f-display); font-size: clamp(2.4rem, 6vw, 4rem); font-weight: 600; line-height: 1; letter-spacing: -.025em; }
+  .cover .pair { display: flex; gap: var(--s3); align-items: center; }
+  section.ch { padding-block: var(--s7); border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: var(--s5); scroll-margin-top: 10px; }
+  section.ch > header { display: flex; flex-direction: column; gap: var(--s2); }
+  section.ch > header h2 { font-family: var(--f-display); font-size: var(--t-2xl); font-weight: 600; }
+  section.ch > header .num { font-family: var(--f-num); font-size: var(--t-sm); color: var(--accent); }
+  .principles { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .principles div { padding: var(--s4); border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+  .principles b { font-family: var(--f-display); font-size: var(--t-lg); font-weight: 600; }
+  .principles span { color: var(--muted); font-size: var(--t-md); }
+  .diag td:nth-child(2), .diag td:nth-child(3) { color: var(--muted); }
+  .diag td:last-child { font-weight: 500; }
+  .diag td:first-child { font-weight: 600; white-space: nowrap; }
+  .logos { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .logocard { padding: var(--s5); border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--surface); display: flex; flex-direction: column; gap: var(--s4); }
+  .logocard .lockup { display: flex; align-items: center; gap: 12px; }
+  .logocard .lockup b { font-family: var(--f-display); font-size: 1.5rem; font-weight: 700; }
+  .sizes { display: flex; align-items: end; gap: 14px; }
+  .sizes .logo { box-shadow: none; }
+  .s16 { width: 16px !important; height: 16px !important; border-radius: 4px !important; } .s16 svg { width: 12px !important; height: 12px !important; }
+  .s24 { width: 24px !important; height: 24px !important; border-radius: 6px !important; } .s24 svg { width: 16px !important; height: 16px !important; }
+  .swatches { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+  .sw { border-radius: var(--r-md); overflow: hidden; border: 1px solid var(--line); background: var(--surface); }
+  .sw .c { height: 64px; display: flex; align-items: flex-end; padding: 8px 10px; font-family: var(--f-num); font-size: var(--t-xs); font-weight: 600; }
+  .sw .m { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 2px; font-size: var(--t-sm); }
+  .sw .m code { font-family: var(--f-num); font-size: var(--t-xs); color: var(--muted); }
+  .type-row { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: var(--s4); align-items: baseline; padding-block: var(--s3); border-bottom: 1px dashed var(--line); }
+  .type-row:last-child { border-bottom: 0; }
+  .type-row .meta { font-family: var(--f-num); font-size: var(--t-xs); color: var(--muted); }
+  @media (max-width: 599px) { .type-row { grid-template-columns: minmax(0, 1fr); gap: 4px; } }
+  .specimen { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+  .specimen > div { padding: var(--s5); border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line); display: flex; flex-direction: column; gap: var(--s2); }
+  .specimen .big { font-size: 3.2rem; line-height: 1; }
+  .demo { padding: var(--s5); border-radius: var(--r-lg); background: var(--paper); border: 1px dashed var(--line); display: flex; flex-direction: column; gap: var(--s4); }
+  .demo-label { font-family: var(--f-num); font-size: var(--t-xs); color: var(--muted); }
+  .dodont { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .dodont > div { border-radius: var(--r-md); padding: var(--s4); display: flex; flex-direction: column; gap: 8px; }
+  .dodont .do { background: var(--ok-soft); } .dodont .dont { background: var(--bad-soft); }
+  .dodont h3 { font-size: var(--t-md); font-weight: 700; }
+  .dodont .do h3 { color: var(--ok); } .dodont .dont h3 { color: var(--bad); }
+  .dodont ul { margin: 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 5px; font-size: var(--t-md); }
+  .scale-sp { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+  .scale-sp div { display: flex; flex-direction: column; align-items: center; gap: 6px; font-family: var(--f-num); font-size: var(--t-xs); color: var(--muted); }
+  .scale-sp i { display: block; background: var(--accent-soft); border: 1px solid var(--accent); }
+  pre { margin: 0; padding: var(--s4); border-radius: var(--r-md); background: var(--ink); color: var(--paper); font-family: var(--f-num); font-size: var(--t-sm); line-height: 1.6; overflow-x: auto; }
+  .themebar { position: fixed; right: 16px; bottom: 16px; z-index: 40; box-shadow: var(--shadow-lift); }
+  .appdemo { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+</style>
+</head>
+<body>
+<div class="wrap doc">
+  <nav class="side" aria-label="Sommaire">
+    <span class="eyebrow">Sommaire</span>
+    <a href="#diag">1. Diagnostic</a>
+    <a href="#concept">2. Concept</a>
+    <a href="#logos">3. Logos</a>
+    <a href="#couleurs">4. Couleurs</a>
+    <a href="#typo">5. Typographie</a>
+    <a href="#espace">6. Espaces et formes</a>
+    <a href="#composants">7. Composants</a>
+    <a href="#nav">8. Navigation</a>
+    <a href="#ton">9. Ton et chiffres</a>
+    <a href="#code">10. Mise en œuvre</a>
+    <a href="maquettes/index.html" style="color:var(--accent);font-weight:600">Voir les maquettes →</a>
+  </nav>
+
+  <main>
+    <header class="cover">
+      <div class="pair"><span class="logo lg qcm" data-logo="qcm"></span><span class="logo lg qrc" data-logo="qrc"></span></div>
+      <span class="eyebrow">Charte de direction artistique · Prépa DGFiP 2027 · v1</span>
+      <h1>Copie <mark class="hl">double</mark></h1>
+      <p class="lede" style="font-size:var(--t-lg)">Une identité commune pour <b>QCM DGFiP 2027</b> et <b>Atelier QRC compta</b> : deux outils de révision qui doivent se reconnaître au premier coup d'œil, rester sobres pendant des heures de travail et rendre chaque chiffre lisible.</p>
+      <div class="row"><a class="btn pri" href="maquettes/index.html">Voir les 6 maquettes</a><a class="btn" href="tokens.css">Télécharger tokens.css</a></div>
+    </header>
+
+    <!-- 1 -->
+    <section class="ch" id="diag">
+      <header><span class="num">01</span><h2>Diagnostic : deux applis, deux chartes</h2>
+        <p class="lede">Les deux outils servent la même préparation mais ont été dessinés séparément. Résultat : aucun signe de famille, et des choix qui se contredisent d'un onglet du navigateur à l'autre.</p></header>
+      <div class="sheet" style="padding:0 var(--s5)">
+        <div class="tw"><table class="t diag">
+          <thead><tr><th>Élément</th><th>QCM (actuel)</th><th>QRC (actuel)</th><th>Charte « Copie double »</th></tr></thead>
+          <tbody>
+            <tr><td>Polices</td><td>Schibsted Grotesk + JetBrains Mono</td><td>IBM Plex Sans, Condensed, Mono</td><td>Newsreader (titres) + IBM Plex Sans + Plex Mono</td></tr>
+            <tr><td>Fond</td><td>#F4F6FA gris bleuté</td><td>#EEF1EF gris-vert</td><td>#F5F3EE papier crème, commun</td></tr>
+            <tr><td>Couleur d'action</td><td>#2340C8 bleu stylo</td><td>#1E4F7A bleu de Prusse</td><td>Encre propre à chaque appli : bleu #2A44C7 / pétrole #0E6871</td></tr>
+            <tr><td>Rayons</td><td>5, 8, 10 px</td><td>5, 6 px</td><td>6 (champs) · 10 (boutons) · 14 (feuilles)</td></tr>
+            <tr><td>Logo</td><td>aucun</td><td>monogramme « D | C »</td><td>tuile d'encre + pictogramme, même gabarit</td></tr>
+            <tr><td>En-tête</td><td>titre + pastilles mono</td><td>logo + bascule de profil</td><td>logo · tampon J-xx · bascule de profil, identiques</td></tr>
+            <tr><td>Navigation mobile</td><td>6 onglets défilants en haut</td><td>5 onglets défilants en haut</td><td>barre du bas à 5 entrées, onglets en haut sur ordinateur</td></tr>
+            <tr><td>Étiquettes</td><td><code>.tag</code> carrées</td><td><code>.chip</code> arrondies</td><td>un seul composant <code>.badge</code></td></tr>
+            <tr><td>Cibles tactiles</td><td>30 à 40 px</td><td>28 à 36 px</td><td>44 px minimum</td></tr>
+            <tr><td>Signature</td><td>—</td><td>journal réglé</td><td>surligneur jaune + tampon compte à rebours</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+      <p class="small muted">Ce qui marchait déjà et qui est conservé : thème sombre complet, chiffres en chasse fixe, cases numérotées du QCM, journal comptable réglé du QRC, sobriété générale.</p>
+    </section>
+
+    <!-- 2 -->
+    <section class="ch" id="concept">
+      <header><span class="num">02</span><h2>Concept : la copie d'examen</h2>
+        <p class="lede">Le jour J, le candidat écrit sur une copie double, coche une feuille de réponse et pose des écritures au journal. Les applis reprennent ces gestes, sans pastiche : le papier, l'encre, le surligneur.</p></header>
+      <div class="principles">
+        <div><b>Le papier</b><span>Un fond crème chaud, des feuilles blanches posées dessus. Le contenu se lit comme une copie, pas comme un tableau de bord.</span></div>
+        <div><b>L'encre</b><span>Une seule couleur d'action par appli. Bleu stylo pour le QCM, pétrole pour l'atelier compta. Le reste est noir d'encre et gris.</span></div>
+        <div><b>La machine à écrire</b><span>Tous les chiffres, comptes et chronos en IBM Plex Mono, alignés en colonnes. Un montant se lit d'un regard.</span></div>
+        <div><b>Le surligneur</b><span>Jaune, un passage par écran : la chose à retenir. Jamais pour signaler un état (juste, faux, alerte).</span></div>
+      </div>
+    </section>
+
+    <!-- 3 -->
+    <section class="ch" id="logos">
+      <header><span class="num">03</span><h2>Logos</h2>
+        <p class="lede">Même gabarit pour les deux : tuile carrée à coins arrondis (rayon = 26 % du côté), couleur d'encre de l'appli, pictogramme blanc au trait de 2 px sur une grille de 24.</p></header>
+      <div class="logos">
+        <div class="logocard" data-app="qcm">
+          <div class="lockup"><span class="logo lg" data-logo="qcm"></span><div><b>QCM DGFiP 2027</b><div class="small muted">Épreuve écrite n° 2 · partie QCM</div></div></div>
+          <p class="small muted">Quatre cases de la feuille de réponse, la deuxième cochée.</p>
+          <div class="sizes"><span class="logo s16" data-logo="qcm"></span><span class="logo s24" data-logo="qcm"></span><span class="logo" data-logo="qcm"></span><span class="logo lg" data-logo="qcm"></span></div>
+        </div>
+        <div class="logocard" data-app="qrc">
+          <div class="lockup"><span class="logo lg" data-logo="qrc"></span><div><b>Atelier QRC compta</b><div class="small muted">Comptabilité et analyse financière</div></div></div>
+          <p class="small muted">Un compte en T : débit à gauche, crédit à droite.</p>
+          <div class="sizes"><span class="logo s16" data-logo="qrc"></span><span class="logo s24" data-logo="qrc"></span><span class="logo" data-logo="qrc"></span><span class="logo lg" data-logo="qrc"></span></div>
+        </div>
+      </div>
+      <div class="dodont">
+        <div class="do"><h3>À faire</h3><ul><li>Toujours la tuile pleine, jamais le pictogramme seul sur fond coloré.</li><li>Nom de l'appli en Newsreader 700 à droite de la tuile.</li><li>Marge de protection : un quart du côté de la tuile.</li></ul></div>
+        <div class="dont"><h3>À éviter</h3><ul><li>Marianne, bloc-marque ou couleurs de l'État : ces outils ne sont pas des productions officielles de la DGFiP.</li><li>Échanger les encres (QCM en pétrole, QRC en bleu).</li><li>Ombres portées, dégradés, contours sur la tuile.</li></ul></div>
+      </div>
+    </section>
+
+    <!-- 4 -->
+    <section class="ch" id="couleurs">
+      <header><span class="num">04</span><h2>Couleurs</h2>
+        <p class="lede">Chaque couleur existe en clair et en sombre. Tous les couples texte/fond ci-dessous atteignent au moins 4,5:1 (WCAG AA) dans les deux thèmes ; le texte courant dépasse 14:1.</p></header>
+      <h3 class="h-card">Papier et encre</h3>
+      <div class="swatches">
+        <div class="sw"><div class="c" style="background:var(--paper);color:var(--ink)">Aa</div><div class="m"><b>Papier</b><code>--paper · #F5F3EE / #0F141F</code></div></div>
+        <div class="sw"><div class="c" style="background:var(--surface);color:var(--ink);border-bottom:1px solid var(--rule)">Aa</div><div class="m"><b>Feuille</b><code>--surface · #FFFFFF / #171E2C</code></div></div>
+        <div class="sw"><div class="c" style="background:var(--ink);color:var(--paper)">16:1</div><div class="m"><b>Encre noire</b><code>--ink · #16213A / #E8ECF4</code></div></div>
+        <div class="sw"><div class="c" style="background:var(--muted);color:var(--surface)">6:1</div><div class="m"><b>Crayon</b><code>--muted · #5A6377 / #9BA4B8</code></div></div>
+        <div class="sw"><div class="c" style="background:var(--line);color:var(--ink)"></div><div class="m"><b>Réglure</b><code>--line · #DAD5CA / #2B3447</code></div></div>
+      </div>
+      <h3 class="h-card">Encres des applis et surligneur</h3>
+      <div class="swatches">
+        <div class="sw"><div class="c" style="background:var(--qcm);color:var(--on-accent)">7,6:1</div><div class="m"><b>Encre QCM</b><code>--qcm · #2A44C7 / #93A5FF</code></div></div>
+        <div class="sw"><div class="c" style="background:var(--qcm-soft);color:var(--qcm)">6,4:1</div><div class="m"><b>Lavis QCM</b><code>--qcm-soft · #E7EBFB</code></div></div>
+        <div class="sw"><div class="c" style="background:var(--qrc);color:var(--on-accent)">6,5:1</div><div class="m"><b>Encre QRC</b><code>--qrc · #0E6871 / #62C3CB</code></div></div>
+        <div class="sw"><div class="c" style="background:var(--qrc-soft);color:var(--qrc)">5,5:1</div><div class="m"><b>Lavis QRC</b><code>--qrc-soft · #E0F0F0</code></div></div>
+        <div class="sw"><div class="c" style="background:var(--hl);color:var(--hl-ink)">12:1</div><div class="m"><b>Surligneur</b><code>--hl · #FFE45E / #5A4E12</code></div></div>
+      </div>
+      <h3 class="h-card">États · toujours avec un pictogramme ou un mot</h3>
+      <div class="swatches">
+        <div class="sw"><div class="c" style="background:var(--ok-soft);color:var(--ok)">✓ Juste · 4,6:1</div><div class="m"><b>Juste</b><code>--ok · #217A3C / #6BCB86</code></div></div>
+        <div class="sw"><div class="c" style="background:var(--bad-soft);color:var(--bad)">✕ Faux · 5:1</div><div class="m"><b>Faux</b><code>--bad · #B8322A / #FF8A7D</code></div></div>
+        <div class="sw"><div class="c" style="background:var(--warn-soft);color:var(--warn)">! À revoir · 5,3:1</div><div class="m"><b>À revoir</b><code>--warn · #8F5600 / #E8B158</code></div></div>
+      </div>
+      <p class="small muted">Proportions indicatives d'un écran : 70 % papier et feuilles, 20 % encre noire et crayon, 8 % encre de l'appli, 2 % surligneur.</p>
+    </section>
+
+    <!-- 5 -->
+    <section class="ch" id="typo">
+      <header><span class="num">05</span><h2>Typographie</h2>
+        <p class="lede">Trois voix : la copie (serif), l'outil (sans-serif), les chiffres (mono). Les trois sont gratuites sur Google Fonts et ont des replis système propres hors ligne.</p></header>
+      <div class="specimen">
+        <div><span class="eyebrow">Titres · Newsreader 600</span><span class="big" style="font-family:var(--f-display);font-weight:600">Aa</span><span style="font-family:var(--f-display);font-size:var(--t-xl);font-weight:600">Affectation du résultat</span><span class="small muted">Titres de page et de section, nom des applis. Jamais en dessous de 18 px.</span></div>
+        <div><span class="eyebrow">Interface · IBM Plex Sans</span><span class="big" style="font-weight:600">Aa</span><span>Comment la PESC est-elle en principe décidée ?</span><span class="small muted">Questions, énoncés, boutons, libellés. 400, 500, 600.</span></div>
+        <div><span class="eyebrow">Chiffres · IBM Plex Mono</span><span class="big mono" style="font-weight:500">0123</span><span class="mono">10 015,00 € · 1061 · 52:14</span><span class="small muted">Montants, comptes, chronos, scores. Toujours en chiffres tabulaires.</span></div>
+      </div>
+      <div class="sheet">
+        <div class="type-row"><span class="meta">Page · 28 / 1,15 · serif 600</span><span class="h-page">Encore <mark class="hl">23 questions</mark></span></div>
+        <div class="type-row"><span class="meta">Section · 22 / 1,2 · serif 600</span><span class="h-sec">Résultats chiffrés</span></div>
+        <div class="type-row"><span class="meta">Question · 18 / 1,45 · sans 600</span><span class="question">Quel organe contrôle la constitutionnalité des lois ?</span></div>
+        <div class="type-row"><span class="meta">Texte · 16 / 1,55 · sans 400</span><span>La réserve légale est dotée dans les conditions prévues par la loi.</span></div>
+        <div class="type-row"><span class="meta">Interface · 15 · sans 500/600</span><span style="font-size:var(--t-md);font-weight:600">Question suivante</span></div>
+        <div class="type-row"><span class="meta">Méta · 13 · sans 400</span><span class="small muted">Elle reviendra demain, puis dans 3 jours.</span></div>
+        <div class="type-row"><span class="meta">Surtitre · 12 · sans 600 capitales +9 %</span><span class="eyebrow">Comptabilité des sociétés</span></div>
+        <div class="type-row"><span class="meta">Chiffre clé · 26 · mono 600</span><span class="mono" style="font-size:1.6rem;font-weight:600">68 %</span></div>
+      </div>
+    </section>
+
+    <!-- 6 -->
+    <section class="ch" id="espace">
+      <header><span class="num">06</span><h2>Espaces et formes</h2>
+        <p class="lede">Une grille de 4 px. Les rayons grandissent avec la taille de l'objet : un champ est plus vif qu'une feuille.</p></header>
+      <div class="scale-sp">
+        <div><i style="width:4px;height:4px"></i>4</div><div><i style="width:8px;height:8px"></i>8</div><div><i style="width:12px;height:12px"></i>12</div><div><i style="width:16px;height:16px"></i>16</div><div><i style="width:24px;height:24px"></i>24</div><div><i style="width:32px;height:32px"></i>32</div><div><i style="width:48px;height:48px"></i>48</div>
+      </div>
+      <div class="row" style="gap:var(--s4)">
+        <div class="stack" style="align-items:center;gap:6px"><span style="width:72px;height:44px;border:1.5px solid var(--ink);border-radius:6px"></span><span class="small mono muted">6 · champs</span></div>
+        <div class="stack" style="align-items:center;gap:6px"><span style="width:72px;height:44px;border:1.5px solid var(--ink);border-radius:10px"></span><span class="small mono muted">10 · boutons, encarts</span></div>
+        <div class="stack" style="align-items:center;gap:6px"><span style="width:72px;height:44px;border:1.5px solid var(--ink);border-radius:14px"></span><span class="small mono muted">14 · feuilles</span></div>
+        <div class="stack" style="align-items:center;gap:6px"><span style="width:72px;height:44px;border:1.5px solid var(--ink);border-radius:999px"></span><span class="small mono muted">pilule · badges, filtres</span></div>
+      </div>
+      <p class="small muted">Cible tactile minimale : 44 × 44 px. Largeur de contenu : 960 px. Largeur de lecture : 64 à 72 caractères.</p>
+    </section>
+
+    <!-- 7 -->
+    <section class="ch" id="composants">
+      <header><span class="num">07</span><h2>Composants</h2>
+        <p class="lede">Un seul jeu de composants pour les deux applis ; seule l'encre change. Ces exemples utilisent directement <code>tokens.css</code> et <code>composants.css</code>.</p></header>
+
+      <div class="appdemo">
+        <div class="demo" data-app="qcm"><span class="demo-label">Boutons · QCM</span>
+          <div class="row"><button class="btn pri">Question suivante</button><button class="btn">Passer</button><button class="btn ghost">Annuler</button></div>
+          <div class="row"><button class="btn danger sm">Rendre la copie</button><button class="btn sm" disabled>Désactivé</button></div>
+        </div>
+        <div class="demo" data-app="qrc"><span class="demo-label">Boutons · QRC</span>
+          <div class="row"><button class="btn pri">Vérifier mes réponses</button><button class="btn">Voir le corrigé</button><button class="btn ghost">Fiche</button></div>
+          <div class="row"><button class="btn danger sm">Réinitialiser</button><button class="btn sm" disabled>Désactivé</button></div>
+        </div>
+      </div>
+
+      <div class="appdemo">
+        <div class="demo"><span class="demo-label">Badges</span>
+          <div class="row"><span class="badge acc">Union européenne</span><span class="badge ok">Dans 7 j</span><span class="badge warn">À revoir</span><span class="badge bad">Fragile</span><span class="badge out">Nouveau</span><span class="badge mono out">8 / 30</span></div>
+        </div>
+        <div class="demo"><span class="demo-label">Signature : tampon et surligneur</span>
+          <div class="row" style="gap:16px"><span class="stamp"><b>J-52</b><span>écrit inspecteur · 7 déc.</span></span><span class="h-sec">Tu dépasses le jury dans <mark class="hl">3 thèmes</mark></span></div>
+        </div>
+      </div>
+
+      <div class="demo" data-app="qcm"><span class="demo-label">Options de réponse · neutre, cochée, juste, fausse, abstention</span>
+        <div class="opts" style="max-width:560px">
+          <button class="opt"><span class="box">1</span><span class="t">Par le Parlement européen</span><span></span></button>
+          <button class="opt chosen"><span class="box">2</span><span class="t">Cochée (pendant l'examen)</span><span class="lab" style="color:var(--accent)">Cochée</span></button>
+          <button class="opt right"><span class="box" data-ico="check"></span><span class="t">À l'unanimité</span><span class="lab">Bonne réponse</span></button>
+          <button class="opt wrong"><span class="box" data-ico="cross"></span><span class="t">À la majorité qualifiée</span><span class="lab">Ta réponse</span></button>
+          <button class="opt ann"><span class="box">Ann</span><span class="t">Je m'abstiens</span><span></span></button>
+        </div>
+      </div>
+
+      <div class="appdemo">
+        <div class="demo"><span class="demo-label">Encarts de correction</span>
+          <div class="callout ok"><span class="ic" data-ico="check"></span><div><h4>Bonne réponse</h4><p class="small">Unanimité au Conseil, sauf exceptions.</p></div></div>
+          <div class="callout bad"><span class="ic" data-ico="cross"></span><div><h4>Pas tout à fait</h4><p class="small">La bonne réponse est 2 : à l'unanimité.</p></div></div>
+          <div class="callout warn"><span class="ic" data-ico="info"></span><div><h4>Cohérent avec ton erreur</h4><p class="small">Montant juste si l'on part de ta dotation.</p></div></div>
+        </div>
+        <div class="demo"><span class="demo-label">Chiffres clés et progression</span>
+          <div class="stats"><div class="stat"><span>Réussite</span><b>64 %</b><span class="delta up">+6 pts</span></div><div class="stat"><span>Examen blanc</span><b>12,3 <small>/ 20</small></b><span class="delta up">+1,1 pt</span></div></div>
+          <div class="bar-row" style="padding-top:12px"><div class="lab"><b>Union européenne</b><span><strong>57 %</strong> · jury 50,2 %</span></div><div class="track"><div class="fill ok" style="width:57%"></div><div class="jury" style="left:50.2%" data-l="50,2"></div></div></div>
+          <div class="row"><span class="small muted">Niveau</span><span class="pips"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span><span class="clock" style="margin-left:auto"><span data-ico="clock" style="display:inline-flex"></span>11:42</span></div>
+        </div>
+      </div>
+
+      <div class="demo" data-app="qrc"><span class="demo-label">Journal comptable · saisie et correction</span>
+        <div class="journal" style="max-width:720px">
+          <div class="j-head"><b>15/05/N+1</b><span>Affectation du résultat de N</span></div>
+          <div class="j-body"><div class="j-grid">
+            <span class="hd">Compte</span><span class="hd r">Débit</span><span class="hd r">Crédit</span><span class="hd"></span>
+            <div class="j-row"><span class="j-acc"><input class="input" value="120" readonly aria-label="Compte"><small>Résultat de l'exercice</small></span><span><input class="input n" value="10 015,00" readonly aria-label="Débit"></span><span></span><span class="j-st ok" data-ico="check"></span></div>
+            <div class="j-row cr"><span class="j-acc"><input class="input" value="1061" readonly aria-label="Compte"><small>Réserve légale</small></span><span></span><span><input class="input n is-bad" value="510,25" readonly aria-label="Crédit"></span><span class="j-st bad" data-ico="cross"></span></div>
+          </div></div>
+          <button class="j-add" data-ico="plus">Ajouter une ligne</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8 -->
+    <section class="ch" id="nav">
+      <header><span class="num">08</span><h2>Navigation</h2>
+        <p class="lede">Même structure dans les deux applis : barre d'appli collante, cinq destinations au plus.</p></header>
+      <div class="dodont">
+        <div style="background:var(--surface);border:1px solid var(--line)"><h3>Ordinateur (≥ 720 px)</h3><ul><li>Barre d'appli : logo, nom, tampon J-xx, bascule Inspecteur / Contrôleur.</li><li>Onglets sous la barre, avec pictogramme ; l'onglet actif est souligné à l'encre.</li><li>Compteur sur l'onglet du travail du jour.</li></ul></div>
+        <div style="background:var(--surface);border:1px solid var(--line)"><h3>Téléphone (&lt; 720 px)</h3><ul><li>Barre du bas fixe à 5 entrées, à portée de pouce, au-dessus de la zone de sécurité.</li><li>QCM : Aujourd'hui · Examen · Progrès · Banque · Plus (Ajouter, Réglages, profil).</li><li>QRC : Progression · S'entraîner · Épreuve · Fiches · Annales.</li></ul></div>
+      </div>
+    </section>
+
+    <!-- 9 -->
+    <section class="ch" id="ton">
+      <header><span class="num">09</span><h2>Ton et chiffres</h2>
+        <p class="lede">Un coach exigeant et bienveillant : tutoiement, phrases courtes, la conclusion avant le détail.</p></header>
+      <div class="dodont">
+        <div class="do"><h3>Écrire</h3><ul><li>« Tu dépasses le jury dans 3 thèmes sur 5 »</li><li>« Pas tout à fait : c'est l'unanimité »</li><li>« Elle reviendra demain »</li><li>10 015,00 € · 64 % · 1 h 20 · J-52</li></ul></div>
+        <div class="dont"><h3>Éviter</h3><ul><li>« Statistiques de performance par catégorie »</li><li>« Erreur ! Réponse incorrecte. »</li><li>Points d'exclamation, majuscules d'insistance</li><li>10015 € · 64% · 1h20 · 10,015.00</li></ul></div>
+      </div>
+      <p class="small muted">Chiffres : espace fine insécable comme séparateur de milliers, virgule décimale, espace insécable avant « € » et « % ». Montants comptables toujours avec deux décimales.</p>
+    </section>
+
+    <!-- 10 -->
+    <section class="ch" id="code" style="border-bottom:0">
+      <header><span class="num">10</span><h2>Mise en œuvre</h2>
+        <p class="lede">Les deux applis utilisent déjà des variables CSS ; la migration se fait en trois temps, appli par appli.</p></header>
+      <ol class="steps">
+        <li><span>Charger les polices et <code>tokens.css</code> dans <code>app.html</code> (QCM) et <code>src/head.html</code> + <code>src/style.css</code> (QRC), puis ajouter <code>data-app</code> sur <code>&lt;body&gt;</code>.</span></li>
+        <li><span>Renommer les anciennes variables : <code>--pen</code> → <code>--accent</code>, <code>--pen-soft</code> → <code>--accent-soft</code>, <code>--on-solid</code> → <code>--on-accent</code> (QCM) ; <code>--bg</code> → <code>--paper</code>, <code>--f-body</code> → <code>--f-ui</code> (QRC). Fusionner <code>.tag</code> et <code>.chip</code> dans <code>.badge</code>.</span></li>
+        <li><span>Reprendre l'en-tête et la barre du bas des maquettes, puis relancer <code>node build.js</code> dans chaque dossier et vérifier les deux thèmes.</span></li>
+      </ol>
+<pre>&lt;link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600;6..72,700&amp;family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap"&gt;
+&lt;body data-app="qcm"&gt;   &lt;!-- ou "qrc" : change l'encre --&gt;</pre>
+    </section>
+  </main>
+</div>
+
+<div class="seg themebar" role="group" aria-label="Thème"><button data-th="light" aria-pressed="true">Clair</button><button data-th="dark" aria-pressed="false">Sombre</button></div>
+
+<style>.btn[data-ico] svg, .j-add svg{width:16px;height:16px} .j-st{justify-content:center} .j-st svg{width:18px;height:18px} .clock [data-ico] svg{width:16px;height:16px} .callout .ic svg{width:16px;height:16px}</style>
+<script>
+  var I = {
+    check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>', cross: '<path d="m6.5 6.5 11 11M17.5 6.5l-11 11"/>',
+    info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.8v.2"/>', clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>', plus: '<path d="M12 5v14M5 12h14"/>'
+  };
+  var LOGO = {
+    qcm: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6" fill="currentColor"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg>',
+    qrc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><path d="M3 6.5h18M12 6.5V21" stroke-width="2.4"/><path d="M5 11h4.5M5 14.5h3M14.5 11h4.5M14.5 14.5h3M14.5 18h4" stroke-width="1.7"/></svg>'
+  };
+  document.querySelectorAll("[data-ico]").forEach(function (el) { el.insertAdjacentHTML("afterbegin", '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + I[el.dataset.ico] + '</svg>'); });
+  document.querySelectorAll("[data-logo]").forEach(function (el) { el.innerHTML = LOGO[el.dataset.logo]; el.classList.add(el.dataset.logo); });
+  var bs = document.querySelectorAll("[data-th]"), th = "light";
+  try { th = localStorage.getItem("charte-theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); } catch (e) {}
+  function apply() { document.documentElement.setAttribute("data-theme", th); bs.forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.th === th)); }); }
+  bs.forEach(function (b) { b.addEventListener("click", function () { th = b.dataset.th; try { localStorage.setItem("charte-theme", th); } catch (e) {} apply(); }); });
+  apply();
+</script>
+</body>
+</html>

@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Maquettes Prépa DGFiP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600;6..72,700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="../tokens.css">
+<style>
+  body { background: var(--sunk); }
+  .top { display: flex; flex-direction: column; gap: var(--s4); padding-block: var(--s7) var(--s5); }
+  .top h1 { font-family: var(--f-display); font-size: clamp(2rem, 5vw, 3rem); font-weight: 600; line-height: 1.05; letter-spacing: -.02em; }
+  .tools { display: flex; flex-wrap: wrap; gap: var(--s3); align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 5; padding-block: 10px; background: var(--sunk); border-bottom: 1px solid var(--line); }
+  .shot { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: var(--s6); padding-block: var(--s7); border-bottom: 1px solid var(--line); }
+  .shot:last-child { border-bottom: 0; }
+  .shot .txt { display: flex; flex-direction: column; gap: var(--s3); position: sticky; top: 80px; align-self: start; }
+  .shot h2 { font-family: var(--f-display); font-size: var(--t-xl); font-weight: 600; }
+  .shot ul { margin: 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 6px; font-size: var(--t-md); color: var(--muted); }
+  .shot ul b { color: var(--ink); font-weight: 600; }
+  .frames { display: flex; gap: var(--s5); align-items: flex-start; min-width: 0; }
+  .dev { flex: none; border-radius: 28px; padding: 10px; background: #0B0F18; box-shadow: var(--shadow-lift); }
+  .dev .scr { width: calc(390px * var(--k)); height: calc(780px * var(--k)); overflow: hidden; border-radius: 20px; background: var(--paper); }
+  .desk { flex: 1 1 auto; min-width: 0; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow-lift); overflow: hidden; }
+  .desk .chrome { display: flex; gap: 6px; padding: 9px 12px; border-bottom: 1px solid var(--line); background: var(--sunk); }
+  .desk .chrome i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+  .desk .scr { height: calc(820px * var(--d)); overflow: hidden; }
+  iframe { border: 0; display: block; transform-origin: 0 0; background: var(--paper); }
+  .dev iframe { width: 390px; height: 780px; transform: scale(var(--k)); }
+  .desk iframe { width: 1280px; height: 820px; transform: scale(var(--d)); }
+  .tag-app { display: inline-flex; align-items: center; gap: 8px; font-size: var(--t-sm); font-weight: 600; }
+  .tag-app .logo { width: 24px; height: 24px; border-radius: 7px; } .tag-app .logo svg { width: 16px; height: 16px; }
+  .part { padding-top: var(--s7); display: flex; align-items: center; gap: var(--s3); }
+  .part h2 { font-family: var(--f-display); font-size: var(--t-2xl); font-weight: 600; }
+  @media (max-width: 1099px) { .shot { grid-template-columns: minmax(0, 1fr); gap: var(--s4); } .shot .txt { position: static; } }
+  .frames.narrow .desk { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap" style="--content:1360px">
+  <header class="top">
+    <span class="eyebrow">Charte « Copie double » · maquettes · données fictives</span>
+    <h1>Deux outils, <mark class="hl">une même copie</mark></h1>
+    <p class="lede">QCM DGFiP 2027 et Atelier QRC compta partagent désormais un socle commun : papier crème, encre propre à chaque appli, chiffres en machine à écrire et surligneur pour l'essentiel. Chaque écran est montré sur téléphone et sur ordinateur.</p>
+    <div class="row"><a class="btn pri" href="../charte.html">Lire la charte complète</a><a class="btn" href="../tokens.css">tokens.css</a></div>
+  </header>
+</div>
+
+<div class="tools"><div class="wrap row between" style="--content:1360px;width:100%">
+  <span class="small muted">Cliquer dans un écran pour le parcourir.</span>
+  <div class="seg" role="group" aria-label="Thème">
+    <button data-th="light" aria-pressed="true">Clair</button><button data-th="dark" aria-pressed="false">Sombre</button>
+  </div>
+</div></div>
+
+<main class="wrap" style="--content:1360px">
+  <div class="part"><span class="logo qcm" data-logo="qcm"></span><h2>QCM DGFiP 2027</h2></div>
+
+  <section class="shot">
+    <div class="txt">
+      <span class="tag-app"><span class="logo qcm" data-logo="qcm"></span>Aujourd'hui · question corrigée</span>
+      <h2>La session du jour</h2>
+      <ul>
+        <li><b>Titre surligné</b> qui dit ce qui reste à faire, pas seulement « Session du jour ».</li>
+        <li><b>Cases de la feuille optique</b> : coche, croix et mots « Ta réponse / Bonne réponse » ; la couleur n'est jamais seule.</li>
+        <li><b>Correction en encart</b> avec sources cliquables et date du prochain passage.</li>
+        <li>Volet latéral : avancement par thème et raccourcis clavier.</li>
+      </ul>
+    </div>
+    <div class="frames"><div class="dev"><div class="scr"><iframe data-src="qcm-aujourdhui.html" title="QCM Aujourd'hui, téléphone" loading="lazy"></iframe></div></div><div class="desk"><div class="chrome"><i></i><i></i><i></i></div><div class="scr"><iframe data-src="qcm-aujourdhui.html" title="QCM Aujourd'hui, ordinateur" loading="lazy"></iframe></div></div></div>
+  </section>
+
+  <section class="shot">
+    <div class="txt">
+      <span class="tag-app"><span class="logo qcm" data-logo="qcm"></span>Examen blanc en cours</span>
+      <h2>L'examen blanc</h2>
+      <ul>
+        <li><b>Barre d'examen sombre et collante</b> : on sait qu'on est « en épreuve », le chrono reste visible.</li>
+        <li><b>« Ann »</b> en pointillés, avec sa règle de notation rappelée.</li>
+        <li><b>Feuille de réponse</b> : cochée, abstention, à revoir (coin surligné), question courante.</li>
+        <li>Rythme restant calculé, pour gérer le temps comme le jour J.</li>
+      </ul>
+    </div>
+    <div class="frames"><div class="dev"><div class="scr"><iframe data-src="qcm-examen.html" title="QCM Examen, téléphone" loading="lazy"></iframe></div></div><div class="desk"><div class="chrome"><i></i><i></i><i></i></div><div class="scr"><iframe data-src="qcm-examen.html" title="QCM Examen, ordinateur" loading="lazy"></iframe></div></div></div>
+  </section>
+
+  <section class="shot">
+    <div class="txt">
+      <span class="tag-app"><span class="logo qcm" data-logo="qcm"></span>Progrès</span>
+      <h2>Les progrès face au jury</h2>
+      <ul>
+        <li><b>Titre-verdict</b> : la conclusion d'abord, les barres ensuite.</li>
+        <li><b>Repère du jury</b> étiqueté directement sur chaque barre, sans légende à décoder.</li>
+        <li><b>Chiffres clés</b> avec tendance sur 7 jours.</li>
+        <li>Une seule action proposée : le thème le plus rentable.</li>
+      </ul>
+    </div>
+    <div class="frames"><div class="dev"><div class="scr"><iframe data-src="qcm-progres.html" title="QCM Progrès, téléphone" loading="lazy"></iframe></div></div><div class="desk"><div class="chrome"><i></i><i></i><i></i></div><div class="scr"><iframe data-src="qcm-progres.html" title="QCM Progrès, ordinateur" loading="lazy"></iframe></div></div></div>
+  </section>
+
+  <div class="part"><span class="logo qrc" data-logo="qrc"></span><h2>Atelier QRC compta</h2></div>
+
+  <section class="shot">
+    <div class="txt">
+      <span class="tag-app"><span class="logo qrc" data-logo="qrc"></span>Progression</span>
+      <h2>Le tableau de bord</h2>
+      <ul>
+        <li><b>Même en-tête, même tampon J-52</b> que le QCM : on reconnaît la famille, l'encre pétrole dit « atelier compta ».</li>
+        <li><b>Recommandation n° 1 mise en avant</b>, avec la raison (score, révision due, jamais fait).</li>
+        <li><b>Filtres</b> au-dessus du tableau ; états de révision en badges lisibles.</li>
+      </ul>
+    </div>
+    <div class="frames"><div class="dev"><div class="scr"><iframe data-src="qrc-progression.html" title="QRC Progression, téléphone" loading="lazy"></iframe></div></div><div class="desk"><div class="chrome"><i></i><i></i><i></i></div><div class="scr"><iframe data-src="qrc-progression.html" title="QRC Progression, ordinateur" loading="lazy"></iframe></div></div></div>
+  </section>
+
+  <section class="shot">
+    <div class="txt">
+      <span class="tag-app"><span class="logo qrc" data-logo="qrc"></span>Entraînement · exercice corrigé</span>
+      <h2>L'exercice corrigé</h2>
+      <ul>
+        <li><b>Énoncé en tableau pointillé</b>, montants alignés en chasse fixe.</li>
+        <li><b>Trois états de correction</b> : juste, faux, et « cohérent avec ton erreur » (orange) pour les montants entraînés.</li>
+        <li><b>Journal réglé</b> : intitulé du compte affiché à côté du numéro, crédits en retrait, contrôle d'équilibre en pied.</li>
+        <li>Le piège est nommé et relié à sa fiche.</li>
+      </ul>
+    </div>
+    <div class="frames"><div class="dev"><div class="scr"><iframe data-src="qrc-exercice.html" title="QRC Exercice, téléphone" loading="lazy"></iframe></div></div><div class="desk"><div class="chrome"><i></i><i></i><i></i></div><div class="scr"><iframe data-src="qrc-exercice.html" title="QRC Exercice, ordinateur" loading="lazy"></iframe></div></div></div>
+  </section>
+
+  <section class="shot">
+    <div class="txt">
+      <span class="tag-app"><span class="logo qrc" data-logo="qrc"></span>Fiches</span>
+      <h2>Les fiches de méthode</h2>
+      <ul>
+        <li><b>Sommaire latéral</b> par famille avec recherche, au lieu d'une pile d'accordéons.</li>
+        <li><b>Étapes numérotées</b>, pièges sur fond d'alerte, comptes en pastilles mono.</li>
+        <li>Largeur de lecture limitée à 70 caractères.</li>
+      </ul>
+    </div>
+    <div class="frames"><div class="dev"><div class="scr"><iframe data-src="qrc-fiches.html" title="QRC Fiches, téléphone" loading="lazy"></iframe></div></div><div class="desk"><div class="chrome"><i></i><i></i><i></i></div><div class="scr"><iframe data-src="qrc-fiches.html" title="QRC Fiches, ordinateur" loading="lazy"></iframe></div></div></div>
+  </section>
+</main>
+
+<script>
+  var LOGO = {
+    qcm: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6" fill="currentColor"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg>',
+    qrc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><path d="M3 6.5h18M12 6.5V21" stroke-width="2.4"/><path d="M5 11h4.5M5 14.5h3M14.5 11h4.5M14.5 14.5h3M14.5 18h4" stroke-width="1.7"/></svg>'
+  };
+  document.querySelectorAll("[data-logo]").forEach(function (el) { el.innerHTML = LOGO[el.dataset.logo]; });
+
+  var theme = "light";
+  try { theme = localStorage.getItem("maquettes-theme") || "light"; } catch (e) {}
+  function apply() {
+    document.documentElement.setAttribute("data-theme", theme);
+    document.querySelectorAll("[data-th]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.th === theme)); });
+    document.querySelectorAll("iframe[data-src]").forEach(function (f) { f.src = f.dataset.src + "?theme=" + theme; });
+  }
+  document.querySelectorAll("[data-th]").forEach(function (b) {
+    b.addEventListener("click", function () { theme = b.dataset.th; try { localStorage.setItem("maquettes-theme", theme); } catch (e) {} apply(); });
+  });
+  apply();
+
+  // Mise à l'échelle des cadres selon la place disponible
+  function fit() {
+    document.querySelectorAll(".frames").forEach(function (fr) {
+      var w = fr.clientWidth, wide = w >= 700;
+      fr.classList.toggle("narrow", !wide);
+      var k = Math.min(0.82, ((wide ? 330 : w) - 20) / 390);
+      fr.style.setProperty("--k", k.toFixed(3));
+      var desk = fr.querySelector(".desk");
+      if (desk && wide) {
+        var dw = w - (390 * k + 20) - 24;
+        fr.style.setProperty("--d", (dw / 1280).toFixed(3));
+      }
+    });
+  }
+  addEventListener("resize", fit); fit();
+</script>
+</body>
+</html>

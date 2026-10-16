@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>QCM · Progrès</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600;6..72,700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="../composants.css">
+</head>
+<body data-app="qcm" data-tab="progres">
+<main class="wrap page">
+  <section class="hero">
+    <span class="eyebrow">Progrès · 21 jours de révision</span>
+    <h1 class="h-page">Tu dépasses le jury dans <mark class="hl">3 thèmes sur 5</mark></h1>
+    <p class="lede">Ta réussite en révision, comparée à la moyenne des candidats 2026 publiée dans le rapport du jury.</p>
+  </section>
+
+  <div class="stats">
+    <div class="stat"><span>Réussite en révision</span><b>64 %</b><span class="delta up">+6 pts sur 7 jours</span></div>
+    <div class="stat"><span>Questions vues</span><b>412 <small>/ 1 080</small></b><span>168 acquises</span></div>
+    <div class="stat"><span>Dernier examen blanc</span><b>12,3 <small>/ 20</small></b><span class="delta up">+1,1 pt</span></div>
+    <div class="stat"><span>Série en cours</span><b>9 <small>jours</small></b><span>record : 12</span></div>
+  </div>
+
+  <article class="sheet">
+    <div class="row between">
+      <h2 class="h-sec">Par thème</h2>
+      <div class="legend"><span><i style="background:var(--ok);border-color:var(--ok)"></i>au-dessus du jury</span><span><i style="background:var(--bad);border-color:var(--bad)"></i>en dessous</span><span><i class="jury"></i>moyenne jury 2026</span></div>
+    </div>
+    <div class="bars" style="padding-top:10px">
+      <div class="bar-row">
+        <div class="lab"><b>Environnement administratif</b><span><strong>48 %</strong> · jury 52,9 % · 186 réponses</span></div>
+        <div class="track"><div class="fill bad" style="width:48%"></div><div class="jury" style="left:52.9%" data-l="52,9"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="lab"><b>Union européenne</b><span><strong>57 %</strong> · jury 50,2 % · 174 réponses</span></div>
+        <div class="track"><div class="fill ok" style="width:57%"></div><div class="jury" style="left:50.2%" data-l="50,2"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="lab"><b>Culture numérique</b><span><strong>71 %</strong> · jury 63,4 % · 96 réponses</span></div>
+        <div class="track"><div class="fill ok" style="width:71%"></div><div class="jury" style="left:63.4%" data-l="63,4"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="lab"><b>Raisonnement logique</b><span><strong>62 %</strong> · jury 66,1 % · 88 réponses</span></div>
+        <div class="track"><div class="fill bad" style="width:62%"></div><div class="jury" style="left:66.1%" data-l="66,1"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="lab"><b>Anglais</b><span><strong>74 %</strong> · jury 60,7 % · 61 réponses</span></div>
+        <div class="track"><div class="fill ok" style="width:74%"></div><div class="jury" style="left:60.7%" data-l="60,7"></div></div>
+      </div>
+    </div>
+    <div class="callout">
+      <span class="ic" data-ico="bolt"></span>
+      <div><h4>Prochaine étape</h4><p>Une session de 30 questions « Environnement administratif » te ferait passer au-dessus du jury en 4 à 5 jours.</p>
+      <div class="row" style="margin-top:10px"><button class="btn pri sm">Lancer 30 questions</button></div></div>
+    </div>
+  </article>
+
+  <article class="sheet">
+    <h2 class="h-sec">Examens blancs</h2>
+    <div class="tw"><table class="t">
+      <thead><tr><th>Date</th><th>Module</th><th class="num">Justes</th><th class="num">Fausses</th><th class="num">Ann</th><th class="num">Note / 20</th></tr></thead>
+      <tbody>
+        <tr class="click"><td>14 oct.</td><td>Inspecteur</td><td class="num">30</td><td class="num">9</td><td class="num">6</td><td class="num"><b>12,3</b> <span class="badge ok">+1,1</span></td></tr>
+        <tr class="click"><td>7 oct.</td><td>Inspecteur</td><td class="num">28</td><td class="num">11</td><td class="num">6</td><td class="num"><b>11,2</b> <span class="badge ok">+1,4</span></td></tr>
+        <tr class="click"><td>30 sept.</td><td>Inspecteur</td><td class="num">25</td><td class="num">12</td><td class="num">8</td><td class="num"><b>9,8</b></td></tr>
+      </tbody>
+    </table></div>
+  </article>
+</main>
+<style>.legend i{border-radius:3px}</style>
+<script src="shell.js"></script>
+</body>
+</html>

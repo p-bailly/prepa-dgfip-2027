@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>QRC · Exercice corrigé</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600;6..72,700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="../composants.css">
+</head>
+<body data-app="qrc" data-tab="train">
+<main class="wrap page">
+  <section class="row between" style="align-items:flex-end">
+    <div class="hero">
+      <span class="eyebrow">Comptabilité des sociétés · variante n° 379700</span>
+      <h1 class="h-page">Affectation du résultat</h1>
+    </div>
+    <span class="clock"><span data-ico="clock" style="display:inline-flex"></span>11:42 <span class="muted" style="font-weight:400">/ 15:00</span></span>
+  </section>
+
+  <article class="sheet">
+    <p>La société <b>Lauragais</b> vous communique les informations suivantes pour répartir le bénéfice de l'exercice N.</p>
+    <table class="kv">
+      <tr><td>Capital social, entièrement libéré</td><td>50 000,00 €<div class="small muted">5 000 actions de 10 €</div></td></tr>
+      <tr><td>Réserve légale avant répartition</td><td>2 500,00 €</td></tr>
+      <tr><td>Report à nouveau créditeur</td><td>190,00 €</td></tr>
+      <tr><td>Résultat net de l'exercice N (bénéfice)</td><td>10 015,00 €</td></tr>
+    </table>
+    <p class="small muted">La réserve légale est dotée dans les conditions prévues par la loi. Dividende unitaire maximum, arrondi aux 10 centimes d'euro inférieurs ; le solde est porté en report à nouveau.</p>
+    <div class="consigne"><span class="eyebrow">Travail à faire</span><ol><li>Présentez les calculs et le tableau d'affectation du résultat de N.</li><li>Passez l'écriture d'affectation (AGO du 15/05/N+1).</li></ol></div>
+  </article>
+
+  <div class="score">
+    <span class="big">68<small> / 100</small></span>
+    <div class="stack" style="gap:4px">
+      <b>Une erreur de base, deux montants entraînés</b>
+      <span class="small muted">3 résultats justes sur 5 · écriture équilibrée · les montants qui découlent de ton erreur sont comptés à moitié.</span>
+    </div>
+  </div>
+
+  <article class="sheet">
+    <h2 class="h-sec">Résultats chiffrés</h2>
+    <div class="answers">
+      <div class="ans bad"><label>Dotation à la réserve légale</label><div class="in"><input class="input n is-bad" value="510,25" readonly></div>
+        <div class="fb"><span data-ico="cross"></span><span>Attendu <b class="mono">500,75 €</b> : 5 % × 10 015. Le report à nouveau créditeur n'entre pas dans la base.</span></div></div>
+      <div class="ans warn"><label>Bénéfice distribuable</label><div class="in"><input class="input n" value="9 694,75" readonly></div>
+        <div class="fb"><span data-ico="info"></span><span>Cohérent avec ta dotation. Attendu <b class="mono">9 704,25 €</b>.</span></div></div>
+      <div class="ans ok"><label>Dividende par action</label><div class="in"><input class="input n is-ok" value="1,90" readonly></div>
+        <div class="fb"><span data-ico="check"></span><span>Juste : 1,94… arrondi aux 10 centimes inférieurs.</span></div></div>
+      <div class="ans ok"><label>Montant total des dividendes</label><div class="in"><input class="input n is-ok" value="9 500,00" readonly></div>
+        <div class="fb"><span data-ico="check"></span><span>Juste.</span></div></div>
+      <div class="ans warn"><label>Nouveau report à nouveau</label><div class="in"><input class="input n" value="194,75" readonly></div>
+        <div class="fb"><span data-ico="info"></span><span>Cohérent avec ta dotation. Attendu <b class="mono">204,25 €</b>.</span></div></div>
+    </div>
+  </article>
+
+  <article class="sheet">
+    <div class="row between"><h2 class="h-sec">Écriture au journal</h2><span class="badge ok" data-ico="scale">Équilibrée</span></div>
+    <div class="journal">
+      <div class="j-head"><b>15/05/N+1</b><span>Affectation du résultat de N</span></div>
+      <div class="j-body"><div class="j-grid">
+        <span class="hd">Compte</span><span class="hd r">Débit</span><span class="hd r">Crédit</span><span class="hd"></span>
+        <div class="j-row"><span class="j-acc"><input class="input" value="120" readonly><small>Résultat de l'exercice (bénéfice)</small></span><span><input class="input n" value="10 015,00" readonly></span><span></span><span class="j-st ok" data-ico="check"></span></div>
+        <div class="j-row"><span class="j-acc"><input class="input" value="110" readonly><small>Report à nouveau (ancien)</small></span><span><input class="input n" value="190,00" readonly></span><span></span><span class="j-st ok" data-ico="check"></span></div>
+        <div class="j-row cr"><span class="j-acc"><input class="input" value="1061" readonly><small>Réserve légale</small></span><span></span><span><input class="input n is-bad" value="510,25" readonly></span><span class="j-st bad" data-ico="cross"></span></div>
+        <div class="j-row cr"><span class="j-acc"><input class="input" value="457" readonly><small>Associés · dividendes à payer</small></span><span></span><span><input class="input n" value="9 500,00" readonly></span><span class="j-st ok" data-ico="check"></span></div>
+        <div class="j-row cr"><span class="j-acc"><input class="input" value="110" readonly><small>Report à nouveau (nouveau)</small></span><span></span><span><input class="input n" value="194,75" readonly></span><span class="j-st warn" data-ico="info"></span></div>
+      </div></div>
+      <div class="j-foot"><span class="lbl" data-ico="check">Total débit = total crédit</span><span class="r">10 205,00</span><span class="r">10 205,00</span><span></span></div>
+    </div>
+    <div class="callout bad">
+      <span class="ic" data-ico="flag"></span>
+      <div><h4>Piège classique</h4><p>Ajouter le report à nouveau créditeur dans la base de la réserve légale. La base est le bénéfice diminué des pertes antérieures, rien d'autre. Ici la marge restante (5 000 − 2 500 = 2 500 €) ne limite pas la dotation.</p></div>
+    </div>
+    <div class="row">
+      <button class="btn pri">Nouvelle variante</button>
+      <button class="btn">Voir le corrigé détaillé</button>
+      <a class="btn ghost" href="qrc-fiches.html" data-ico="book">Fiche</a>
+    </div>
+  </article>
+</main>
+<style>.badge[data-ico] svg{width:13px;height:13px}.btn[data-ico] svg{width:18px;height:18px}.fb > span[data-ico]{display:flex}.fb > span[data-ico] svg{width:16px;height:16px}.j-st{justify-content:center}.j-st svg{width:18px;height:18px}.j-foot .lbl svg{width:16px;height:16px}</style>
+<script src="shell.js"></script>
+</body>
+</html>

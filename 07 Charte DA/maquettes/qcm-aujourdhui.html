@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>QCM · Aujourd'hui</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600;6..72,700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="../composants.css">
+</head>
+<body data-app="qcm" data-tab="jour">
+<main class="wrap page">
+  <section class="hero">
+    <span class="eyebrow">Session du jour · révision espacée</span>
+    <h1 class="h-page">Encore <mark class="hl">23 questions</mark>, environ 15 minutes</h1>
+    <div class="row small muted" style="gap:14px">
+      <span class="row" style="gap:6px"><span class="dot ok"></span>6 justes</span>
+      <span class="row" style="gap:6px"><span class="dot bad"></span>1 fausse</span>
+      <span class="row" style="gap:6px"><span class="dot"></span>23 à faire</span>
+    </div>
+  </section>
+
+  <div class="split">
+    <article class="sheet">
+      <div class="row between">
+        <div class="row" style="gap:6px"><span class="badge acc">Union européenne</span><span class="badge warn">À revoir</span></div>
+        <span class="badge mono out">8 / 30</span>
+      </div>
+      <div class="meter" aria-label="Avancement de la session"><i style="width:26.6%"></i></div>
+      <p class="question">Comment la PESC (politique étrangère et de sécurité commune) est-elle en principe décidée ?</p>
+      <div class="opts locked">
+        <button class="opt" disabled><span class="box">1</span><span class="t">Par le Parlement européen</span><span></span></button>
+        <button class="opt right" disabled><span class="box" data-ico="check"></span><span class="t">À l'unanimité</span><span class="lab">Bonne réponse</span></button>
+        <button class="opt wrong" disabled><span class="box" data-ico="cross"></span><span class="t">À la majorité qualifiée</span><span class="lab">Ta réponse</span></button>
+        <button class="opt" disabled><span class="box">4</span><span class="t">Par la Commission seule</span><span></span></button>
+      </div>
+      <div class="callout bad">
+        <span class="ic" data-ico="cross"></span>
+        <div>
+          <h4>Pas tout à fait : c'est l'unanimité</h4>
+          <p>La PESC reste intergouvernementale : le Conseil européen et le Conseil statuent à l'unanimité, sauf exceptions prévues par les traités (mise en œuvre d'une décision déjà adoptée, nomination d'un représentant spécial).</p>
+          <div class="srcs">
+            <a href="#" data-ico="book">Fiche 5 · Institutions de l'UE</a>
+            <a href="#" data-ico="link">Vie publique : la PESC</a>
+          </div>
+        </div>
+      </div>
+      <div class="row between">
+        <span class="small muted">Elle reviendra <b style="color:var(--ink)">demain</b>, puis dans 3 jours.</span>
+        <div class="row">
+          <span class="small muted hide-sm"><kbd>Entrée</kbd></span>
+          <button class="btn pri">Question suivante <span data-ico="arrow" style="display:inline-flex"></span></button>
+        </div>
+      </div>
+    </article>
+
+    <aside class="stack">
+      <section class="sheet tight">
+        <h2 class="h-card">Cette session</h2>
+        <ul class="mini">
+          <li><span>Union européenne</span><span class="mono muted">3 / 9</span><div class="meter"><i style="width:33%"></i></div></li>
+          <li><span>Environnement administratif</span><span class="mono muted">3 / 9</span><div class="meter"><i style="width:33%"></i></div></li>
+          <li><span>Culture numérique</span><span class="mono muted">1 / 5</span><div class="meter"><i style="width:20%"></i></div></li>
+          <li><span>Raisonnement logique</span><span class="mono muted">0 / 4</span><div class="meter"><i style="width:0"></i></div></li>
+          <li><span>Anglais</span><span class="mono muted">0 / 3</span><div class="meter"><i style="width:0"></i></div></li>
+        </ul>
+        <p class="small muted">UE et administration passent en premier : ce sont les deux thèmes les moins réussis par les candidats en 2026.</p>
+      </section>
+      <section class="sheet tight flat">
+        <h2 class="h-card">Raccourcis</h2>
+        <div class="small muted stack" style="gap:6px">
+          <span><kbd>1</kbd> à <kbd>4</kbd> pour répondre</span>
+          <span><kbd>Entrée</kbd> question suivante</span>
+          <span><kbd>S</kbd> passer</span>
+        </div>
+      </section>
+    </aside>
+  </div>
+</main>
+<style>@media (max-width:719px){.hide-sm{display:none}} .btn [data-ico] svg{width:18px;height:18px}</style>
+<script src="shell.js"></script>
+</body>
+</html>

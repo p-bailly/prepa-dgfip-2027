@@ -1,0 +1,8 @@
+# Documents officiels et fiches PDF : volumineux, non versionnés
+*.pdf
+# Fichiers système et synchronisation Google Drive
+desktop.ini
+.tmp.drivedownload/
+.tmp.driveupload/
+.claude/
+node_modules/

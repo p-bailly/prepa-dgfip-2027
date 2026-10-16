@@ -1,0 +1,1878 @@
+'use strict';
+/* ===== Noyau : aléa, arrondis, formats, vérification ===== */
+var T = {};          // registre des types d'exercices
+var ANNALES = [];    // sujets réels rejouables
+
+var U = (function () {
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function rng(seed) {
+    var f = mulberry32(seed >>> 0);
+    var o = {
+      seed: seed, f: f,
+      int: function (a, b, s) { s = s || 1; var n = Math.floor((b - a) / s + 1e-9); return r2(a + s * Math.floor(f() * (n + 1))); },
+      pick: function (a) { return a[Math.floor(f() * a.length)]; },
+      chance: function (p) { return f() < p; },
+      shuffle: function (a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(f() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; },
+      pickN: function (a, n) { return o.shuffle(a).slice(0, n); }
+    };
+    return o;
+  }
+  function r2(x) { var y = Math.round(Math.abs(x) * 100 + 1e-7) / 100; return x < 0 ? -y : y; }
+  function r0(x) { var y = Math.round(Math.abs(x) + 1e-9); return x < 0 ? -y : y; }
+  function rd(x, d) { var k = Math.pow(10, d); var y = Math.round(Math.abs(x) * k + 1e-7) / k; return x < 0 ? -y : y; }
+  function floorStep(x, s) { return r2(Math.floor(x / s + 1e-9) * s); }
+
+  var NB = ' ', NBS = ' ';
+  function n(x, dec) {
+    if (x === null || x === undefined || isNaN(x)) return '—';
+    if (dec === undefined) dec = (Math.abs(r2(x) - Math.round(r2(x))) > 1e-9) ? 2 : 0;
+    var neg = x < 0; var v = Math.abs(rd(x, dec));
+    var s = v.toFixed(dec); var parts = s.split('.');
+    var ent = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, NB);
+    return (neg ? '−' : '') + ent + (dec > 0 ? ',' + parts[1] : '');
+  }
+  function e(x, dec) { return n(x, dec) + NBS + '€'; }
+  function e2(x) { return n(x, 2) + NBS + '€'; }
+  function pc(x, dec) { return n(x * 100, dec === undefined ? 2 : dec) + NBS + '%'; }
+  function pcs(x) { var v = rd(x * 100, 2); return n(v, Number.isInteger(v) ? 0 : (Number.isInteger(rd(v, 1)) ? 1 : 2)) + NBS + '%'; }
+  function k(x) { return n(x, 0); }
+
+  var MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+  function yl(y) { return y === 0 || y === undefined ? 'N' : (y > 0 ? 'N+' + y : 'N' + y); }
+  function dt(d, m, y) { return (d < 10 ? '0' : '') + d + '/' + (m < 10 ? '0' : '') + m + '/' + yl(y); }
+  function lastDay(m) { return [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1]; }
+  // jours (année de 360 jours) de la date incluse au 31/12
+  function joursRestants(d, m) { return (12 - m) * 30 + (30 - Math.min(d, 30) + 1); }
+  // jours (360) du 01/01 à la date incluse
+  function joursDepuis1Jan(d, m) { if (d >= lastDay(m)) d = 30; return (m - 1) * 30 + Math.min(d, 30); }
+  function dureeTxt(j) { var mo = Math.floor(j / 30), jo = j % 30; return (mo ? mo + ' mois' : '') + (mo && jo ? ' et ' : '') + (jo ? jo + ' jour' + (jo > 1 ? 's' : '') : ''); }
+  function prorataTxt(j) { return j % 30 === 0 ? (j / 30) + '/12' : j + '/360'; }
+
+  // ---- HTML ----
+  function tbl(head, rows, cls) {
+    var h = '<div class="tw"><table class="' + (cls || '') + '">';
+    if (head) h += '<thead><tr>' + head.map(function (c) { return '<th>' + c + '</th>'; }).join('') + '</tr></thead>';
+    h += '<tbody>' + rows.map(function (r) {
+      var trc = '';
+      if (r && r.cls) { trc = ' class="' + r.cls + '"'; r = r.cells; }
+      return '<tr' + trc + '>' + r.map(function (c, i) { return '<td' + (i > 0 && /^[−\-+\d(]/.test(String(c).replace(/<[^>]+>/g, '')) ? ' class="num"' : '') + '>' + c + '</td>'; }).join('') + '</tr>';
+    }).join('') + '</tbody></table></div>';
+    return h;
+  }
+  function kv(rows) { return tbl(null, rows, 'kv'); }
+  function calc(lines) { // [[libellé, calcul, résultat]]
+    return tbl(['Élément', 'Calcul', 'Résultat'], lines, 'calc');
+  }
+  function p(s) { return '<p>' + s + '</p>'; }
+  function ul(a) { return '<ul>' + a.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>'; }
+
+  // ---- Comptes ----
+  var PCG = {
+    '101': 'Capital', '1011': 'Capital souscrit – non appelé', '1012': 'Capital souscrit – appelé, non versé', '1013': 'Capital souscrit – appelé, versé',
+    '1041': 'Primes d’émission', '1061': 'Réserve légale', '1063': 'Réserves statutaires', '1068': 'Autres réserves (facultatives)',
+    '109': 'Actionnaires : capital souscrit – non appelé', '110': 'Report à nouveau (solde créditeur)', '119': 'Report à nouveau (solde débiteur)',
+    '120': 'Résultat de l’exercice (bénéfice)', '129': 'Résultat de l’exercice (perte)', '145': 'Amortissements dérogatoires',
+    '1511': 'Provisions pour litiges', '1515': 'Provisions pour pertes de change', '1688': 'Intérêts courus sur emprunts',
+    '2013': 'Frais d’augmentation de capital', '211': 'Terrains', '213': 'Constructions', '2154': 'Matériel industriel', '2182': 'Matériel de transport', '2183': 'Matériel de bureau et informatique',
+    '28013': 'Amortissements des frais d’augmentation de capital', '2813': 'Amortissements des constructions', '28154': 'Amortissements du matériel industriel', '28182': 'Amortissements du matériel de transport', '28183': 'Amortissements du matériel de bureau et informatique',
+    '2911': 'Dépréciations des terrains', '397': 'Dépréciations des stocks de marchandises', '401': 'Fournisseurs', '404': 'Fournisseurs d’immobilisations', '408': 'Fournisseurs – factures non parvenues',
+    '411': 'Clients', '416': 'Clients douteux ou litigieux', '418': 'Clients – produits non encore facturés', '4098': 'Fournisseurs – RRR à obtenir',
+    '444': 'État – impôts sur les bénéfices', '4452': 'TVA due intracommunautaire', '44551': 'TVA à décaisser', '44562': 'TVA sur immobilisations',
+    '44566': 'TVA sur autres biens et services', '445662': 'TVA déductible intracommunautaire', '44567': 'Crédit de TVA à reporter', '44571': 'TVA collectée',
+    '44586': 'TVA sur factures non parvenues', '44587': 'TVA sur factures à établir', '457': 'Associés – dividendes à payer', '4563': 'Associés – versements reçus sur augmentation de capital',
+    '462': 'Créances sur cessions d’immobilisations', '476': 'Différences de conversion – actif', '477': 'Différences de conversion – passif',
+    '486': 'Charges constatées d’avance', '487': 'Produits constatés d’avance', '491': 'Dépréciations des comptes clients', '512': 'Banque',
+    '6037': 'Variation des stocks de marchandises', '6061': 'Fournitures non stockables (eau, énergie)', '607': 'Achats de marchandises', '609': 'RRR obtenus sur achats', '613': 'Locations', '616': 'Primes d’assurance',
+    '6226': 'Honoraires', '6241': 'Transports sur achats', '6358': 'Autres droits', '654': 'Pertes sur créances irrécouvrables', '656': 'Pertes de change sur créances et dettes commerciales',
+    '657': 'Valeurs comptables des immobilisations cédées', '675': 'Valeurs comptables des éléments d’actif cédés', '6611': 'Intérêts des emprunts et dettes',
+    '6811': 'Dotations aux amortissements des immobilisations', '6815': 'Dotations aux provisions d’exploitation', '6816': 'Dotations aux dépréciations des immobilisations', '6817': 'Dotations aux dépréciations des actifs circulants',
+    '6865': 'Dotations aux provisions financières', '6872': 'Dotations aux provisions réglementées', '695': 'Impôts sur les bénéfices',
+    '706': 'Prestations de services', '707': 'Ventes de marchandises', '756': 'Gains de change sur créances et dettes commerciales', '757': 'Produits des cessions d’immobilisations', '775': 'Produits des cessions d’éléments d’actif', '758': 'Produits divers de gestion courante',
+    '7815': 'Reprises sur provisions d’exploitation', '7817': 'Reprises sur dépréciations des actifs circulants', '7865': 'Reprises sur provisions financières', '7872': 'Reprises sur provisions réglementées'
+  };
+  function lib(a) { return PCG[a] || ''; }
+
+  // Équivalences admises (ancien / nouveau PCG, sous-comptes usuels)
+  var ALT = {
+    '44571': ['4457'], '44566': ['445661', '4456'], '44562': ['4456'], '445662': ['44566'],
+    '657': ['675', '6752'], '757': ['775', '7752'], '675': ['657'], '775': ['757'],
+    '1013': ['1012'], '4563': ['4562', '4561'], '462': ['512', '5121'],
+    '1068': ['1062', '1064'], '6811': ['681'], '6817': ['681'], '6816': ['681'], '6815': ['681'], '6865': ['686'], '6872': ['687'],
+    '7817': ['781'], '7815': ['781'], '7865': ['786'], '7872': ['787'],
+    '1511': ['151'], '1515': ['151'], '397': ['39', '3970'], '2911': ['291'], '491': ['4911'],
+    '44551': ['4455'], '6611': ['661', '66116'], '706': ['708', '7083'], '613': ['6132'], '616': ['6161'],
+    '695': ['6951'], '2013': ['201'], '28013': ['2801'], '6226': ['622', '6227', '6228'],
+    '6358': ['635', '658', '678', '6788', '657', '675'], '758': ['7788', '778'],
+    '404': ['512', '401'], '656': ['666'], '756': ['766']
+  };
+  function accepte(exp, alt, u) {
+    if (!u) return 0;
+    if (u === exp) return 3;
+    if ((alt && alt.indexOf(u) >= 0) || (ALT[exp] && ALT[exp].indexOf(u) >= 0)) return 2;
+    var sh = u.length < exp.length ? u : exp;
+    if (sh.length >= 3 && (u.indexOf(exp) === 0 || exp.indexOf(u) === 0)) return 1;
+    return 0;
+  }
+
+  // ---- Saisie et vérification ----
+  function parseNum(s) {
+    if (s === null || s === undefined) return NaN;
+    s = String(s).trim().replace(/[\s  ]/g, '').replace(/€/g, '').replace(/%$/, '').replace(/^−/, '-').replace(/^\+/, '');
+    if (!s) return NaN;
+    if (s.indexOf(',') >= 0 && s.indexOf('.') >= 0) s = s.replace(/\./g, '');
+    s = s.replace(',', '.');
+    if (!/^-?\d*\.?\d+$|^-?\d+\.$/.test(s)) return NaN;
+    return Number(s);
+  }
+  function tolDe(q) {
+    if (q.tol !== undefined) return q.tol;
+    switch (q.unit) {
+      case '€': return Math.max(1, Math.abs(q.ans) * 0.001);
+      case '%': return 0.1;
+      case 'j': return 1;
+      case 'u': return 0.5;
+      default: return Math.max(0.01, Math.abs(q.ans) * 0.005);
+    }
+  }
+  function checkNum(q, raw) {
+    if (q.kind === 'choice') {
+      if (raw === '' || raw === null || raw === undefined) return { ok: false, empty: true };
+      return { ok: Number(raw) === q.ans };
+    }
+    var v = parseNum(raw);
+    if (isNaN(v)) return { ok: false, empty: String(raw || '').trim() === '' };
+    var t = tolDe(q);
+    var ok = Math.abs(v - q.ans) <= t + 1e-9;
+    if (!ok && q.alts) ok = q.alts.some(function (a) { return Math.abs(v - a) <= t + 1e-9; });
+    if (!ok && q.unit === '%' && Math.abs(v * 100 - q.ans) <= t + 1e-9) ok = true;
+    if (!ok && q.unit === 'coef' && Math.abs(v / 100 - q.ans) <= t + 1e-9) ok = true;
+    return { ok: ok, v: v };
+  }
+  // entry : {lines:[{a, alt, d, c}]}, user : [{a, d, c}]
+  function checkEntry(entry, user) {
+    var exp = entry.lines.map(function (l) { return { a: l.a, alt: l.alt, side: l.d ? 'd' : 'c', mt: l.d || l.c, got: { d: 0, c: 0 }, hit: false }; });
+    var extra = [];
+    var tD = 0, tC = 0;
+    user.forEach(function (ul) {
+      var a = String(ul.a || '').replace(/\D/g, '');
+      var d = parseNum(ul.d), c = parseNum(ul.c);
+      d = isNaN(d) ? 0 : d; c = isNaN(c) ? 0 : c;
+      if (!a && !d && !c) return;
+      tD += d; tC += c;
+      var side = d ? 'd' : 'c', mt = d || c;
+      var best = -1, bestScore = -1;
+      exp.forEach(function (x, i) {
+        var lv = accepte(x.a, x.alt, a);
+        if (!lv) return;
+        var sc = lv * 10 + (x.side === side ? 5 : 0) + (Math.abs(x.mt - mt) <= Math.max(1, x.mt * 0.001) ? 3 : 0) + (x.hit ? 0 : 1);
+        if (sc > bestScore) { bestScore = sc; best = i; }
+      });
+      if (best < 0) { extra.push({ a: a, d: d, c: c }); return; }
+      exp[best].got.d += d; exp[best].got.c += c; exp[best].hit = true;
+    });
+    var okCount = 0;
+    var detail = exp.map(function (x) {
+      var g = x.side === 'd' ? x.got.d : x.got.c, o = x.side === 'd' ? x.got.c : x.got.d;
+      var tol = Math.max(1, x.mt * 0.001);
+      var st;
+      if (!x.hit) st = 'manquant';
+      else if (Math.abs(g - x.mt) <= tol && Math.abs(o) <= tol) { st = 'ok'; okCount++; }
+      else if (Math.abs(o - x.mt) <= tol && Math.abs(g) <= tol) st = 'sens';
+      else st = 'montant';
+      return { a: x.a, side: x.side, mt: x.mt, st: st, got: x.got };
+    });
+    var score = Math.max(0, Math.min(1, (okCount - 0.5 * extra.length) / exp.length));
+    return { score: score, detail: detail, extra: extra, equilibre: Math.abs(tD - tC) < 0.01, tD: tD, tC: tC };
+  }
+
+  function entryBalanced(en) {
+    var d = 0, c = 0; en.lines.forEach(function (l) { d += l.d || 0; c += l.c || 0; });
+    return Math.abs(d - c) < 0.005;
+  }
+
+  function L(a, d, c, extra) { var o = { a: a, d: d ? r2(d) : 0, c: c ? r2(c) : 0 }; if (extra) for (var k2 in extra) o[k2] = extra[k2]; return o; }
+  function entry(date, libelle, lines) { return { date: date, lib: libelle, lines: lines.filter(function (l) { return (l.d || 0) > 0.004 || (l.c || 0) > 0.004; }) }; }
+  function journalHtml(entries, pcgNew) {
+    var rows = [];
+    entries.forEach(function (en, i) {
+      rows.push({ cls: 'jdate', cells: ['<b>' + en.date + '</b>', '<span>' + en.lib + '</span>', '', ''] });
+      en.lines.forEach(function (l) {
+        var a = l.show || l.a;
+        rows.push({ cls: l.c ? 'jc' : 'jd', cells: ['<span class="acct">' + a + '</span>', (l.c ? '<span class="ind"></span>' : '') + (l.lib || lib(l.a)), l.d ? n(l.d, 2) : '', l.c ? n(l.c, 2) : ''] });
+      });
+    });
+    return tbl(['Compte', 'Intitulé', 'Débit', 'Crédit'], rows, 'journal');
+  }
+
+  var NOMS = ['AUBRAC', 'BELLEDONNE', 'CALANQUES', 'DÉVOLUY', 'ESTÉREL', 'FLORAC', 'GAVARNIE', 'HOUAT', 'IROISE', 'JURANÇON', 'KERLAZ', 'LUBERON', 'MERCANTOUR', 'NÉBOUZAN', 'OUESSANT', 'PILAT', 'QUERCY', 'ROUERGUE', 'SANCY', 'TANARGUE', 'URDOS', 'VERCORS', 'VALMOREL', 'ZONZA', 'AIGOUAL', 'BRAMABIAU', 'CORBIÈRES', 'DIOIS', 'ÉCRINS', 'FANGO', 'GRÉSIVAUDAN', 'MINERVOIS', 'MORVAN', 'PÉRIGORD', 'TRIÈVES', 'VIVARAIS', 'CHARTREUSE', 'BAUGES', 'LAURAGAIS', 'MÉDOC'];
+  function nom(r) { return r.pick(NOMS); }
+
+  return {
+    rng: rng, r2: r2, r0: r0, rd: rd, floorStep: floorStep, n: n, e: e, e2: e2, pc: pc, pcs: pcs, k: k,
+    MOIS: MOIS, yl: yl, dt: dt, lastDay: lastDay, joursRestants: joursRestants, joursDepuis1Jan: joursDepuis1Jan, dureeTxt: dureeTxt, prorataTxt: prorataTxt,
+    tbl: tbl, kv: kv, calc: calc, p: p, ul: ul, PCG: PCG, lib: lib, ALT: ALT, accepte: accepte,
+    parseNum: parseNum, tolDe: tolDe, checkNum: checkNum, checkEntry: checkEntry, entryBalanced: entryBalanced,
+    L: L, entry: entry, journalHtml: journalHtml, nom: nom
+  };
+})();
+
+/* ===== Amortissements (partagé) ===== */
+var AM = (function () {
+  var r2 = U.r2;
+  function coefDeg(n) { return n <= 4 ? 1.25 : (n <= 6 ? 1.75 : 2.25); }
+  // Plan linéaire : départ à la date de mise en service (année 360 jours)
+  function lineaire(base, n, d, m) {
+    var annu = base / n, rows = [], cum = 0, vnc = base, y = 0;
+    var j1 = U.joursRestants(d, m);
+    var first = j1 >= 360 ? r2(annu) : r2(annu * j1 / 360);
+    while (vnc > 0.004) {
+      var a = y === 0 ? first : r2(annu);
+      if (a > vnc - 0.004 || (y > 0 && vnc - a < 0.05)) a = vnc;
+      cum = r2(cum + a); var v0 = vnc; vnc = r2(base - cum);
+      rows.push({ y: y, base: base, v0: v0, a: a, cum: cum, vnc: vnc, prorata: y === 0 ? j1 : 360 });
+      y++;
+      if (y > 60) break;
+    }
+    return { annu: annu, taux: 1 / n, rows: rows, j1: j1 };
+  }
+  // Plan dégressif fiscal : départ le 1er jour du mois d'acquisition, n exercices
+  function degressif(base, n, mAcq) {
+    var c = coefDeg(n), t = c / n, rows = [], vnc = base, bascule = -1;
+    var mois1 = 13 - mAcq;
+    for (var k = 0; k < n; k++) {
+      var rest = n - k, deg = vnc * t * (k === 0 ? mois1 / 12 : 1), lin = vnc / rest, a, mode = 'dég.';
+      if (k === n - 1) { a = vnc; mode = bascule >= 0 ? 'lin.' : 'solde'; }
+      else if (k > 0 && (bascule >= 0 || lin >= deg - 1e-9)) { a = lin; mode = 'lin.'; if (bascule < 0) bascule = k; }
+      else a = deg;
+      a = r2(a); var v0 = vnc; vnc = r2(vnc - a);
+      rows.push({ y: k, v0: v0, a: a, vnc: vnc, mode: mode, rest: rest, tlin: 1 / rest });
+    }
+    if (bascule < 0 && n > 1) bascule = n - 1;
+    return { coef: c, taux: t, rows: rows, bascule: bascule, mois1: mois1 };
+  }
+  return { coefDeg: coefDeg, lineaire: lineaire, degressif: degressif };
+})();
+
+/* ===== Affectation du résultat, TVA ===== */
+function Q(id, label, ans, unit, extra) {
+  var q = { id: id, label: label, ans: unit === '€' ? U.r2(ans) : ans, unit: unit || '' };
+  if (extra) for (var k in extra) q[k] = extra[k];
+  return q;
+}
+function QC(id, label, options, ans) { return { id: id, label: label, kind: 'choice', options: options, ans: ans }; }
+
+/* ---------- 1. Affectation du résultat ---------- */
+T.affectation = {
+  id: 'affectation', nom: 'Affectation du résultat', famille: 'Comptabilité des sociétés', ctrl: true, minutes: 15,
+  fiche: {
+    objectif: 'Répartir le bénéfice entre réserves, dividendes et report à nouveau, dans l’ordre imposé par la loi puis par les statuts.',
+    etapes: [
+      'Apurer le report à nouveau débiteur (pertes antérieures) avant toute autre affectation.',
+      'Réserve légale : 5 % × (bénéfice − pertes antérieures), jusqu’à ce qu’elle atteigne 10 % du capital social. Calcule la marge restante (10 % × capital − réserve existante) et retiens le plus petit des deux montants.',
+      'Réserves statutaires : selon les statuts (montant ou pourcentage indiqué).',
+      'Bénéfice distribuable = bénéfice − pertes antérieures − réserve légale − réserves statutaires + report à nouveau créditeur.',
+      'Intérêt statutaire (premier dividende) = taux × capital libéré (et non capital souscrit).',
+      'Réserves facultatives décidées par l’assemblée.',
+      'Superdividende par action = reste ÷ nombre d’actions, arrondi comme demandé (toujours à l’inférieur).',
+      'Le reliquat va en report à nouveau. Présente le tableau d’affectation (origines = affectations) puis l’écriture.'
+    ],
+    pieges: [
+      'Oublier de déduire le report à nouveau débiteur de la base de la réserve légale.',
+      'Doter 5 % alors que la réserve légale est presque pleine : seul le complément jusqu’à 10 % du capital est doté.',
+      'Calculer l’intérêt statutaire sur le capital souscrit alors que le capital n’est pas entièrement libéré.',
+      'Ajouter le report à nouveau créditeur dans la base de la réserve légale (il n’y entre pas).',
+      'Arrondir le dividende au plus proche : on arrondit toujours à l’inférieur, sinon on distribue plus que le distribuable.',
+      'Écriture : le 110 ancien est débité (on le reprend), le 110 nouveau est crédité ; les dividendes vont au 457.'
+    ],
+    comptes: ['120 Résultat (bénéfice)', '110 / 119 Report à nouveau', '1061 Réserve légale', '1063 Réserves statutaires', '1068 Autres réserves', '457 Associés – dividendes à payer']
+  },
+  gen: function (r) {
+    for (var essai = 0; essai < 200; essai++) {
+      var v = r.pick([1, 5, 10, 10, 15, 16, 20, 50, 100]);
+      var nb = r.int(2, 60) * (v >= 50 ? 200 : 1000);
+      var C = v * nb;
+      if (C < 30000 || C > 3000000) continue;
+      var plaf = C * 0.1;
+      var etatRL = r.pick(['loin', 'proche', 'plein', 'loin']);
+      var RL0 = etatRL === 'plein' ? plaf : (etatRL === 'proche' ? U.r0(plaf - r.int(1, 20) * plaf / 200) : U.r0(plaf * r.int(2, 7) / 10));
+      RL0 = Math.round(RL0 / 10) * 10;
+      var R = Math.round(C * r.int(4, 22) / 100 / 50) * 50 + r.int(0, 9) * 5;
+      var ranType = r.pick(['crediteur', 'debiteur', 'nul', 'crediteur']);
+      var RAN0 = ranType === 'crediteur' ? r.int(1, 40) * Math.max(10, Math.round(C / 20000)) : (ranType === 'debiteur' ? -r.int(2, 30) * Math.round(R / 100) : 0);
+      var mode = r.chance(0.7) ? 'super' : 'unique';
+      var t = mode === 'super' ? r.pick([0.03, 0.04, 0.05, 0.06]) : 0;
+      var lib = mode === 'super' && r.chance(0.2) ? r.pick([0.5, 0.75]) : 1;
+      var RS = r.chance(0.3) ? Math.round(R * r.pick([0.05, 0.1]) / 10) * 10 : 0;
+      var F = r.chance(0.5) ? Math.round(R * r.int(5, 20) / 100 / 100) * 100 : 0;
+      var arr = mode === 'super' ? r.pick([0.5, 0.1, 1, 0.01]) : r.pick([1, 0.5, 0.1]);
+      if (v <= 1 && arr >= 0.5) arr = 0.01;
+      var p = { nom: U.nom(r), C: C, v: v, lib: lib, RL0: RL0, RAN0: RAN0, R: R, t: t, RS: RS, F: F, arr: arr, mode: mode };
+      var s = this.calc(p);
+      if (s.reste < 0 || s.SDu < arr - 1e-9 && mode === 'super' || s.divU <= 0) continue;
+      if (s.divTot > R * 1.2) continue;
+      return p;
+    }
+    return { nom: 'EXEMPLE', C: 1000000, v: 10, lib: 1, RL0: 60000, RAN0: 1500, R: 110000, t: 0.05, RS: 0, F: 0, arr: 0.5, mode: 'super' };
+  },
+  calc: function (p) {
+    var nb = Math.round(p.C / p.v);
+    var pertes = p.RAN0 < 0 ? -p.RAN0 : 0, RANc = p.RAN0 > 0 ? p.RAN0 : 0;
+    var baseRL = p.R - pertes, cinq = U.r2(baseRL * 0.05), plaf = U.r2(p.C * 0.1), marge = Math.max(0, U.r2(plaf - p.RL0));
+    var RL = Math.min(cinq, marge);
+    var BD = U.r2(p.R - pertes - RL - p.RS + RANc);
+    var IS = U.r2(p.t * p.C * p.lib), ISu = U.r2(p.t * p.v * p.lib);
+    var reste = U.r2(BD - IS - p.F);
+    var SDu = U.floorStep(reste / nb, p.arr);
+    var SD = U.r2(SDu * nb);
+    var divU = U.r2(ISu + SDu), divTot = U.r2(IS + SD);
+    var RAN = U.r2(reste - SD);
+    return { nb: nb, pertes: pertes, RANc: RANc, baseRL: baseRL, cinq: cinq, plaf: plaf, marge: marge, RL: RL, BD: BD, IS: IS, ISu: ISu, reste: reste, SDu: SDu, SD: SD, divU: divU, divTot: divTot, RAN: RAN, brut: reste / nb };
+  },
+  solve: function (p) {
+    var s = this.calc(p), e = U.e, n = U.n;
+    var arrTxt = { 1: 'à l’euro inférieur', 0.5: 'aux 50 centimes d’euro inférieurs', 0.1: 'aux 10 centimes d’euro inférieurs', 0.01: 'au centime inférieur' }[p.arr];
+    var en = '<p>La société <b>' + p.nom + '</b> vous communique les informations suivantes pour répartir le bénéfice de l’exercice N.</p>';
+    var rows = [['Capital social', e(p.C) + ' (' + n(s.nb) + ' actions de ' + e(p.v) + ')' + (p.lib < 1 ? ', libéré ' + (p.lib === 0.5 ? 'de moitié' : 'des trois quarts') : ', entièrement libéré')], ['Réserve légale avant répartition', e(p.RL0)]];
+    if (p.RAN0 > 0) rows.push(['Report à nouveau créditeur', e(p.RAN0)]);
+    if (p.RAN0 < 0) rows.push(['Report à nouveau débiteur (perte de N-1)', e(-p.RAN0)]);
+    rows.push(['Résultat net de l’exercice N (bénéfice)', e(p.R)]);
+    en += U.kv(rows);
+    var cons = ['La réserve légale est dotée dans les conditions prévues par la loi.'];
+    if (p.RS) cons.push('Les statuts prévoient une dotation à la réserve statutaire de ' + e(p.RS) + '.');
+    if (p.mode === 'super') cons.push('Les statuts prévoient un intérêt statutaire (premier dividende) de ' + U.pcs(p.t) + ' du capital libéré.');
+    if (p.F) cons.push('L’assemblée générale décide de doter une réserve facultative de ' + e(p.F) + '.');
+    cons.push(p.mode === 'super' ? 'Elle attribue ensuite aux actions un superdividende arrondi ' + arrTxt + '. Le solde est porté en report à nouveau.' : 'Elle attribue aux actions un dividende unitaire maximum arrondi ' + arrTxt + '. Le solde est porté en report à nouveau.');
+    en += U.ul(cons);
+    en += '<p class="consigne">1. Présentez les calculs et le tableau d’affectation du résultat de N. 2. Passez l’écriture d’affectation (AGO du ' + (p.dateAG || '15/05/N+1') + ').</p>';
+
+    var qs = [Q('rl', 'Dotation à la réserve légale', s.RL, '€'), Q('bd', 'Bénéfice distribuable', s.BD, '€')];
+    if (p.mode === 'super') qs.push(Q('is', 'Intérêt statutaire total', s.IS, '€'));
+    qs.push(Q('du', 'Dividende total par action', s.divU, '€', { tol: 0.005 }));
+    qs.push(Q('dt', 'Montant total des dividendes', s.divTot, '€'));
+    qs.push(Q('ran', 'Nouveau report à nouveau', s.RAN, '€'));
+
+    var c = [];
+    if (s.pertes) c.push(['Apurement des pertes', 'report à nouveau débiteur', e(s.pertes)]);
+    c.push(['Réserve légale', '5 % × ' + (s.pertes ? '(' + n(p.R) + ' − ' + n(s.pertes) + ')' : n(p.R)) + ' = ' + n(s.cinq) + ' ; plafond 10 % × ' + n(p.C) + ' = ' + n(s.plaf) + ', déjà ' + n(p.RL0) + ', marge ' + n(s.marge), '<b>' + e(s.RL) + '</b>']);
+    if (p.RS) c.push(['Réserve statutaire', 'statuts', e(p.RS)]);
+    c.push(['Bénéfice distribuable', n(p.R) + (s.pertes ? ' − ' + n(s.pertes) : '') + ' − ' + n(s.RL) + (p.RS ? ' − ' + n(p.RS) : '') + (s.RANc ? ' + ' + n(s.RANc) : ''), '<b>' + e(s.BD) + '</b>']);
+    if (p.mode === 'super') c.push(['Intérêt statutaire', U.pcs(p.t) + ' × ' + n(p.C) + (p.lib < 1 ? ' × ' + n(p.lib, 2) : '') + ' (soit ' + U.e2(s.ISu) + ' par action)', e(s.IS)]);
+    if (p.F) c.push(['Réserve facultative', 'décision de l’AG', e(p.F)]);
+    c.push([p.mode === 'super' ? 'Superdividende' : 'Dividende', n(s.reste) + ' ÷ ' + n(s.nb) + ' = ' + n(s.brut, 4) + ' → arrondi ' + U.e2(s.SDu) + ' × ' + n(s.nb), e(s.SD)]);
+    c.push(['Report à nouveau', n(s.reste) + ' − ' + n(s.SD), '<b>' + e(s.RAN) + '</b>']);
+
+    var orig = [], aff = [];
+    if (p.RAN0 > 0) orig.push(['Report à nouveau antérieur', e(p.RAN0)]);
+    if (p.RAN0 < 0) orig.push(['Report à nouveau débiteur', '− ' + e(-p.RAN0)]);
+    orig.push(['Résultat de l’exercice N', e(p.R)]);
+    if (s.RL) aff.push(['Réserve légale', e(s.RL)]);
+    if (p.RS) aff.push(['Réserve statutaire', e(p.RS)]);
+    if (p.F) aff.push(['Réserve facultative', e(p.F)]);
+    if (p.mode === 'super') { aff.push(['Intérêt statutaire', e(s.IS)]); aff.push(['Superdividende', e(s.SD)]); }
+    else aff.push(['Dividendes', e(s.SD)]);
+    aff.push(['Report à nouveau', e(s.RAN)]);
+    var tot = U.r2(p.R + p.RAN0);
+    var nr = Math.max(orig.length, aff.length), trows = [];
+    for (var i = 0; i < nr; i++) trows.push([(orig[i] || ['', ''])[0], (orig[i] || ['', ''])[1], (aff[i] || ['', ''])[0], (aff[i] || ['', ''])[1]]);
+    trows.push({ cls: 'tot', cells: ['Total', e(tot), 'Total', e(U.r2(s.RL + p.RS + p.F + s.divTot + s.RAN))] });
+
+    var L = U.L, lines = [L('120', p.R, 0)];
+    if (p.RAN0 > 0) lines.push(L('110', p.RAN0, 0, { lib: 'Report à nouveau (ancien solde)' }));
+    if (p.RAN0 < 0) lines.push(L('119', 0, -p.RAN0, { lib: 'Report à nouveau débiteur (apurement)' }));
+    lines.push(L('1061', 0, s.RL), L('1063', 0, p.RS), L('1068', 0, p.F), L('457', 0, s.divTot), L('110', 0, s.RAN, { lib: 'Report à nouveau (nouveau solde)' }));
+    var journal = [U.entry(p.dateAG || '15/05/N+1', 'Affectation du résultat de N', lines)];
+
+    var taux = s.divTot / p.R, mis = U.r2(s.RL + p.RS + p.F + s.RAN - s.RANc);
+    var com = [];
+    com.push('Le bénéfice de ' + e(p.R) + ' est d’abord affecté aux obligations légales' + (s.pertes ? ' : les pertes antérieures (' + e(s.pertes) + ') sont apurées en priorité, car on ne peut distribuer tant qu’elles ne sont pas absorbées' : '') + '.');
+    com.push(s.RL === 0 ? 'La réserve légale a déjà atteint son plafond de 10 % du capital : aucune dotation n’est obligatoire.' : (s.RL < s.cinq ? 'La réserve légale ne reçoit que ' + e(s.RL) + ', le complément qui lui permet d’atteindre son plafond de ' + e(s.plaf) + ' : elle n’aura plus à être dotée tant que le capital ne change pas.' : 'La réserve légale reçoit ' + e(s.RL) + ' et atteint ' + e(U.r2(p.RL0 + s.RL)) + ', encore sous son plafond de ' + e(s.plaf) + ' : la dotation de 5 % se poursuivra les années suivantes.'));
+    com.push('Les actionnaires reçoivent ' + U.e2(s.divU) + ' par action, soit ' + e(s.divTot) + ' : le taux de distribution atteint ' + U.pc(taux, 1) + ' du bénéfice. ' + (taux > 0.8 ? 'C’est une politique très généreuse, qui laisse peu de ressources pour l’autofinancement.' : (taux < 0.4 ? 'La société privilégie l’autofinancement, ce qui renforce ses capitaux propres et son fonds de roulement.' : 'La société équilibre la rémunération des associés et le renforcement de ses capitaux propres.')));
+    com.push('L’arrondi à l’inférieur laisse ' + e(s.RAN) + ' en report à nouveau ; cette somme restera disponible pour une distribution ou une mise en réserve lors de la prochaine assemblée.');
+    com.push('Les dividendes, inscrits au crédit du compte 457, constituent une dette envers les associés ; ils doivent être mis en paiement dans les neuf mois qui suivent la clôture (D 457 / C 512 lors du versement).');
+    com.push('Au total, ' + e(mis) + ' restent dans l’entreprise (réserves et report à nouveau) et améliorent sa solvabilité.');
+
+    return {
+      enonce: en, questions: qs, journal: journal,
+      steps: [{ h: 'Calculs', html: U.calc(c) }, { h: 'Tableau d’affectation', html: U.tbl(['Origines', '', 'Affectations', ''], trows, 'aff') }],
+      comment: com.join(' ')
+    };
+  }
+};
+
+/* ---------- 2. Déclaration de TVA (CA3) ---------- */
+T.tva_ca3 = {
+  id: 'tva_ca3', nom: 'TVA : déclaration mensuelle (CA3)', famille: 'TVA', ctrl: true, minutes: 15,
+  fiche: {
+    objectif: 'Calculer la TVA due au titre d’un mois (régime réel normal) et passer les écritures de liquidation et de paiement.',
+    etapes: [
+      'TVA brute = TVA collectée (ventes du mois ; prestations encaissées) + TVA due intracommunautaire (autoliquidation des acquisitions dans l’UE).',
+      'TVA déductible = TVA sur immobilisations + TVA sur autres biens et services + TVA déductible intracommunautaire, sur factures conformes et dépenses non exclues.',
+      'TVA nette = TVA brute − TVA déductible − crédit de TVA antérieur.',
+      'Positive : TVA à décaisser (44551), payée le mois suivant. Négative : crédit de TVA à reporter (44567) ou à rembourser.',
+      'Écriture : on débite les comptes de TVA collectée et due (pour les solder), on crédite les comptes de TVA déductible et l’ancien crédit, le solde va au 44551 (crédit) ou au 44567 (débit).'
+    ],
+    pieges: [
+      'Prestations de services : la TVA est exigible à l’encaissement (sauf option pour les débits) ; on ne collecte que sur les sommes encaissées.',
+      'Exclusions du droit à déduction : véhicules de tourisme, cadeaux de plus de 73 € TTC par bénéficiaire et par an, logement des dirigeants.',
+      'Acquisition intracommunautaire : la même TVA est due (4452) et déductible (445662) ; l’effet est nul si elle est entièrement déductible, mais les deux lignes figurent dans l’écriture.',
+      'Le crédit de TVA antérieur (solde débiteur du 44567) vient en déduction : il est crédité dans l’écriture.',
+      'Le compte 44551 est soldé au paiement (D 44551 / C 512), jamais dans l’écriture de déclaration.'
+    ],
+    comptes: ['44571 TVA collectée', '4452 TVA due intracommunautaire', '44562 TVA sur immobilisations', '44566 TVA sur autres biens et services', '445662 TVA déductible intracommunautaire', '44567 Crédit de TVA à reporter', '44551 TVA à décaisser']
+  },
+  gen: function (r) {
+    var mois = r.int(1, 11);
+    if (r.chance(0.35)) {
+      var s = { c4457: r.int(20, 200) * 431 + r.int(0, 99), c4452: r.chance(0.5) ? r.int(5, 60) * 47 : 0, d44562: r.chance(0.6) ? r.int(2, 40) * 123 : 0, d44566: 0, d44567: r.chance(0.5) ? r.int(5, 50) * 41 : 0 };
+      s.d445662 = s.c4452 ? (r.chance(0.7) ? s.c4452 : U.r0(s.c4452 * r.int(80, 120) / 100)) : 0;
+      s.d44566 = U.r0(s.c4457 * r.int(30, 75) / 100);
+      if (r.chance(0.2)) s.d44562 += U.r0(s.c4457 * 0.6);
+      return { nom: U.nom(r), mode: 'soldes', mois: mois, s: s };
+    }
+    var o = {
+      v20: r.int(30, 400) * 1000 + r.int(0, 9) * 100, v10: r.chance(0.4) ? r.int(5, 80) * 1000 : 0, v55: r.chance(0.3) ? r.int(5, 60) * 1000 : 0,
+      prestFact: 0, prestEnc: 0, achats: 0, frais: r.int(5, 40) * 500, cadeaux: r.chance(0.4) ? r.int(2, 12) * 150 : 0,
+      immo: r.chance(0.5) ? r.int(5, 80) * 1000 : 0, vp: r.chance(0.3) ? r.int(18, 45) * 1000 : 0, aic: r.chance(0.5) ? r.int(5, 60) * 1000 : 0,
+      credit: r.chance(0.4) ? r.int(5, 80) * 37 : 0
+    };
+    if (r.chance(0.5)) { o.prestFact = r.int(10, 60) * 1000; o.prestEnc = U.r0(o.prestFact * r.int(3, 9) / 10 / 100) * 100; }
+    o.achats = U.r0((o.v20 + o.v10 + o.v55) * r.int(35, 85) / 100 / 100) * 100;
+    return { nom: U.nom(r), mode: 'ops', mois: mois, o: o };
+  },
+  calc: function (p) {
+    var x = {};
+    if (p.mode === 'soldes') {
+      var s = p.s; x.coll = s.c4457; x.due = s.c4452; x.immo = s.d44562; x.abs = s.d44566; x.intra = s.d445662; x.cred = s.d44567;
+    } else {
+      var o = p.o;
+      x.coll = U.r2(o.v20 * 0.2 + o.v10 * 0.1 + o.v55 * 0.055 + o.prestEnc * 0.2);
+      x.due = U.r2(o.aic * 0.2); x.intra = x.due;
+      x.immo = U.r2(o.immo * 0.2);
+      x.abs = U.r2((o.achats + o.frais) * 0.2);
+      x.cred = o.credit;
+    }
+    x.brute = U.r2(x.coll + x.due);
+    x.ded = U.r2(x.immo + x.abs + x.intra);
+    x.net = U.r2(x.brute - x.ded - x.cred);
+    return x;
+  },
+  solve: function (p) {
+    var x = this.calc(p), e = U.e, n = U.n, M = U.MOIS[p.mois - 1];
+    var fin = U.lastDay(p.mois) + '/' + (p.mois < 10 ? '0' : '') + p.mois + '/N';
+    var pay = '15/' + (p.mois + 1 < 10 ? '0' : '') + (p.mois + 1) + '/N';
+    var en, c = [];
+    if (p.mode === 'soldes') {
+      var s = p.s;
+      en = '<p>Les soldes au ' + fin + ' des comptes de TVA de la société <b>' + p.nom + '</b> sont les suivants :</p>';
+      var rows = [['44571', 'TVA collectée', e(s.c4457)]];
+      if (s.c4452) rows.push(['4452', 'TVA due intracommunautaire', e(s.c4452)]);
+      if (s.d44562) rows.push(['44562', 'TVA sur immobilisations', e(s.d44562)]);
+      rows.push(['44566', 'TVA sur autres biens et services', e(s.d44566)]);
+      if (s.d445662) rows.push(['445662', 'TVA déductible intracommunautaire', e(s.d445662)]);
+      if (s.d44567) rows.push(['44567', 'Crédit de TVA à reporter (mois précédent)', e(s.d44567)]);
+      en += U.tbl(['Compte', 'Intitulé', 'Solde'], rows);
+      c.push(['TVA brute', n(x.coll) + (x.due ? ' + ' + n(x.due) : ''), e(x.brute)]);
+      c.push(['TVA déductible', [x.immo, x.abs, x.intra].filter(Boolean).map(n).join(' + '), e(x.ded)]);
+    } else {
+      var o = p.o;
+      en = '<p>La société <b>' + p.nom + '</b>, soumise au régime réel normal, a réalisé en ' + M + ' N les opérations suivantes (montants hors taxes) :</p>';
+      var li = ['Ventes de marchandises au taux de 20 % : ' + e(o.v20)];
+      if (o.v10) li.push('Ventes au taux de 10 % : ' + e(o.v10));
+      if (o.v55) li.push('Ventes au taux de 5,5 % : ' + e(o.v55));
+      if (o.prestFact) li.push('Prestations de services facturées : ' + e(o.prestFact) + ', dont ' + e(o.prestEnc) + ' encaissées dans le mois (pas d’option pour les débits)');
+      li.push('Achats de marchandises en France (TVA 20 %) : ' + e(o.achats));
+      li.push('Frais généraux (TVA 20 %) : ' + e(o.frais));
+      if (o.cadeaux) li.push('Cadeaux de fin d’année à des clients, ' + e(U.r2(o.cadeaux * 1.2)) + ' TTC par bénéficiaire (' + e(o.cadeaux) + ' HT)');
+      if (o.immo) li.push('Achat d’une machine-outil : ' + e(o.immo));
+      if (o.vp) li.push('Achat d’une voiture de tourisme pour le directeur commercial : ' + e(o.vp));
+      if (o.aic) li.push('Acquisition intracommunautaire de marchandises auprès d’un fournisseur allemand : ' + e(o.aic));
+      if (o.credit) li.push('Crédit de TVA du mois précédent : ' + e(o.credit));
+      en += U.ul(li) + '<p>Toutes les factures sont conformes. Taux normal 20 %.</p>';
+      var cl = [n(o.v20) + ' × 20 %'];
+      if (o.v10) cl.push(n(o.v10) + ' × 10 %'); if (o.v55) cl.push(n(o.v55) + ' × 5,5 %'); if (o.prestEnc) cl.push(n(o.prestEnc) + ' × 20 % (encaissements seulement)');
+      c.push(['TVA collectée', cl.join(' + '), e(x.coll)]);
+      if (x.due) c.push(['TVA due intracommunautaire', n(o.aic) + ' × 20 %', e(x.due)]);
+      c.push(['TVA brute', '', '<b>' + e(x.brute) + '</b>']);
+      if (x.immo || o.vp) c.push(['TVA sur immobilisations', o.immo ? n(o.immo) + ' × 20 %' + (o.vp ? ' (voiture de tourisme exclue)' : '') : 'voiture de tourisme exclue', e(x.immo)]);
+      c.push(['TVA sur autres biens et services', '(' + n(o.achats) + ' + ' + n(o.frais) + ') × 20 %' + (o.cadeaux ? ' (cadeaux > 73 € TTC exclus)' : ''), e(x.abs)]);
+      if (x.intra) c.push(['TVA déductible intracommunautaire', n(o.aic) + ' × 20 %', e(x.intra)]);
+      c.push(['TVA déductible', '', '<b>' + e(x.ded) + '</b>']);
+    }
+    if (x.cred) c.push(['Crédit antérieur', '', e(x.cred)]);
+    c.push([x.net >= 0 ? 'TVA à décaisser' : 'Crédit de TVA à reporter', n(x.brute) + ' − ' + n(x.ded) + (x.cred ? ' − ' + n(x.cred) : ''), '<b>' + e(Math.abs(x.net)) + '</b>']);
+    en += '<p class="consigne">1. Calculez la TVA due au titre de ' + M + ' N. 2. Passez l’écriture de déclaration au ' + fin + '. 3. Le cas échéant, passez l’écriture de paiement du ' + pay + '.</p>';
+
+    var qs = [Q('coll', 'TVA collectée', x.coll, '€')];
+    if (x.due) qs.push(Q('due', 'TVA due intracommunautaire', x.due, '€'));
+    qs.push(Q('ded', 'Total de la TVA déductible', x.ded, '€'));
+    qs.push(QC('sens', 'Résultat de la déclaration', ['TVA à décaisser', 'Crédit de TVA à reporter'], x.net >= 0 ? 0 : 1));
+    qs.push(Q('net', 'Montant de la TVA à décaisser ou du crédit', Math.abs(x.net), '€'));
+
+    var L = U.L;
+    var lines = [L('44571', x.coll, 0), L('4452', x.due, 0)];
+    if (x.net < 0) lines.push(L('44567', -x.net, 0, { lib: 'Crédit de TVA à reporter (nouveau)' }));
+    lines.push(L('44562', 0, x.immo), L('44566', 0, x.abs), L('445662', 0, x.intra), L('44567', 0, x.cred, { lib: 'Crédit de TVA antérieur imputé' }));
+    if (x.net > 0) lines.push(L('44551', 0, x.net));
+    var journal = [U.entry(fin, 'Déclaration de TVA de ' + M, lines)];
+    if (x.net > 0) journal.push(U.entry(pay, 'Paiement de la TVA de ' + M, [L('44551', x.net, 0), L('512', 0, x.net)]));
+
+    var com = [];
+    com.push('La TVA est un impôt sur la consommation que l’entreprise collecte pour le compte de l’État : elle ne constitue ni une charge ni un produit, d’où son passage par des comptes de tiers (classe 4).');
+    com.push('Sur ' + M + ', la TVA brute s’élève à ' + e(x.brute) + ' et la TVA déductible à ' + e(x.ded) + '.');
+    if (x.net >= 0) com.push('L’entreprise doit reverser ' + e(x.net) + ' : la déclaration CA3 est déposée et la taxe télépayée le mois suivant, à la date fixée par le calendrier fiscal ; le compte 44551 est alors soldé par la banque.');
+    else com.push('La TVA déductible dépasse la TVA due : l’entreprise dégage un crédit de ' + e(-x.net) + ', qui s’imputera sur la déclaration suivante ou pourra faire l’objet d’une demande de remboursement.');
+    if (x.due) com.push('L’acquisition intracommunautaire est autoliquidée : la TVA est à la fois due et déductible, ce qui est neutre pour la trésorerie mais doit figurer sur la déclaration.');
+    if (p.mode === 'ops' && (p.o.vp || p.o.cadeaux)) com.push('Les dépenses exclues du droit à déduction (' + [p.o.vp ? 'voiture de tourisme' : '', p.o.cadeaux ? 'cadeaux de plus de 73 € TTC' : ''].filter(Boolean).join(', ') + ') sont comptabilisées TTC : la TVA non récupérable augmente leur coût.');
+    if (p.mode === 'ops' && p.o.prestFact) com.push('Pour les prestations de services, la TVA n’est exigible qu’à l’encaissement : seule la part encaissée (' + e(p.o.prestEnc) + ') est imposée ce mois-ci.');
+    com.push('Une erreur sur la CA3 expose à des intérêts de retard et à des majorations : chaque montant doit être justifié par une facture conforme.');
+    return { enonce: en, questions: qs, journal: journal, steps: [{ h: 'Calcul de la TVA due', html: U.calc(c) }], comment: com.join(' ') };
+  }
+};
+
+/* ---------- 3. Coefficient de déduction (bien à usage mixte) ---------- */
+T.tva_coef = {
+  id: 'tva_coef', nom: 'TVA : coefficient de déduction', famille: 'TVA', ctrl: true, minutes: 15,
+  fiche: {
+    objectif: 'Déterminer la TVA déductible sur un bien utilisé à la fois pour des opérations taxées et pour des opérations exonérées ou hors champ, puis comptabiliser son acquisition.',
+    etapes: [
+      'Coefficient d’assujettissement : part d’utilisation du bien pour des opérations dans le champ de la TVA (imposables ou exonérées). 1 si le bien ne sert à aucune activité hors champ.',
+      'Coefficient de taxation : CA ouvrant droit à déduction ÷ CA total des opérations dans le champ (taxées + exonérées). Données de N-1 pour le coefficient provisoire.',
+      'Coefficient d’admission : 0 pour les biens exclus (véhicule de tourisme), 1 sinon.',
+      'Coefficient de déduction = assujettissement × taxation × admission.',
+      'TVA déductible = TVA d’origine × coefficient ; la TVA non déductible s’ajoute au coût de l’immobilisation.',
+      'Amortissement calculé sur ce coût majoré, au prorata de la date de mise en service.'
+    ],
+    pieges: [
+      'Confondre exonéré (dans le champ : joue sur la taxation) et hors champ (joue sur l’assujettissement).',
+      'Oublier d’ajouter la TVA non déductible au coût d’acquisition, donc à la base amortissable.',
+      'Le coefficient est provisoire (données de N-1) : il sera régularisé avec le coefficient définitif de N avant le 25 avril N+1.',
+      'Pour un immeuble, la période de régularisation est de 20 ans (5 ans pour un bien meuble) ; régularisation si l’écart dépasse 10 points.',
+      'Écris l’hypothèse retenue quand l’énoncé est ambigu (sujet 2026 : formation « non soumise à la TVA »).'
+    ],
+    comptes: ['213 Constructions', '44562 TVA sur immobilisations', '512 Banque / 404 Fournisseurs d’immobilisations', '6811 / 2813 Amortissements']
+  },
+  gen: function (r) {
+    var acts = [['la construction de machines agricoles', 'la formation professionnelle', 'exonérée de TVA (article 261-4-4° du CGI)'], ['la vente de matériel médical', 'des soins médicaux', 'exonérés de TVA'], ['la promotion immobilière', 'la location de logements nus', 'exonérée de TVA'], ['le conseil aux entreprises', 'des opérations bancaires et financières', 'exonérées de TVA (sans option)']];
+    var a = r.pick(acts);
+    var tax = r.int(45, 92) / 100, tot = r.int(40, 250) * 100000;
+    var T1 = U.r0(tot * tax), E = tot - T1;
+    var niveaux = r.pick([4, 5, 6]);
+    var hc = r.chance(0.35) ? r.int(1, niveaux - 2) : 0;
+    return { nom: U.nom(r), actT: a[0], actE: a[1], exoTxt: a[2], T: T1, E: E, P: r.int(400, 3000) * 1000 + r.pick([0, 500, 700]), m: r.int(2, 11), duree: r.pick([20, 25, 30, 40]), niveaux: niveaux, hc: hc };
+  },
+  calc: function (p) {
+    var assu = p.hc ? (p.niveaux - p.hc) / p.niveaux : 1;
+    var tax = U.rd(p.T / (p.T + p.E), 4);
+    var adm = 1, ded = U.rd(assu * tax * adm, 4);
+    var tva = U.r2(p.P * 0.2), tvaD = U.r2(tva * ded), tvaND = U.r2(tva - tvaD), cout = U.r2(p.P + tvaND);
+    var mois = 13 - p.m, dot = U.r2(cout / p.duree * mois / 12);
+    return { assu: assu, tax: tax, adm: adm, ded: ded, tva: tva, tvaD: tvaD, tvaND: tvaND, cout: cout, mois: mois, dot: dot };
+  },
+  solve: function (p) {
+    var x = this.calc(p), e = U.e, n = U.n;
+    var date = '01/' + (p.m < 10 ? '0' : '') + p.m + '/N';
+    var en = '<p>La société <b>' + p.nom + '</b> exerce deux activités : ' + p.actT + ' (soumise à la TVA) et ' + p.actE + ', ' + p.exoTxt + '.</p>';
+    en += U.kv([['Chiffre d’affaires N-1 – ' + p.actT, e(p.T)], ['Chiffre d’affaires N-1 – ' + p.actE, e(p.E)]]);
+    en += '<p>Pour son siège, elle acquiert au comptant un immeuble de ' + p.niveaux + ' niveaux pour ' + e(p.P) + ' HT (TVA 20 %), mis en service le ' + date + ' et amorti en linéaire sur ' + p.duree + ' ans. ';
+    en += p.hc ? (p.hc === 1 ? 'Un niveau est mis gratuitement à la disposition d’une association culturelle (activité hors du champ d’application de la TVA) ; les autres niveaux servent indistinctement aux deux activités. ' : p.hc + ' niveaux sont mis gratuitement à la disposition d’une association culturelle (activité hors du champ d’application de la TVA) ; les autres servent indistinctement aux deux activités. ') : 'L’immeuble sert aux deux activités. ';
+    en += 'Aucune mesure d’exclusion ne s’applique à ce bien.</p>';
+    en += '<p class="consigne">1. Calculez les coefficients d’assujettissement, de taxation, d’admission et de déduction. 2. Enregistrez l’acquisition du ' + date + ' et la dotation du 31/12/N.</p>';
+    var qs = [Q('as', 'Coefficient d’assujettissement', x.assu, 'coef', { tol: 0.005 }), Q('ta', 'Coefficient de taxation', x.tax, 'coef', { tol: 0.005 }), Q('ad', 'Coefficient d’admission', 1, 'coef', { tol: 0.001 }), Q('de', 'Coefficient de déduction', x.ded, 'coef', { tol: 0.006 }),
+      Q('tvad', 'TVA déductible', x.tvaD, '€'), Q('cout', 'Coût d’acquisition de l’immeuble', x.cout, '€'), Q('dot', 'Dotation aux amortissements de N', x.dot, '€')];
+    var c = [
+      ['Assujettissement', p.hc ? (p.niveaux - p.hc) + ' niveaux sur ' + p.niveaux + ' utilisés pour des opérations dans le champ' : 'toutes les opérations sont dans le champ de la TVA (l’activité exonérée y est incluse)', n(x.assu, 2)],
+      ['Taxation', n(p.T) + ' ÷ (' + n(p.T) + ' + ' + n(p.E) + ')', n(x.tax, 2)],
+      ['Admission', 'aucune exclusion', '1'],
+      ['Déduction', n(x.assu, 2) + ' × ' + n(x.tax, 2) + ' × 1', '<b>' + n(x.ded, 4).replace(/0+$/, '').replace(/,$/, '') + '</b>'],
+      ['TVA d’origine', n(p.P) + ' × 20 %', e(x.tva)],
+      ['TVA déductible', n(x.tva) + ' × ' + n(x.ded, 4).replace(/0+$/, '').replace(/,$/, ''), e(x.tvaD)],
+      ['TVA non déductible', n(x.tva) + ' − ' + n(x.tvaD), e(x.tvaND)],
+      ['Coût d’acquisition', n(p.P) + ' + ' + n(x.tvaND), '<b>' + e(x.cout) + '</b>'],
+      ['Dotation N', n(x.cout) + ' ÷ ' + p.duree + ' × ' + x.mois + '/12', '<b>' + e(x.dot) + '</b>']
+    ];
+    var L = U.L;
+    var journal = [U.entry(date, 'Acquisition de l’immeuble', [L('213', x.cout, 0), L('44562', x.tvaD, 0), L('512', 0, U.r2(p.P + x.tva), { alt: ['404'] })]),
+      U.entry('31/12/N', 'Dotation aux amortissements', [L('6811', x.dot, 0), L('2813', 0, x.dot)])];
+    var com = [];
+    com.push('Le droit à déduction n’est que partiel : l’immeuble sert ' + (p.hc ? 'pour partie à une activité hors champ, ce qui réduit l’assujettissement, et ' : '') + 'à une activité exonérée qui n’ouvre pas droit à déduction, ce qui réduit la taxation.');
+    com.push('Sur ' + e(x.tva) + ' de TVA facturée, seuls ' + e(x.tvaD) + ' sont récupérables (coefficient ' + n(x.ded, 4).replace(/0+$/, '').replace(/,$/, '') + ').');
+    com.push('Les ' + e(x.tvaND) + ' non récupérables constituent une charge pour l’entreprise : ils s’ajoutent au coût de l’immeuble et seront étalés par l’amortissement sur ' + p.duree + ' ans.');
+    com.push('Le coefficient de taxation retenu est provisoire, calculé sur le chiffre d’affaires de N-1 ; il sera remplacé par le coefficient définitif de N, connu au plus tard le 25 avril N+1, et la déduction sera ajustée.');
+    com.push('Ensuite, pendant 20 ans pour un immeuble, une régularisation annuelle d’un vingtième sera opérée si le coefficient d’une année s’écarte de plus de 10 points de celui de N, ou en cas de cession non soumise à TVA.');
+    com.push('Le développement de l’activité taxée améliorera donc le droit à déduction, alors qu’une croissance de l’activité exonérée l’amputerait.');
+    return { enonce: en, questions: qs, journal: journal, steps: [{ h: 'Coefficients et coût', html: U.calc(c) }], comment: com.join(' ') };
+  }
+};
+
+/* ---------- 4. Régularisations de TVA ---------- */
+T.tva_regul = {
+  id: 'tva_regul', nom: 'TVA : régularisations', famille: 'TVA', ctrl: true, minutes: 12,
+  fiche: {
+    objectif: 'Ajuster la TVA déduite sur une immobilisation lorsque le coefficient de déduction varie ou que le bien est cédé pendant la période de régularisation.',
+    etapes: [
+      'Coefficient définitif de l’année d’acquisition (avant le 25 avril N+1) : régularisation = TVA d’origine × (coefficient définitif − coefficient provisoire).',
+      'Années suivantes : on compare le coefficient de l’année à celui de l’année d’acquisition. Si l’écart dépasse 10 points (0,10), régularisation = TVA d’origine × écart ÷ 5 (bien meuble) ou ÷ 20 (immeuble).',
+      'Écart positif : complément de déduction ; écart négatif : reversement.',
+      'Cession d’un immeuble sans TVA pendant la période : reversement = TVA initialement déduite × (20 − nombre d’années civiles écoulées, année de cession comprise) ÷ 20.',
+      'La régularisation ne modifie pas le coût de l’immobilisation : elle est constatée en charge (reversement) ou en produit (complément).'
+    ],
+    pieges: [
+      'Comparer au coefficient de l’année précédente au lieu de celui de l’année d’acquisition.',
+      'Régulariser un écart de 10 points exactement : il faut un écart strictement supérieur.',
+      'Diviser par 20 pour un bien meuble (c’est 5).',
+      'Oublier que l’année d’acquisition compte comme une année écoulée.'
+    ],
+    comptes: ['44562 TVA sur immobilisations', '44571 TVA collectée (reversement)', '6358 Autres droits (charge de reversement)', '758 Produits divers de gestion courante (complément)']
+  },
+  gen: function (r) {
+    var sub = r.pick(['annuelle', 'annuelle', 'cession', 'definitif']);
+    var meuble = sub === 'annuelle' ? r.chance(0.5) : false;
+    var Pht = meuble ? r.int(20, 200) * 1000 : r.int(300, 2000) * 1000;
+    var c0 = r.int(40, 90) / 100;
+    var p = { nom: U.nom(r), sub: sub, meuble: meuble, P: Pht, c0: c0 };
+    if (sub === 'annuelle') {
+      var ys = [], max = meuble ? 4 : 6;
+      var k0 = r.int(1, max - 2);
+      for (var i = 0; i < 3; i++) {
+        var dlt = r.pick([-0.18, -0.12, -0.08, -0.05, 0.03, 0.07, 0.10, 0.13, 0.16, 0.21, -0.10, -0.22]);
+        var c = Math.min(1, Math.max(0, U.rd(c0 + dlt, 2)));
+        ys.push({ y: k0 + i, c: c });
+      }
+      p.annees = ys;
+    } else if (sub === 'cession') {
+      p.kc = r.int(2, 15); p.prix = U.r0(p.P * r.int(90, 140) / 100 / 1000) * 1000;
+    } else {
+      p.cprov = c0; p.cdef = Math.min(1, U.rd(c0 + r.pick([-0.09, -0.06, -0.04, 0.03, 0.05, 0.08, 0.12]), 2));
+    }
+    return p;
+  },
+  solve: function (p) {
+    var e = U.e, n = U.n, tva = U.r2(p.P * 0.2), L = U.L, qs = [], c = [], journal = [], com = [];
+    var bien = p.meuble ? 'une machine (bien meuble)' : 'un immeuble';
+    var en = '<p>La société <b>' + p.nom + '</b>, partiellement redevable de la TVA, a acquis en N ' + bien + ' pour ' + e(p.P) + ' HT, soit ' + e(tva) + ' de TVA (taux 20 %).</p>';
+    var tvaD = U.r2(tva * p.c0);
+    if (p.sub === 'annuelle') {
+      var div = p.meuble ? 5 : 20;
+      en += '<p>Le coefficient de déduction définitif de N était de ' + n(p.c0, 2) + ' ; la TVA déduite s’est donc élevée à ' + e(tvaD) + '. Les coefficients définitifs des années suivantes sont :</p>';
+      en += U.tbl(['Année', 'Coefficient de déduction'], p.annees.map(function (a) { return [U.yl(a.y), n(a.c, 2)]; }));
+      en += '<p class="consigne">1. Calculez, pour chaque année, la régularisation éventuelle (montant positif pour un complément de déduction, négatif pour un reversement). 2. Comptabilisez la régularisation de ' + U.yl(p.annees[p.annees.length - 1].y) + ' si elle est due.</p>';
+      var last = null;
+      p.annees.forEach(function (a, i) {
+        var ec = U.rd(a.c - p.c0, 2), reg = Math.abs(ec) > 0.1 + 1e-9 ? U.r2(tva * ec / div) : 0;
+        qs.push(Q('r' + i, 'Régularisation en ' + U.yl(a.y), reg, '€'));
+        c.push([U.yl(a.y), 'écart ' + n(a.c, 2) + ' − ' + n(p.c0, 2) + ' = ' + (ec > 0 ? '+' : '') + n(ec, 2) + (reg ? ' > 10 points → ' + n(tva) + ' × ' + (ec > 0 ? '' : '(') + n(ec, 2) + (ec > 0 ? '' : ')') + ' ÷ ' + div : ' : pas plus de 10 points, aucune régularisation'), '<b>' + (reg > 0 ? '+' : '') + e(reg) + '</b>']);
+        if (i === p.annees.length - 1) last = { reg: reg, y: a.y };
+      });
+      if (last.reg < 0) journal.push(U.entry('31/12/' + U.yl(last.y), 'Reversement de TVA (régularisation annuelle)', [L('6358', -last.reg, 0), L('44571', 0, -last.reg, { lib: 'TVA à reverser' })]));
+      if (last.reg > 0) journal.push(U.entry('31/12/' + U.yl(last.y), 'Complément de déduction (régularisation annuelle)', [L('44562', last.reg, 0), L('758', 0, last.reg)]));
+      com.push('La déduction opérée lors de l’acquisition n’est pas définitive : pendant ' + div + ' ans (' + (p.meuble ? 'bien meuble' : 'immeuble') + '), elle suit l’usage réel du bien.');
+      com.push('Chaque année, le coefficient définitif est comparé à celui de l’année d’acquisition (' + n(p.c0, 2) + ') ; seul un écart de plus de 10 points entraîne une régularisation, égale à un ' + (p.meuble ? 'cinquième' : 'vingtième') + ' de la TVA d’origine multiplié par l’écart.');
+      com.push('Les petits écarts sont donc ignorés, ce qui évite des corrections permanentes.');
+      com.push('Un reversement augmente les charges de l’exercice et pèse sur la trésorerie ; un complément de déduction constitue au contraire un produit et une créance sur l’État.');
+      com.push('La régularisation ne modifie pas le coût d’entrée du bien, qui reste figé, ni le plan d’amortissement.');
+      com.push('L’entreprise a intérêt à anticiper l’évolution de la part de ses activités taxées, car elle commande le montant de TVA réellement récupéré sur ses investissements.');
+    } else if (p.sub === 'cession') {
+      var ec2 = p.kc + 1, rev = U.r2(tvaD * (20 - ec2) / 20);
+      en += '<p>Le coefficient de déduction de N était de ' + n(p.c0, 2) + ' (TVA déduite : ' + e(tvaD) + '). L’immeuble, achevé depuis plus de cinq ans, est cédé en ' + U.yl(p.kc) + ' pour ' + e(p.prix) + ', sans option pour la TVA (vente exonérée).</p>';
+      en += '<p class="consigne">Calculez la régularisation de TVA due lors de la cession et comptabilisez-la au 31/12/' + U.yl(p.kc) + '.</p>';
+      qs.push(Q('ann', 'Nombre d’années civiles écoulées (année de cession comprise)', ec2, 'u', { tol: 0 }));
+      qs.push(Q('rev', 'Montant de TVA à reverser', rev, '€'));
+      c.push(['TVA déduite à l’origine', n(tva) + ' × ' + n(p.c0, 2), e(tvaD)]);
+      c.push(['Années écoulées', 'de N à ' + U.yl(p.kc) + ' inclus', String(ec2)]);
+      c.push(['Reversement', n(tvaD) + ' × (20 − ' + ec2 + ') ÷ 20', '<b>' + e(rev) + '</b>']);
+      journal.push(U.entry('31/12/' + U.yl(p.kc), 'Reversement de TVA sur cession d’immeuble', [L('6358', rev, 0), L('44571', 0, rev, { lib: 'TVA à reverser' })]));
+      com.push('La TVA déduite sur un immeuble n’est définitivement acquise qu’au terme d’une période de 20 ans.');
+      com.push('En cédant le bien sans TVA au bout de ' + ec2 + ' années civiles, l’entreprise sort l’immeuble du circuit taxable : elle doit reverser la fraction de TVA correspondant aux ' + (20 - ec2) + ' années restantes, soit ' + e(rev) + '.');
+      com.push('Ce reversement est une charge de l’exercice de cession ; il réduit d’autant le résultat de l’opération, qu’il faut intégrer dans la décision de vendre.');
+      com.push('L’option pour la TVA sur la vente, quand elle est possible, éviterait ce reversement et permettrait même à l’acquéreur de déduire la taxe.');
+      com.push('Le coût d’entrée et le plan d’amortissement ne sont pas modifiés ; la plus ou moins-value de cession se calcule séparément.');
+    } else {
+      var reg2 = U.r2(tva * (p.cdef - p.cprov));
+      en += '<p>La déduction de N a été opérée avec un coefficient provisoire de ' + n(p.cprov, 2) + ' (calculé sur les données de N-1). Le coefficient définitif de N, arrêté en mars N+1, est de ' + n(p.cdef, 2) + '.</p>';
+      en += '<p class="consigne">Calculez la régularisation à opérer avant le 25 avril N+1 (positive pour un complément de déduction, négative pour un reversement) et comptabilisez-la au 31/03/N+1.</p>';
+      qs.push(Q('reg', 'Régularisation', reg2, '€'));
+      c.push(['TVA déduite (provisoire)', n(tva) + ' × ' + n(p.cprov, 2), e(U.r2(tva * p.cprov))]);
+      c.push(['TVA déductible (définitive)', n(tva) + ' × ' + n(p.cdef, 2), e(U.r2(tva * p.cdef))]);
+      c.push(['Régularisation', n(tva) + ' × (' + n(p.cdef, 2) + ' − ' + n(p.cprov, 2) + ')', '<b>' + (reg2 > 0 ? '+' : '') + e(reg2) + '</b>']);
+      if (reg2 < 0) journal.push(U.entry('31/03/N+1', 'Ajustement au coefficient définitif (reversement)', [L('6358', -reg2, 0), L('44571', 0, -reg2, { lib: 'TVA à reverser' })]));
+      if (reg2 > 0) journal.push(U.entry('31/03/N+1', 'Ajustement au coefficient définitif (complément)', [L('44562', reg2, 0), L('758', 0, reg2)]));
+      com.push('Le coefficient utilisé lors de l’acquisition est nécessairement provisoire : il repose sur le chiffre d’affaires de N-1.');
+      com.push('Une fois le coefficient définitif de N connu (' + n(p.cdef, 2) + '), la déduction est ajustée sans seuil de tolérance, ici de ' + e(reg2) + '.');
+      com.push('Cet ajustement, réalisé au plus tard le 25 avril N+1, est porté sur la déclaration du mois.');
+      com.push('Le coefficient définitif de N devient la référence pour les régularisations annuelles des années suivantes : seuls les écarts de plus de 10 points par rapport à lui seront régularisés.');
+      com.push('La différence est constatée en charge ou en produit, sans modifier le coût d’acquisition déjà retenu.');
+    }
+    return { enonce: en, questions: qs, journal: journal, steps: [{ h: 'Calculs', html: U.calc(c) }], comment: com.join(' ') };
+  }
+};
+
+/* ===== Immobilisations, amortissements, cessions, inventaire ===== */
+function ACC(a) { return U.pcgOld ? ({ '657': '675', '757': '775', '747': '777' }[a] || a) : a; }
+var BIENS = [
+  { lib: 'une machine-outil', compte: '2154', amort: '28154', cat: 'matériel industriel' },
+  { lib: 'une ligne d’embouteillage', compte: '2154', amort: '28154', cat: 'matériel industriel' },
+  { lib: 'un bras robotisé', compte: '2154', amort: '28154', cat: 'matériel industriel' },
+  { lib: 'un serveur informatique', compte: '2183', amort: '28183', cat: 'matériel informatique' },
+  { lib: 'un camion frigorifique', compte: '2182', amort: '28182', cat: 'matériel de transport' }
+];
+function coutAcq(p) {
+  var rem = U.r2(p.prix * (p.remise || 0));
+  var base = U.r2(p.prix - rem);
+  (p.frais || []).forEach(function (f) { if (f.incl) base = U.r2(base + f.mt); });
+  return { rem: rem, base: base };
+}
+function coutTxt(p, ca) {
+  var parts = [U.n(p.prix)];
+  if (ca.rem) parts.push('− ' + U.n(ca.rem) + ' (remise)');
+  (p.frais || []).forEach(function (f) { if (f.incl) parts.push('+ ' + U.n(f.mt) + ' (' + f.lib.toLowerCase() + ')'); });
+  var exc = (p.frais || []).filter(function (f) { return !f.incl; }).map(function (f) { return f.lib.toLowerCase(); });
+  return parts.join(' ') + (exc.length ? ' ; exclus : ' + exc.join(', ') + ' (charges)' : '');
+}
+function genFrais(r, prix) {
+  var f = [];
+  if (r.chance(0.7)) f.push({ lib: 'Frais de transport', mt: U.r0(prix * r.int(2, 5) / 100 / 10) * 10, incl: true });
+  if (r.chance(0.7)) f.push({ lib: 'Frais d’installation et de montage', mt: U.r0(prix * r.int(3, 9) / 100 / 10) * 10, incl: true });
+  if (r.chance(0.5)) f.push({ lib: 'Formation du personnel', mt: U.r0(prix * r.int(1, 3) / 100 / 10) * 10, incl: false });
+  if (r.chance(0.3)) f.push({ lib: 'Frais de publicité pour le lancement du produit', mt: U.r0(prix * r.int(1, 3) / 100 / 10) * 10, incl: false });
+  return f;
+}
+function planLinTable(pl) {
+  return U.tbl(['Exercice', 'Base', 'Annuité', 'Cumul', 'VNC fin'], pl.rows.map(function (r) { return [U.yl(r.y) + (r.prorata < 360 ? ' (' + U.prorataTxt(r.prorata) + ')' : ''), U.n(r.base, 2), U.n(r.a, 2), U.n(r.cum, 2), U.n(r.vnc, 2)]; }));
+}
+function planDegTable(pd) {
+  return U.tbl(['Exercice', 'VNC début', 'Taux', 'Annuité', 'VNC fin'], pd.rows.map(function (r) { return [U.yl(r.y) + (r.y === 0 ? ' (' + pd.mois1 + '/12)' : ''), U.n(r.v0, 2), r.mode === 'dég.' ? U.pcs(pd.taux) : (r.mode === 'lin.' ? 'lin. 1/' + r.rest : 'solde'), U.n(r.a, 2), U.n(r.vnc, 2)]; }));
+}
+
+/* ---------- 5. Plan d'amortissement ---------- */
+T.amort = {
+  id: 'amort', nom: 'Plan d’amortissement (linéaire, dégressif)', famille: 'Immobilisations', ctrl: true, minutes: 15,
+  fiche: {
+    objectif: 'Déterminer le coût d’acquisition puis établir les plans linéaire et dégressif avec le bon prorata temporis.',
+    etapes: [
+      'Coût d’acquisition = prix net de remises + frais directement attribuables (transport, installation, montage, honoraires) ; on exclut la TVA récupérable, la formation du personnel, la publicité et les frais généraux.',
+      'Linéaire : annuité = base ÷ durée ; prorata au jour près (année de 360 jours) à partir de la mise en service ; la dernière annuité complète le plan (durée + 1 exercice si départ en cours d’année).',
+      'Dégressif : taux = (1 ÷ durée) × coefficient (1,25 pour 3-4 ans ; 1,75 pour 5-6 ans ; 2,25 au-delà), appliqué à la VNC ; prorata en mois à partir du 1er jour du mois d’acquisition.',
+      'Passage au linéaire : dès que VNC ÷ nombre d’années restantes ≥ annuité dégressive (l’année entamée compte pour une année entière).',
+      'Le plan dégressif comporte exactement autant d’exercices que la durée : pas d’annuité supplémentaire.',
+      'Approche par composants : chaque composant significatif est amorti sur sa propre durée ; le terrain ne s’amortit pas.',
+      'Écriture d’inventaire : D 6811 / C 28xx.'
+    ],
+    pieges: [
+      'Prendre la date d’acquisition pour le linéaire (c’est la mise en service) ou la mise en service pour le dégressif (c’est le mois d’acquisition).',
+      'Intégrer la formation du personnel dans le coût.',
+      'Appliquer le taux dégressif à la valeur d’origine au lieu de la VNC.',
+      'Oublier la bascule en linéaire, ou la calculer sur la durée totale au lieu de la durée restante.',
+      'Amortir le terrain d’un immeuble.'
+    ],
+    comptes: ['2154 Matériel industriel / 2183 Matériel informatique / 213 Constructions', '6811 Dotations aux amortissements', '28154 / 28183 / 2813 Amortissements']
+  },
+  gen: function (r) {
+    if (r.chance(0.25)) {
+      var P = r.int(60, 400) * 10000;
+      var ter = U.r0(P * r.int(10, 25) / 100 / 1000) * 1000;
+      var rest = P - ter;
+      var shares = [[r.int(50, 60), 'Gros œuvre', r.pick([40, 50])], [r.int(10, 18), 'Toiture et façades', r.pick([20, 25])], [r.int(12, 20), 'Installations techniques', r.pick([10, 15])]];
+      var sumS = shares.reduce(function (a, b) { return a + b[0]; }, 0);
+      var comps = [], acc = 0;
+      shares.forEach(function (s, i) { var mt = i < shares.length - 1 ? U.r0(rest * s[0] / sumS / 1000) * 1000 : rest - acc; acc += mt; comps.push({ lib: s[1], mt: mt, n: s[2] }); });
+      return { nom: U.nom(r), comp: true, P: P, terrain: ter, composants: comps, mes: { d: 1, m: r.int(2, 12) } };
+    }
+    var b = r.pick(BIENS.slice(0, 4));
+    var prix = r.int(10, 120) * 1000;
+    var n = r.pick([4, 5, 5, 8, 10]);
+    var mAcq = r.int(1, 11), dAcq = r.pick([1, 1, 5, 10, 12, 18, 20]);
+    var dec = r.chance(0.4);
+    var mes = dec ? { d: 1, m: Math.min(12, mAcq + 1) } : { d: dAcq, m: mAcq };
+    return { nom: U.nom(r), bien: b, prix: prix, remise: r.chance(0.4) ? r.pick([0.02, 0.05, 0.1]) : 0, frais: genFrais(r, prix), acq: { d: dAcq, m: mAcq }, mes: mes, n: n };
+  },
+  solve: function (p) {
+    var e = U.e, n = U.n, L = U.L;
+    if (p.comp) {
+      var mois = 13 - p.mes.m, totD = 0, c = [], qs = [];
+      var en = '<p>La société <b>' + p.nom + '</b> acquiert un bâtiment industriel pour ' + e(p.P) + ' HT (frais inclus), mis en service le ' + U.dt(1, p.mes.m) + '. L’approche par composants est retenue :</p>';
+      en += U.tbl(['Élément', 'Montant', 'Durée'], [['Terrain', e(p.terrain), '—']].concat(p.composants.map(function (k) { return [k.lib, e(k.mt), k.n + ' ans']; })));
+      en += '<p class="consigne">Calculez la base amortissable, la dotation de N de chaque composant et la dotation totale ; passez l’écriture au 31/12/N.</p>';
+      var base = U.r2(p.P - p.terrain);
+      qs.push(Q('base', 'Base amortissable totale', base, '€'));
+      c.push(['Base amortissable', n(p.P) + ' − ' + n(p.terrain) + ' (le terrain ne s’amortit pas)', e(base)]);
+      p.composants.forEach(function (k, i) {
+        var d = U.r2(k.mt / k.n * mois / 12); totD = U.r2(totD + d);
+        qs.push(Q('c' + i, 'Dotation N – ' + k.lib.toLowerCase(), d, '€'));
+        c.push([k.lib, n(k.mt) + ' ÷ ' + k.n + ' × ' + mois + '/12', e(d)]);
+      });
+      qs.push(Q('tot', 'Dotation totale de N', totD, '€'));
+      c.push(['Dotation totale', '', '<b>' + e(totD) + '</b>']);
+      var com = 'L’approche par composants découpe l’immeuble en éléments dont les durées d’utilisation diffèrent nettement : la toiture ou les installations seront remplacées bien avant le gros œuvre. Amortir chaque composant sur sa propre durée donne une charge plus fidèle à la consommation réelle des avantages économiques. Le terrain, dont la durée d’utilisation est illimitée, n’est jamais amorti ; seule une dépréciation peut constater une perte de valeur. La dotation de N (' + e(totD) + ') ne porte que sur ' + mois + ' mois, du ' + U.dt(1, p.mes.m) + ' au 31/12/N. Lors du remplacement d’un composant, sa valeur nette sortira de l’actif et le nouveau composant sera immobilisé. Cette méthode, obligatoire en PCG pour les composants significatifs, augmente les dotations des premières années par rapport à un amortissement global sur la durée du gros œuvre.';
+      return { enonce: en, questions: qs, journal: [U.entry('31/12/N', 'Dotation aux amortissements du bâtiment', [L('6811', totD, 0), L('2813', 0, totD)])], steps: [{ h: 'Dotations par composant', html: U.calc(c) }], comment: com };
+    }
+    var ca = coutAcq(p), base = ca.base;
+    var pl = AM.lineaire(base, p.n, p.mes.d, p.mes.m), pd = AM.degressif(base, p.n, p.acq.m);
+    var b = p.bien;
+    var en2 = '<p>La société <b>' + p.nom + '</b> a acquis le ' + U.dt(p.acq.d, p.acq.m) + ' ' + b.lib + ', mis' + (/^une/.test(b.lib) ? 'e' : '') + ' en service le ' + U.dt(p.mes.d, p.mes.m) + '. Extrait de la facture (montants HT, TVA 20 % récupérable) :</p>';
+    var fr = [['Prix catalogue', e(p.prix)]];
+    if (p.remise) fr.push(['Remise', U.pcs(p.remise)]);
+    (p.frais || []).forEach(function (f) { fr.push([f.lib, e(f.mt)]); });
+    en2 += U.kv(fr);
+    en2 += '<p>Durée d’utilisation : ' + p.n + ' ans. Le bien est éligible à l’amortissement dégressif. Exercice clos le 31/12.</p>';
+    en2 += '<p class="consigne">1. Calculez le coût d’acquisition. 2. Établissez le plan d’amortissement linéaire. 3. Établissez le plan dégressif que l’entreprise pourrait pratiquer. 4. Passez la dotation linéaire du 31/12/N.</p>';
+    var r1 = pl.rows[1] || { a: 0, vnc: 0 };
+    var opts = []; for (var y = 1; y < p.n; y++) opts.push('N+' + y);
+    var qs2 = [Q('cout', 'Coût d’acquisition', base, '€'), Q('l0', 'Annuité linéaire de N', pl.rows[0].a, '€'), Q('l1', 'Annuité linéaire de N+1', r1.a, '€'), Q('v1', 'VNC linéaire au 31/12/N+1', r1.vnc, '€'),
+      Q('td', 'Taux dégressif', U.rd(pd.taux * 100, 3), '%', { tol: 0.02 }), Q('d0', 'Annuité dégressive de N', pd.rows[0].a, '€'), Q('d1', 'Annuité dégressive de N+1', pd.rows[1].a, '€'),
+      QC('bas', 'Premier exercice amorti en linéaire dans le plan dégressif', opts, pd.bascule - 1)];
+    var c2 = [['Coût d’acquisition', coutTxt(p, ca), '<b>' + e(base) + '</b>'],
+      ['Annuité linéaire pleine', n(base) + ' ÷ ' + p.n, e(U.r2(pl.annu))],
+      ['Annuité linéaire N', n(base) + ' × ' + U.pcs(1 / p.n) + ' × ' + U.prorataTxt(pl.j1) + ' (du ' + U.dt(p.mes.d, p.mes.m) + ' au 31/12 : ' + U.dureeTxt(pl.j1) + ')', e(pl.rows[0].a)],
+      ['Taux dégressif', U.pcs(1 / p.n) + ' × ' + n(pd.coef, 2), U.pcs(pd.taux)],
+      ['Annuité dégressive N', n(base) + ' × ' + U.pcs(pd.taux) + ' × ' + pd.mois1 + '/12 (à partir du 1er ' + U.MOIS[p.acq.m - 1] + ')', e(pd.rows[0].a)],
+      ['Annuité dégressive N+1', n(pd.rows[1].v0, 2) + ' × ' + U.pcs(pd.taux), e(pd.rows[1].a)],
+      ['Bascule en linéaire', 'en ' + U.yl(pd.bascule) + ' : ' + n(pd.rows[pd.bascule].v0, 2) + ' ÷ ' + pd.rows[pd.bascule].rest + ' = ' + n(pd.rows[pd.bascule].v0 / pd.rows[pd.bascule].rest, 2) + ' ≥ ' + n(pd.rows[pd.bascule].v0 * pd.taux, 2), U.yl(pd.bascule)]];
+    var com2 = 'L’amortissement constate la consommation des avantages économiques du bien : la base de ' + e(base) + ' ne retient que les coûts nécessaires pour mettre le bien en état de fonctionner' + ((p.frais || []).some(function (f) { return !f.incl; }) ? ', les autres frais restant en charges de l’exercice' : '') + '. En linéaire, la charge est constante (' + e(U.r2(pl.annu)) + ' par an), proratisée la première année à partir de la mise en service, ce qui reporte un reliquat sur un ' + (pl.rows.length > p.n ? (pl.rows.length) + 'e exercice' : 'exercice final') + '. Le dégressif concentre la charge sur les premières années (' + e(pd.rows[0].a) + ' dès N malgré le prorata) : il traduit mieux l’obsolescence rapide de certains équipements et procure un avantage fiscal de trésorerie, l’impôt étant différé. Il ne s’applique qu’aux biens neufs d’au moins 3 ans figurant sur la liste légale. Si l’entreprise conserve le linéaire en comptabilité et déduit le dégressif fiscalement, l’écart sera constaté en amortissement dérogatoire (compte 145). La VNC au 31/12/N+1 (' + e(r1.vnc) + ') sera la référence pour calculer une éventuelle plus ou moins-value de cession.';
+    return { enonce: en2, questions: qs2, journal: [U.entry('31/12/N', 'Dotation aux amortissements (linéaire)', [L('6811', pl.rows[0].a, 0), L(b.amort, 0, pl.rows[0].a)])], steps: [{ h: 'Calculs', html: U.calc(c2) }, { h: 'Plan linéaire', html: planLinTable(pl) }, { h: 'Plan dégressif', html: planDegTable(pd) }], comment: com2 };
+  }
+};
+
+/* ---------- 6. Amortissement dérogatoire ---------- */
+function planDerog(p, base) {
+  var pl = AM.lineaire(base, p.n, p.mes.d, p.mes.m);
+  var pf = p.fiscal === 'lin' ? AM.lineaire(base, p.nF, p.mes.d, p.mes.m) : AM.degressif(base, p.n, p.mes.m);
+  var ny = Math.max(pl.rows.length, pf.rows.length), rows = [], solde = 0;
+  for (var y = 0; y < ny; y++) {
+    var a = pl.rows[y] ? pl.rows[y].a : 0, f = pf.rows[y] ? pf.rows[y].a : 0, d = U.r2(f - a);
+    solde = U.r2(solde + d);
+    rows.push({ y: y, c: a, f: f, d: d, solde: solde });
+  }
+  return { pl: pl, pf: pf, rows: rows };
+}
+T.derog = {
+  id: 'derog', nom: 'Amortissement dérogatoire', famille: 'Immobilisations', ctrl: true, minutes: 18,
+  fiche: {
+    objectif: 'Construire en parallèle le plan comptable et le plan fiscal, puis le tableau des dotations et reprises d’amortissement dérogatoire.',
+    etapes: [
+      'Base commune : coût d’acquisition HT (prix + frais accessoires, hors formation).',
+      'Plan comptable : linéaire sur la durée d’utilisation, depuis la mise en service.',
+      'Plan fiscal : dégressif (1er jour du mois d’acquisition, n exercices) ou linéaire sur la durée d’usage fiscale plus courte.',
+      'Dérogatoire de l’exercice = fiscal − comptable : positif → dotation (D 6872 / C 145) ; négatif → reprise (D 145 / C 7872).',
+      'Le solde du 145 revient à zéro en fin de plan : total des dotations = total des reprises.',
+      'Au 31/12 : deux écritures, la dotation comptable (6811 / 28) et le dérogatoire (6872 / 145).'
+    ],
+    pieges: [
+      'Constater le dérogatoire dans le compte 28 : il va au 145 (provision réglementée, capitaux propres).',
+      'Oublier les reprises des dernières années, quand le fiscal devient inférieur au comptable.',
+      'Décaler le prorata : 6/12 pour un départ au 1er juillet dans les deux plans, mais le dégressif part du 1er jour du mois d’acquisition.',
+      'Le plan fiscal dégressif finit un exercice avant le plan linéaire quand celui-ci démarre en cours d’année.'
+    ],
+    comptes: ['6811 / 28154 Amortissements comptables', '6872 Dotations aux provisions réglementées', '145 Amortissements dérogatoires', '7872 Reprises sur provisions réglementées']
+  },
+  gen: function (r) {
+    var b = r.pick(BIENS.slice(0, 4));
+    var prix = r.int(8, 90) * 1000 + r.pick([0, 500]);
+    var lin = r.chance(0.25);
+    var n = lin ? r.pick([6, 8, 10]) : r.pick([4, 5, 8, 10]);
+    var m = r.int(1, 12);
+    var p = { nom: U.nom(r), bien: b, prix: prix, remise: 0, frais: genFrais(r, prix), mes: { d: 1, m: m }, n: n, fiscal: lin ? 'lin' : 'deg' };
+    if (lin) p.nF = r.pick([3, 4, 5].filter(function (x) { return x < n; }));
+    return p;
+  },
+  solve: function (p) {
+    var e = U.e, n = U.n, L = U.L, ca = coutAcq(p), base = ca.base, P = planDerog(p, base), b = p.bien;
+    var en = '<p>La société <b>' + p.nom + '</b> a acquis et mis en service le ' + U.dt(p.mes.d, p.mes.m) + ' ' + b.lib + '. Facture (montants HT, TVA 20 % récupérable) :</p>';
+    var fr = [['Prix d’achat', e(p.prix)]]; (p.frais || []).forEach(function (f) { fr.push([f.lib, e(f.mt)]); });
+    en += U.kv(fr);
+    en += p.fiscal === 'deg' ? '<p>Le bien est amorti en linéaire sur ' + p.n + ' ans en comptabilité ; fiscalement, l’entreprise pratique l’amortissement dégressif. Exercice clos le 31/12.</p>'
+      : '<p>Le bien est amorti en linéaire sur sa durée d’utilisation de ' + p.n + ' ans ; fiscalement, l’entreprise l’amortit en linéaire sur la durée d’usage admise de ' + p.nF + ' ans. Exercice clos le 31/12.</p>';
+    en += '<p class="consigne">1. Établissez le plan d’amortissement comptable, le plan fiscal et le tableau de l’amortissement dérogatoire. 2. Comptabilisez les dotations au 31/12/N.</p>';
+    var r0 = P.rows[0], r1 = P.rows[1], r2r = P.rows[2];
+    var firstRep = -1; P.rows.forEach(function (x) { if (firstRep < 0 && x.d < 0) firstRep = x.y; });
+    var opts = []; for (var y = 1; y < P.rows.length; y++) opts.push(U.yl(y));
+    var qs = [Q('cout', 'Base amortissable', base, '€'), Q('c0', 'Amortissement comptable de N', r0.c, '€'), Q('f0', 'Amortissement fiscal de N', r0.f, '€'), Q('d0', 'Dotation au dérogatoire de N', r0.d, '€'),
+      Q('f1', 'Amortissement fiscal de N+1', r1.f, '€'), Q('s2', 'Solde du compte 145 au 31/12/N+2', r2r.solde, '€'), QC('rep', 'Premier exercice de reprise du dérogatoire', opts, firstRep - 1)];
+    var c = [['Base', coutTxt(p, ca), '<b>' + e(base) + '</b>'], ['Comptable N', n(base) + ' × ' + U.pcs(1 / p.n) + ' × ' + U.prorataTxt(P.pl.j1), e(r0.c)]];
+    if (p.fiscal === 'deg') {
+      c.push(['Taux dégressif', U.pcs(1 / p.n) + ' × ' + n(P.pf.coef, 2), U.pcs(P.pf.taux)]);
+      c.push(['Fiscal N', n(base) + ' × ' + U.pcs(P.pf.taux) + ' × ' + P.pf.mois1 + '/12', e(r0.f)]);
+      c.push(['Fiscal N+1', n(P.pf.rows[1].v0, 2) + ' × ' + U.pcs(P.pf.taux), e(r1.f)]);
+      c.push(['Bascule', 'linéaire à partir de ' + U.yl(P.pf.bascule) + ' (' + P.pf.rows[P.pf.bascule].rest + ' années restantes)', '']);
+    } else {
+      c.push(['Fiscal N', n(base) + ' × ' + U.pcs(1 / p.nF) + ' × ' + U.prorataTxt(P.pl.j1), e(r0.f)]);
+    }
+    c.push(['Dérogatoire N', n(r0.f) + ' − ' + n(r0.c), '<b>' + e(r0.d) + '</b>']);
+    var tab = U.tbl(['Exercice', 'Comptable', 'Fiscal', 'Dotation (+) / reprise (−)', 'Solde 145'], P.rows.map(function (x) { return [U.yl(x.y), n(x.c, 2), n(x.f, 2), (x.d > 0 ? '+' : '') + n(x.d, 2), n(x.solde, 2)]; }).concat([{ cls: 'tot', cells: ['Total', n(base, 2), n(base, 2), '0,00', ''] }]));
+    var journal = [U.entry('31/12/N', 'Dotation aux amortissements', [L('6811', r0.c, 0), L(b.amort, 0, r0.c)]), U.entry('31/12/N', 'Amortissement dérogatoire', [L('6872', r0.d, 0), L('145', 0, r0.d)])];
+    var maxS = Math.max.apply(null, P.rows.map(function (x) { return x.solde; }));
+    var com = 'Le plan comptable traduit la consommation réelle du bien (linéaire sur ' + p.n + ' ans), tandis que le plan fiscal ' + (p.fiscal === 'deg' ? 'accélère la déduction grâce au dégressif' : 'utilise la durée d’usage plus courte admise par l’administration') + '. Pour bénéficier fiscalement de cet excédent, l’entreprise doit le comptabiliser : c’est l’amortissement dérogatoire, une provision réglementée inscrite dans les capitaux propres (compte 145), sans lien avec une dépréciation réelle. En N, le fiscal dépasse le comptable de ' + e(r0.d) + ', ce qui réduit le résultat imposable et diffère l’impôt. Le compte 145 culmine à ' + e(maxS) + ', puis les reprises' + (firstRep > 0 ? ' à partir de ' + U.yl(firstRep) : '') + ' le ramènent à zéro : sur la durée totale, l’avantage est un simple décalage de trésorerie, pas une économie définitive. En analyse financière, le 145 est classé en capitaux propres (ressource stable) et ses dotations sont ajoutées pour calculer la CAF. En cas de cession avant la fin du plan, le solde restant serait repris en totalité.';
+    return { enonce: en, questions: qs, journal: journal, steps: [{ h: 'Calculs', html: U.calc(c) }, { h: 'Tableau du dérogatoire', html: tab }, { h: 'Plan comptable', html: planLinTable(P.pl) }, { h: 'Plan fiscal', html: p.fiscal === 'deg' ? planDegTable(P.pf) : planLinTable(P.pf) }], comment: com };
+  }
+};
+
+/* ---------- 7. Cession d'immobilisation ---------- */
+T.cession = {
+  id: 'cession', nom: 'Cession d’immobilisation', famille: 'Immobilisations', ctrl: true, minutes: 15,
+  fiche: {
+    objectif: 'Comptabiliser la sortie d’un bien cédé et calculer le résultat de cession.',
+    etapes: [
+      'Cumul des amortissements au 31/12/N-1 (prorata la première année).',
+      'Dotation complémentaire de N : du 1er janvier à la date de cession (année de 360 jours).',
+      'VNC = valeur d’origine − cumul total des amortissements.',
+      'Résultat de cession = prix de cession HT − VNC (plus-value si positif).',
+      'Écritures : (1) dotation complémentaire D 6811 / C 28 ; (2) sortie D 28 (cumul) + D 657 (VNC) / C 21 (valeur d’origine) ; (3) prix D 462 ou 512 / C 757 + C 44571 si cession soumise à TVA ; (4) reprise du dérogatoire restant D 145 / C 7872.'
+    ],
+    pieges: [
+      'Oublier la dotation complémentaire jusqu’à la date de cession.',
+      'Calculer le résultat avec le prix TTC.',
+      'Comptabiliser la plus-value directement : on enregistre séparément la VNC (charge) et le prix (produit).',
+      'Comptes : PCG 2025 → 657 / 757 ; ancien PCG → 675 / 775 (les deux sont acceptés).',
+      'La cession d’un matériel ayant ouvert droit à déduction est soumise à TVA.'
+    ],
+    comptes: ['6811 / 28 Amortissements', '657 (ancien 675) Valeur comptable des immobilisations cédées', '757 (ancien 775) Produits des cessions', '462 Créances sur cessions d’immobilisations', '145 / 7872 Dérogatoire']
+  },
+  gen: function (r) {
+    var b = r.pick(BIENS);
+    var V = r.int(15, 150) * 1000, n = r.pick([4, 5, 6, 8, 10]);
+    var k = r.int(1, n - 1);
+    var p = { nom: U.nom(r), bien: b, V: V, n: n, acq: { m: r.int(1, 12), y: -k }, ces: { d: r.pick([15, 30, 31]), m: r.int(2, 11) }, s145: 0 };
+    if (p.ces.d >= 30) p.ces.d = U.lastDay(p.ces.m);
+    var s = this.calc(Object.assign({ prix: 0 }, p));
+    p.prix = U.r0(s.vnc * r.int(50, 160) / 100 / 100) * 100;
+    if (r.chance(0.25)) p.s145 = U.r0(V * r.int(3, 10) / 100);
+    return p;
+  },
+  calc: function (p) {
+    var annu = p.V / p.n, cum = 0, y;
+    for (y = p.acq.y; y < 0; y++) { var a = y === p.acq.y ? annu * (13 - p.acq.m) / 12 : annu; cum = U.r2(cum + Math.min(U.r2(a), p.V - cum)); }
+    var j = U.joursDepuis1Jan(p.ces.d, p.ces.m);
+    var dot = Math.min(U.r2(annu * j / 360), U.r2(p.V - cum));
+    var cumT = U.r2(cum + dot), vnc = U.r2(p.V - cumT), res = U.r2(p.prix - vnc);
+    return { annu: annu, cum: cum, j: j, dot: dot, cumT: cumT, vnc: vnc, res: res, tva: U.r2(p.prix * 0.2) };
+  },
+  solve: function (p) {
+    var x = this.calc(p), e = U.e, n = U.n, L = U.L, b = p.bien;
+    var dc = U.dt(p.ces.d, p.ces.m);
+    var en = '<p>La société <b>' + p.nom + '</b> a acquis le ' + U.dt(1, p.acq.m, p.acq.y) + ' ' + b.lib + ' pour ' + e(p.V) + ' HT, amorti' + (/^une/.test(b.lib) ? 'e' : '') + ' en linéaire sur ' + p.n + ' ans. Le bien est cédé le ' + dc + ' pour ' + e(p.prix) + ' HT (TVA 20 %), payable à 30 jours.' + (p.s145 ? ' Le compte 145 relatif à ce bien présente un solde de ' + e(p.s145) + '.' : '') + '</p>';
+    en += '<p class="consigne">1. Calculez le cumul des amortissements, la valeur nette comptable et le résultat de cession. 2. Passez les écritures du ' + dc + '.</p>';
+    var qs = [Q('cum', 'Cumul des amortissements au 31/12/N-1', x.cum, '€'), Q('dot', 'Dotation complémentaire de N', x.dot, '€'), Q('vnc', 'Valeur nette comptable à la date de cession', x.vnc, '€'), Q('res', 'Résultat de cession (négatif si moins-value)', x.res, '€')];
+    var det = [];
+    for (var y = p.acq.y; y < 0; y++) det.push(U.yl(y) + ' : ' + (y === p.acq.y ? n(p.V) + ' ÷ ' + p.n + ' × ' + (13 - p.acq.m) + '/12' : n(U.r2(x.annu))));
+    var c = [['Annuité pleine', n(p.V) + ' ÷ ' + p.n, e(U.r2(x.annu))], ['Cumul au 31/12/N-1', det.join(' ; '), e(x.cum)],
+      ['Dotation N', n(U.r2(x.annu)) + ' × ' + U.prorataTxt(x.j) + ' (du 01/01 au ' + dc + ')', e(x.dot)], ['Cumul total', n(x.cum) + ' + ' + n(x.dot), e(x.cumT)],
+      ['VNC', n(p.V) + ' − ' + n(x.cumT), '<b>' + e(x.vnc) + '</b>'], ['Résultat de cession', n(p.prix) + ' − ' + n(x.vnc), '<b>' + (x.res >= 0 ? 'plus-value ' : 'moins-value ') + e(Math.abs(x.res)) + '</b>']];
+    var journal = [U.entry(dc, 'Dotation complémentaire', [L('6811', x.dot, 0), L(b.amort, 0, x.dot)]),
+      U.entry(dc, 'Sortie du bien cédé', [L(b.amort, x.cumT, 0), L(ACC('657'), x.vnc, 0), L(b.compte, 0, p.V)]),
+      U.entry(dc, 'Prix de cession', [L('462', U.r2(p.prix + x.tva), 0), L(ACC('757'), 0, p.prix), L('44571', 0, x.tva)])];
+    if (p.s145) journal.push(U.entry(dc, 'Reprise du dérogatoire', [L('145', p.s145, 0), L('7872', 0, p.s145)]));
+    if (p.s145) qs.push(Q('rep', 'Reprise du dérogatoire', p.s145, '€'));
+    var com = 'Avant de sortir le bien, on constate l’amortissement de N jusqu’au jour de la cession (' + e(x.dot) + '), pour que la VNC reflète la consommation réelle. La cession dégage une ' + (x.res >= 0 ? 'plus-value' : 'moins-value') + ' de ' + e(Math.abs(x.res)) + ' : le prix ' + (x.res >= 0 ? 'dépasse' : 'est inférieur à') + ' la valeur nette comptable de ' + e(x.vnc) + '. Comptablement, elle n’apparaît pas sur une ligne unique : la VNC est une charge (' + ACC('657') + ') et le prix un produit (' + ACC('757') + '), classés en exploitation dans le PCG 2025 (en exceptionnel dans l’ancien plan). ' + (x.res >= 0 ? 'Une plus-value régulière peut traduire un plan d’amortissement trop rapide.' : 'Une moins-value importante peut révéler une durée d’amortissement trop longue ou une obsolescence non anticipée.') + ' Pour la CAF, la VNC et le prix de cession sont neutralisés : la cession relève de l’investissement, pas de l’exploitation, et le prix figurera dans les ressources du tableau de financement. La cession étant soumise à TVA, l’entreprise collecte ' + e(x.tva) + '.' + (p.s145 ? ' Le dérogatoire restant (' + e(p.s145) + ') est repris en totalité, ce qui augmente le résultat imposable de l’exercice.' : '');
+    return { enonce: en, questions: qs, journal: journal, steps: [{ h: 'Calculs', html: U.calc(c) }], comment: com };
+  }
+};
+
+/* ---------- 8. Dépréciations et provisions ---------- */
+var CLIENTS = ['Dupuis', 'Martin', 'Lefèvre', 'Garnier', 'Roussel', 'Chevalier', 'Perrin', 'Morel', 'Fontaine', 'Blanchard'];
+T.depreciations = {
+  id: 'depreciations', nom: 'Dépréciations et provisions', famille: 'Travaux d’inventaire', ctrl: true, minutes: 15,
+  fiche: {
+    objectif: 'Constater à l’inventaire les pertes de valeur des actifs (dépréciations) et les passifs probables (provisions), et ajuster celles qui existent.',
+    etapes: [
+      'Créance douteuse : virer la créance TTC du 411 au 416 ; déprécier la base HT × pourcentage de perte (la TVA sera récupérée en cas de perte) : D 6817 / C 491.',
+      'Dépréciation existante : dépréciation nécessaire − dépréciation existante ; positif → dotation complémentaire, négatif → reprise (D 491 / C 7817).',
+      'Créance irrécouvrable : D 654 (HT) + D 44571 (TVA) / C 416 (TTC) ; puis reprise totale de la dépréciation.',
+      'Stocks : comparer coût et valeur actuelle ; reprendre la dépréciation de N-1 (D 397 / C 7817) et constater la nouvelle (D 6817 / C 397).',
+      'Immobilisation non amortissable (terrain) : D 6816 / C 2911.',
+      'Provision pour risques (litige, garantie) : obligation envers un tiers + sortie de ressources probable sans contrepartie + estimation fiable → D 6815 / C 1511.'
+    ],
+    pieges: [
+      'Déprécier le montant TTC d’une créance.',
+      'Oublier le transfert 411 → 416 l’année où la créance devient douteuse (une seule fois).',
+      'Créance irrécouvrable : oublier la reprise de la dépréciation, ou la récupération de TVA.',
+      'Confondre dépréciation (perte de valeur d’un actif, comptes 29 à 59) et provision (passif probable, compte 15).',
+      'Programme contrôleur : pas de provisions pour risques.'
+    ],
+    comptes: ['416 Clients douteux', '491 Dépréciations des comptes clients', '397 Dépréciations des stocks', '2911 Dépréciations des terrains', '1511 Provisions pour litiges', '654 Pertes sur créances irrécouvrables', '6815 / 6816 / 6817 Dotations', '7815 / 7817 Reprises']
+  },
+  gen: function (r, opt) {
+    var pool = ['douteux', 'ajust', 'irrec', 'stock', 'terrain'];
+    if (!opt || opt.profil !== 'C') pool.push('litige', 'litige');
+    var items = r.pickN(pool, r.int(3, 4)).map(function (k) {
+      var cl = r.pick(CLIENTS);
+      switch (k) {
+        case 'douteux': return { k: k, cl: cl, ttc: r.int(5, 80) * 120, p: r.pick([0.2, 0.3, 0.4, 0.5, 0.6, 0.7]) };
+        case 'ajust': return { k: k, cl: cl, ttc: r.int(5, 80) * 120, p0: r.pick([0.2, 0.3, 0.4, 0.5]), p1: r.pick([0.1, 0.25, 0.6, 0.7, 0.8]) };
+        case 'irrec': return { k: k, cl: cl, ttc: r.int(5, 60) * 120, p0: r.pick([0.3, 0.4, 0.5, 0.6]) };
+        case 'stock': var S = r.int(20, 200) * 1000; return { k: k, S: S, V: U.r0(S * r.int(70, 97) / 100 / 10) * 10, D0: r.chance(0.7) ? r.int(1, 20) * 250 : 0 };
+        case 'terrain': var Ct = r.int(50, 300) * 1000; return { k: k, C: Ct, V: U.r0(Ct * r.int(70, 95) / 100 / 1000) * 1000 };
+        default: return { k: 'litige', obj: r.pick(['Un salarié licencié réclame des dommages et intérêts aux prud’hommes', 'Un client réclame une indemnité pour un retard de livraison', 'Un concurrent engage une action pour contrefaçon']), est: r.int(3, 60) * 1000, prev: r.chance(0.4) ? r.int(2, 40) * 1000 : 0 };
+      }
+    });
+    return { nom: U.nom(r), items: items };
+  },
+  solve: function (p) {
+    var e = U.e, n = U.n, L = U.L, li = [], qs = [], c = [], journal = [], com = [];
+    p.items.forEach(function (it, i) {
+      var id = 'i' + i;
+      if (it.k === 'douteux') {
+        var ht = U.r2(it.ttc / 1.2), dep = U.r2(ht * it.p);
+        li.push('La créance du client ' + it.cl + ' (' + e(it.ttc) + ' TTC) devient douteuse : il est en redressement judiciaire et la perte est estimée à ' + U.pcs(it.p) + '.');
+        qs.push(Q(id, 'Dépréciation de la créance ' + it.cl, dep, '€'));
+        c.push(['Client ' + it.cl, n(it.ttc) + ' ÷ 1,2 = ' + n(ht) + ' HT × ' + U.pcs(it.p), e(dep)]);
+        journal.push(U.entry('31/12/N', 'Client ' + it.cl + ' douteux', [L('416', it.ttc, 0), L('411', 0, it.ttc)]));
+        journal.push(U.entry('31/12/N', 'Dépréciation de la créance ' + it.cl, [L('6817', dep, 0), L('491', 0, dep)]));
+        com.push('La créance ' + it.cl + ' est dépréciée sur sa base hors taxes, car la TVA sera récupérée si la perte se confirme.');
+      } else if (it.k === 'ajust') {
+        var ht2 = U.r2(it.ttc / 1.2), d0 = U.r2(ht2 * it.p0), d1 = U.r2(ht2 * it.p1), dd = U.r2(d1 - d0);
+        li.push('Le client douteux ' + it.cl + ' doit toujours ' + e(it.ttc) + ' TTC ; la créance était dépréciée de ' + e(d0) + ' (' + U.pcs(it.p0) + ' du HT). La perte est désormais estimée à ' + U.pcs(it.p1) + '.');
+        qs.push(Q(id, 'Ajustement de la dépréciation ' + it.cl + ' (+ dotation, − reprise)', dd, '€'));
+        c.push(['Client ' + it.cl, n(ht2) + ' × ' + U.pcs(it.p1) + ' = ' + n(d1) + ' nécessaire − ' + n(d0) + ' existante', '<b>' + (dd > 0 ? 'dotation ' : 'reprise ') + e(Math.abs(dd)) + '</b>']);
+        if (dd > 0) journal.push(U.entry('31/12/N', 'Dotation complémentaire ' + it.cl, [L('6817', dd, 0), L('491', 0, dd)]));
+        if (dd < 0) journal.push(U.entry('31/12/N', 'Reprise de dépréciation ' + it.cl, [L('491', -dd, 0), L('7817', 0, -dd)]));
+        com.push('Pour ' + it.cl + ', seule la différence entre la dépréciation nécessaire et l’existante est comptabilisée (' + (dd > 0 ? 'dotation complémentaire' : 'reprise') + ').');
+      } else if (it.k === 'irrec') {
+        var ht3 = U.r2(it.ttc / 1.2), tv = U.r2(it.ttc - ht3), d03 = U.r2(ht3 * it.p0);
+        li.push('La créance douteuse du client ' + it.cl + ' (' + e(it.ttc) + ' TTC, dépréciée de ' + e(d03) + ' en N-1) est définitivement irrécouvrable (clôture pour insuffisance d’actif).');
+        qs.push(Q(id, 'Perte sur créance irrécouvrable ' + it.cl + ' (HT)', ht3, '€'));
+        qs.push(Q(id + 'b', 'Reprise de la dépréciation ' + it.cl, d03, '€'));
+        c.push(['Client ' + it.cl, 'perte HT ' + n(it.ttc) + ' ÷ 1,2 ; TVA récupérée ' + n(tv) + ' ; reprise de ' + n(d03), e(ht3)]);
+        journal.push(U.entry('31/12/N', 'Créance ' + it.cl + ' irrécouvrable', [L('654', ht3, 0), L('44571', tv, 0, { lib: 'TVA collectée (récupérée)' }), L('416', 0, it.ttc)]));
+        journal.push(U.entry('31/12/N', 'Reprise de la dépréciation ' + it.cl, [L('491', d03, 0), L('7817', 0, d03)]));
+        com.push('La créance ' + it.cl + ' étant perdue, la perte HT passe en charge, la TVA est récupérée et la dépréciation devenue sans objet est reprise : l’impact net sur le résultat de N n’est que de ' + e(U.r2(ht3 - d03)) + '.');
+      } else if (it.k === 'stock') {
+        var dn = U.r2(it.S - it.V);
+        li.push('Le stock final de marchandises est évalué au coût d’achat à ' + e(it.S) + ' ; sa valeur actuelle est de ' + e(it.V) + '. ' + (it.D0 ? 'Le compte 397 présente un solde de ' + e(it.D0) + ' (dépréciation du stock de N-1).' : 'Aucune dépréciation n’existait.') + ' L’entreprise reprend la dépréciation antérieure et constitue la nouvelle.');
+        qs.push(Q(id, 'Dépréciation du stock final', dn, '€'));
+        c.push(['Stock', (it.D0 ? 'reprise de ' + n(it.D0) + ' ; ' : '') + 'dotation ' + n(it.S) + ' − ' + n(it.V), e(dn)]);
+        if (it.D0) journal.push(U.entry('31/12/N', 'Reprise de la dépréciation du stock initial', [L('397', it.D0, 0), L('7817', 0, it.D0)]));
+        journal.push(U.entry('31/12/N', 'Dépréciation du stock final', [L('6817', dn, 0), L('397', 0, dn)]));
+        com.push('Le stock est inscrit au plus faible du coût et de la valeur actuelle : la dépréciation de ' + e(dn) + ' applique le principe de prudence sans modifier la valeur d’origine.');
+      } else if (it.k === 'terrain') {
+        var dt2 = U.r2(it.C - it.V);
+        li.push('Un terrain acquis ' + e(it.C) + ' a une valeur vénale estimée à ' + e(it.V) + ' en raison d’un projet de déviation routière.');
+        qs.push(Q(id, 'Dépréciation du terrain', dt2, '€'));
+        c.push(['Terrain', n(it.C) + ' − ' + n(it.V), e(dt2)]);
+        journal.push(U.entry('31/12/N', 'Dépréciation du terrain', [L('6816', dt2, 0), L('2911', 0, dt2)]));
+        com.push('Le terrain, non amortissable, ne peut perdre de la valeur comptable que par une dépréciation.');
+      } else {
+        var dl = U.r2(it.est - it.prev);
+        li.push(it.obj + '. L’avocat estime la condamnation probable, pour ' + e(it.est) + '.' + (it.prev ? ' Une provision de ' + e(it.prev) + ' avait été constituée en N-1 pour ce litige.' : ''));
+        qs.push(Q(id, 'Provision pour litige : ' + (it.prev ? 'ajustement (+ dotation, − reprise)' : 'dotation'), dl, '€'));
+        c.push(['Litige', it.prev ? n(it.est) + ' − ' + n(it.prev) + ' existante' : 'estimation de l’avocat', e(dl)]);
+        if (dl > 0) journal.push(U.entry('31/12/N', 'Provision pour litige', [L('6815', dl, 0), L('1511', 0, dl)]));
+        if (dl < 0) journal.push(U.entry('31/12/N', 'Reprise partielle de la provision pour litige', [L('1511', -dl, 0), L('7815', 0, -dl)]));
+        com.push('La provision pour litige est justifiée : il existe une obligation envers un tiers, la sortie de ressources est probable sans contrepartie et son montant est estimé de façon fiable ; c’est un passif, pas la dépréciation d’un actif.');
+      }
+    });
+    var en = '<p>Travaux d’inventaire de la société <b>' + p.nom + '</b> au 31/12/N (TVA 20 %) :</p>' + '<ol>' + li.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ol><p class="consigne">Calculez les montants et passez les écritures au 31/12/N.</p>';
+    com.unshift('Ces écritures appliquent le principe de prudence : les pertes probables sont constatées dès la clôture, les gains latents ne le sont jamais.');
+    com.push('Dotations et reprises sont des charges et produits calculés, sans effet sur la trésorerie : ils sont neutralisés dans le calcul de la CAF.');
+    com.push('Chaque dépréciation sera réexaminée à la clôture suivante et ajustée ou reprise.');
+    return { enonce: en, questions: qs, journal: journal, steps: [{ h: 'Calculs', html: U.calc(c) }], comment: com.join(' ') };
+  }
+};
+
+/* ---------- 9. Régularisations de charges et produits ---------- */
+T.regul = {
+  id: 'regul', nom: 'Régularisations de charges et produits', famille: 'Travaux d’inventaire', ctrl: true, minutes: 12,
+  fiche: {
+    objectif: 'Rattacher à chaque exercice les charges et produits qui le concernent (indépendance des exercices).',
+    etapes: [
+      'Charge payée en N pour N+1 : charge constatée d’avance, D 486 / C 6xx pour la part de N+1 (au prorata des mois).',
+      'Produit perçu en N pour N+1 : produit constaté d’avance, D 7xx / C 487.',
+      'Charge de N non encore facturée : D 6xx (HT) + D 44586 (TVA) / C 408 (TTC).',
+      'Produit de N non encore facturé : D 418 (TTC) / C 7xx (HT) + C 44587 (TVA).',
+      'Intérêts courus sur emprunt : capital restant dû × taux × mois écoulés depuis la dernière échéance ÷ 12 : D 6611 / C 1688.',
+      'Avoir à recevoir : D 4098 (TTC) / C 609 (HT) + C 44586 (TVA).',
+      'Toutes ces écritures sont contrepassées à l’ouverture de N+1.'
+    ],
+    pieges: [
+      'Charges et produits constatés d’avance : montants HT, sans TVA.',
+      'Compter les mois : une prime payée le 1er octobre pour 12 mois couvre 3 mois de N et 9 mois de N+1.',
+      'Factures non parvenues : la TVA passe au 44586 (pas au 44566, elle n’est pas encore déductible).',
+      'Intérêts courus : partir de la dernière échéance, pas de la date de l’emprunt si une échéance a déjà été payée.'
+    ],
+    comptes: ['486 Charges constatées d’avance', '487 Produits constatés d’avance', '408 Fournisseurs – factures non parvenues', '418 Clients – produits non encore facturés', '44586 / 44587 TVA sur factures', '1688 Intérêts courus', '4098 RRR à obtenir']
+  },
+  gen: function (r) {
+    var pool = ['cca_assur', 'cca_loyer', 'pca', 'fnp', 'fae', 'icne', 'aar'];
+    var items = r.pickN(pool, 4).map(function (k) {
+      switch (k) {
+        case 'cca_assur': return { k: k, mt: r.int(12, 120) * 120, m: r.int(2, 12) };
+        case 'cca_loyer': var per = r.pick([3, 6]); return { k: k, per: per, mt: r.int(5, 60) * 300, m: r.int(14 - per, 12) };
+        case 'pca': var per2 = r.pick([3, 6]); return { k: k, per: per2, mt: r.int(4, 40) * 600, m: r.int(14 - per2, 12) };
+        case 'fnp': return { k: k, nat: r.pick([['électricité de décembre', '6061'], ['honoraires de l’expert-comptable', '6226'], ['transport sur achats de décembre', '6241']]), ht: r.int(5, 120) * 50 };
+        case 'fae': return { k: k, ht: r.int(10, 200) * 100 };
+        case 'icne': return { k: k, K: r.int(5, 50) * 10000, t: r.pick([0.025, 0.03, 0.035, 0.04, 0.045, 0.05]), m: r.int(2, 11) };
+        default: return { k: 'aar', ht: r.int(5, 80) * 100 };
+      }
+    });
+    return { nom: U.nom(r), items: items };
+  },
+  solve: function (p) {
+    var e = U.e, n = U.n, L = U.L, li = [], qs = [], c = [], journal = [];
+    p.items.forEach(function (it, i) {
+      var id = 'i' + i, m = it.m, d1 = it.m ? U.dt(1, it.m) : '';
+      if (it.k === 'cca_assur') {
+        var nN1 = m - 1, cca = U.r2(it.mt * nN1 / 12);
+        li.push('La prime annuelle d’assurance de ' + e(it.mt) + ', payée le ' + d1 + ', couvre la période du ' + d1 + ' au ' + U.dt(U.lastDay(m - 1), m - 1, 1) + '.');
+        qs.push(Q(id, 'Charge constatée d’avance (assurance)', cca, '€'));
+        c.push(['Assurance', n(it.mt) + ' × ' + nN1 + '/12 (mois de N+1)', e(cca)]);
+        journal.push(U.entry('31/12/N', 'Assurance constatée d’avance', [L('486', cca, 0), L('616', 0, cca)]));
+      } else if (it.k === 'cca_loyer') {
+        var inN = 13 - m, nN1b = it.per - inN, ccb = U.r2(it.mt * nN1b / it.per);
+        li.push('Le loyer ' + (it.per === 3 ? 'trimestriel' : 'semestriel') + ' de ' + e(it.mt) + ' HT, payé d’avance le ' + d1 + ', couvre ' + it.per + ' mois à compter de cette date.');
+        qs.push(Q(id, 'Charge constatée d’avance (loyer)', ccb, '€'));
+        c.push(['Loyer payé', n(it.mt) + ' × ' + nN1b + '/' + it.per + ' (' + nN1b + ' mois sur N+1)', e(ccb)]);
+        journal.push(U.entry('31/12/N', 'Loyer constaté d’avance', [L('486', ccb, 0), L('613', 0, ccb)]));
+      } else if (it.k === 'pca') {
+        var inN2 = 13 - m, nN1c = it.per - inN2, pca = U.r2(it.mt * nN1c / it.per);
+        li.push('La société loue un entrepôt inutilisé ; elle a encaissé le ' + d1 + ' le loyer ' + (it.per === 3 ? 'trimestriel' : 'semestriel') + ' d’avance de ' + e(it.mt) + ' HT, comptabilisé en produits.');
+        qs.push(Q(id, 'Produit constaté d’avance', pca, '€'));
+        c.push(['Loyer perçu', n(it.mt) + ' × ' + nN1c + '/' + it.per, e(pca)]);
+        journal.push(U.entry('31/12/N', 'Loyer perçu d’avance', [L('706', pca, 0, { alt: ['7083', '708', '752'], show: '7083', lib: 'Locations diverses' }), L('487', 0, pca)]));
+      } else if (it.k === 'fnp') {
+        var tv = U.r2(it.ht * 0.2);
+        li.push('La facture ' + (/^[aeiouéh]/i.test(it.nat[0]) ? 'd’' : 'de ') + it.nat[0] + ' (' + e(it.ht) + ' HT, TVA 20 %) ne sera reçue qu’en janvier N+1.');
+        qs.push(Q(id, 'Montant TTC des factures non parvenues', U.r2(it.ht + tv), '€'));
+        c.push(['Facture non parvenue', n(it.ht) + ' + 20 %', e(U.r2(it.ht + tv))]);
+        journal.push(U.entry('31/12/N', 'Facture non parvenue', [L(it.nat[1], it.ht, 0), L('44586', tv, 0), L('408', 0, U.r2(it.ht + tv))]));
+      } else if (it.k === 'fae') {
+        var tv2 = U.r2(it.ht * 0.2);
+        li.push('Des marchandises livrées le 28/12/N à un client pour ' + e(it.ht) + ' HT seront facturées en janvier N+1.');
+        qs.push(Q(id, 'Montant TTC des produits à facturer', U.r2(it.ht + tv2), '€'));
+        c.push(['Facture à établir', n(it.ht) + ' + 20 %', e(U.r2(it.ht + tv2))]);
+        journal.push(U.entry('31/12/N', 'Facture à établir', [L('418', U.r2(it.ht + tv2), 0), L('707', 0, it.ht), L('44587', 0, tv2)]));
+      } else if (it.k === 'icne') {
+        var mo = 13 - m, ic = U.r2(it.K * it.t * mo / 12);
+        li.push('Un emprunt dont le capital restant dû est de ' + e(it.K) + ' (taux ' + U.pcs(it.t) + ') a son échéance annuelle le ' + U.dt(1, m).slice(0, 5) + ' de chaque année ; la dernière échéance a été payée le ' + d1 + '.');
+        qs.push(Q(id, 'Intérêts courus non échus', ic, '€'));
+        c.push(['Intérêts courus', n(it.K) + ' × ' + U.pcs(it.t) + ' × ' + mo + '/12', e(ic)]);
+        journal.push(U.entry('31/12/N', 'Intérêts courus', [L('6611', ic, 0), L('1688', 0, ic)]));
+      } else {
+        var tv3 = U.r2(it.ht * 0.2);
+        li.push('Le principal fournisseur accordera une ristourne de ' + e(it.ht) + ' HT sur les achats de N ; l’avoir sera reçu en février N+1.');
+        qs.push(Q(id, 'Avoir à recevoir TTC', U.r2(it.ht + tv3), '€'));
+        c.push(['Avoir à recevoir', n(it.ht) + ' + 20 %', e(U.r2(it.ht + tv3))]);
+        journal.push(U.entry('31/12/N', 'Avoir à recevoir', [L('4098', U.r2(it.ht + tv3), 0), L('609', 0, it.ht), L('44586', 0, tv3)]));
+      }
+    });
+    var en = '<p>Informations d’inventaire de la société <b>' + p.nom + '</b> au 31/12/N (TVA 20 %) :</p><ol>' + li.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ol><p class="consigne">Calculez les montants et passez les écritures de régularisation au 31/12/N.</p>';
+    var com = 'Ces écritures appliquent le principe d’indépendance des exercices : chaque exercice doit supporter les charges et les produits qui le concernent, quelle que soit la date du paiement ou de la facture. Les charges et produits constatés d’avance retirent du résultat de N la part qui concerne N+1, toujours hors taxes. Les factures non parvenues, les factures à établir et les intérêts courus ajoutent au contraire des éléments déjà nés en N mais pas encore facturés ou échus ; la TVA correspondante transite par des comptes d’attente (44586, 44587) car elle n’est ni déductible ni exigible avant la facture. Au bilan, ces montants apparaissent en comptes de régularisation et en dettes ou créances. Toutes ces écritures seront contrepassées à l’ouverture de N+1, pour que la facture ou le paiement réel s’enregistre normalement. En analyse fonctionnelle, les charges et produits constatés d’avance d’exploitation entrent dans le BFRE, et les intérêts courus dans les dettes hors exploitation.';
+    return { enonce: en, questions: qs, journal: journal, steps: [{ h: 'Calculs', html: U.calc(c) }], comment: com };
+  }
+};
+
+/* ===== Augmentation de capital, comptabilité de gestion ===== */
+
+/* ---------- 10. Augmentation de capital ---------- */
+T.augcap = {
+  id: 'augcap', nom: 'Augmentation de capital', famille: 'Comptabilité des sociétés', ctrl: false, minutes: 18,
+  fiche: {
+    objectif: 'Comptabiliser une augmentation de capital (numéraire ou incorporation de réserves) et calculer la valeur du droit préférentiel de souscription ou du droit d’attribution.',
+    etapes: [
+      'Modalités : apports en numéraire, apports en nature, incorporation de réserves, conversion de dettes (compensation de créances), paiement du dividende en actions.',
+      'Prix d’émission = nominal + prime d’émission. Prime totale = (prix d’émission − nominal) × nombre d’actions nouvelles.',
+      'Libération minimale à la souscription : 1/4 du nominal + la totalité de la prime ; le solde est appelé dans les 5 ans.',
+      'Souscription : D 109 (non appelé) + D 4563 (sommes à verser) / C 1011 (non appelé) + C 1013 (appelé versé) + C 1041 (prime).',
+      'Versement des fonds : D 512 / C 4563.',
+      'DPS : valeur après = (N × V + n × E) ÷ (N + n) ; DPS = V − valeur après. Droit d’attribution (actions gratuites) : V − N × V ÷ (N + n).',
+      'Frais : imputés sur la prime d’émission (D 1041), ou en charges ; certains sujets les inscrivent en frais d’établissement (2013) amortis sur 5 ans au plus : suis la consigne de l’énoncé.'
+    ],
+    pieges: [
+      'Oublier que la prime est intégralement libérée dès la souscription.',
+      'Mettre la prime d’émission dans le capital.',
+      'TVA sur les frais : 20 % du HT (le corrigé officiel du sujet test indique 400 € pour 4 000 € HT, c’est une coquille : 800 €).',
+      'Amortissement des frais d’établissement au prorata à partir de la date de l’opération.',
+      'Incorporation de réserves : aucun mouvement de trésorerie, D 1068 / C 1013.'
+    ],
+    comptes: ['109 Actionnaires – capital souscrit non appelé', '1011 / 1012 / 1013 Capital souscrit', '1041 Primes d’émission', '4563 Associés – versements reçus sur augmentation de capital', '2013 Frais d’augmentation de capital', '1068 Autres réserves']
+  },
+  gen: function (r) {
+    var v = r.pick([10, 15, 20, 50, 100]), N = r.int(2, 40) * 1000, par = r.pick([2, 4, 5, 8, 10]), n = N / par;
+    var V = U.r0(v * r.int(13, 30) / 10);
+    if (r.chance(0.25)) return { nom: U.nom(r), mode: 'res', v: v, N: N, n: n, V: V, date: { d: 1, m: r.int(3, 10) } };
+    var E = U.r0(v + (V - v) * r.int(3, 8) / 10);
+    if (E <= v) E = v + 1;
+    var m = r.int(2, 10);
+    var fm = r.pick(['prime', 'prime', 'charges', 'etab']);
+    return { nom: U.nom(r), mode: 'num', v: v, N: N, n: n, V: V, E: E, lib: r.pick([0.25, 0.25, 0.5, 1]), frais: r.int(4, 40) * 500, fraisMode: fm, date: { d: 1, m: m }, vers: { d: r.int(10, 25), m: m } };
+  },
+  solve: function (p) {
+    var e = U.e, n = U.n, L = U.L, qs = [], c = [], journal = [], en, com;
+    var dA = U.dt(p.date.d, p.date.m);
+    if (p.mode === 'res') {
+      var inc = U.r2(p.n * p.v), apres = U.r2(p.N * p.V / (p.N + p.n)), da = U.r2(p.V - apres);
+      en = '<p>Le capital de la société <b>' + p.nom + '</b> est composé de ' + n(p.N) + ' actions de nominal ' + e(p.v) + ', cotées ' + e(p.V) + '. Le ' + dA + ', elle augmente son capital par incorporation de réserves facultatives, en attribuant gratuitement ' + n(p.n) + ' actions nouvelles.</p>';
+      en += '<p class="consigne">1. Calculez le montant incorporé, la valeur théorique de l’action après l’opération et la valeur du droit d’attribution. 2. Comptabilisez l’opération.</p>';
+      qs = [Q('inc', 'Montant des réserves incorporées', inc, '€'), Q('par', 'Nombre d’actions anciennes pour 1 action nouvelle', p.N / p.n, 'u', { tol: 0 }), Q('ap', 'Valeur théorique après l’opération', apres, '€', { tol: 0.01 }), Q('da', 'Valeur du droit d’attribution', da, '€', { tol: 0.01 })];
+      c = [['Réserves incorporées', n(p.n) + ' × ' + n(p.v), e(inc)], ['Parité', n(p.N) + ' ÷ ' + n(p.n), (p.N / p.n) + ' anciennes pour 1 nouvelle'], ['Valeur après', n(p.N) + ' × ' + n(p.V) + ' ÷ (' + n(p.N) + ' + ' + n(p.n) + ')', U.e2(apres)], ['Droit d’attribution', n(p.V) + ' − ' + n(apres, 2), '<b>' + U.e2(da) + '</b>']];
+      journal = [U.entry(dA, 'Incorporation de réserves au capital', [L('1068', inc, 0), L('1013', 0, inc)])];
+      com = 'L’incorporation de réserves transforme des réserves en capital : les capitaux propres totaux ne changent pas et aucune trésorerie n’entre dans l’entreprise. L’opération renforce cependant la garantie des créanciers, car le capital ne peut plus être distribué. Le nombre d’actions augmente de ' + n(p.n) + ' alors que la valeur de l’entreprise reste identique : le cours théorique baisse de ' + e(p.V) + ' à ' + U.e2(apres) + '. Le droit d’attribution (' + U.e2(da) + ') compense exactement cette baisse pour l’actionnaire ancien : avec ' + (p.N / p.n) + ' droits, il reçoit une action gratuite. Un actionnaire qui ne veut pas augmenter sa participation peut céder ses droits. L’opération améliore aussi la liquidité du titre en abaissant son cours unitaire.';
+      return { enonce: en, questions: qs, journal: journal, steps: [{ h: 'Calculs', html: U.calc(c) }], comment: com };
+    }
+    var prU = U.r2(p.E - p.v), prT = U.r2(prU * p.n), capT = U.r2(p.n * p.v), appele = U.r2(capT * p.lib), nonApp = U.r2(capT - appele), verse = U.r2(appele + prT);
+    var libTxt = { 0.25: 'du minimum légal (le quart du nominal)', 0.5: 'de la moitié du nominal', 1: 'intégralement' }[p.lib];
+    en = '<p>La société <b>' + p.nom + '</b> procède le ' + dA + ' à une augmentation de capital en numéraire :</p>';
+    var li = ['émission de ' + n(p.n) + ' actions nouvelles de nominal ' + e(p.v) + ' au prix de ' + e(p.E) + ' ;', 'les actions sont libérées ' + libTxt + ' et de la totalité de la prime ;'];
+    if (p.N) li.push('avant l’opération, le capital comprend ' + n(p.N) + ' actions, dont la valeur réelle est de ' + e(p.V) + ' ;');
+    if (p.frais) li.push('les frais d’augmentation de capital s’élèvent à ' + e(p.frais) + ' HT (TVA 20 %), réglés par virement le ' + dA + ' ; ' + { prime: 'ils sont imputés sur la prime d’émission.', charges: 'ils sont comptabilisés en charges (honoraires).', etab: 'ils sont inscrits en frais d’établissement, amortis sur 5 ans.' }[p.fraisMode]);
+    li.push('les fonds sont reçus en banque le ' + U.dt(p.vers.d, p.vers.m) + '.');
+    en += U.ul(li);
+    en += '<p class="consigne">1. Rappelez les modalités d’une augmentation de capital. 2. ' + (p.N ? 'Calculez la valeur théorique du droit préférentiel de souscription. 3. ' : 'Définissez le droit préférentiel de souscription. 3. ') + 'Passez les écritures au journal' + (p.fraisMode === 'etab' ? ', y compris au 31/12/N' : '') + '.</p>';
+    qs = [Q('pr', 'Prime d’émission totale', prT, '€'), Q('ve', 'Somme à verser à la souscription', verse, '€'), Q('na', 'Capital souscrit non appelé', nonApp, '€')];
+    c = [['Prime unitaire', n(p.E) + ' − ' + n(p.v), e(prU)], ['Prime totale', n(prU) + ' × ' + n(p.n), e(prT)], ['Augmentation du capital', n(p.n) + ' × ' + n(p.v), e(capT)],
+      ['Capital appelé et versé', n(capT) + ' × ' + n(p.lib, 2), e(appele)], ['Capital non appelé', n(capT) + ' − ' + n(appele), e(nonApp)], ['À verser à la souscription', n(appele) + ' + ' + n(prT), '<b>' + e(verse) + '</b>']];
+    var apres, dps;
+    if (p.N) {
+      apres = U.r2((p.N * p.V + p.n * p.E) / (p.N + p.n)); dps = U.r2(p.V - (p.N * p.V + p.n * p.E) / (p.N + p.n));
+      qs.push(Q('ap', 'Valeur théorique de l’action après l’augmentation', apres, '€', { tol: 0.01 }), Q('dps', 'Valeur théorique du DPS', dps, '€', { tol: 0.01 }));
+      c.push(['Valeur après', '(' + n(p.N) + ' × ' + n(p.V) + ' + ' + n(p.n) + ' × ' + n(p.E) + ') ÷ ' + n(p.N + p.n), U.e2(apres)], ['DPS', n(p.V) + ' − ' + n(apres, 2), '<b>' + U.e2(dps) + '</b>'], ['Parité', n(p.N) + ' ÷ ' + n(p.n), (p.N / p.n) + ' DPS pour 1 action nouvelle']);
+    }
+    journal.push(U.entry(dA, 'Souscription de l’augmentation de capital', [L('109', nonApp, 0), L('4563', verse, 0, { alt: ['4562'] }), L('1011', 0, nonApp), L('1013', 0, appele, { alt: ['1012'] }), L('1041', 0, prT)]));
+    var tvaF = U.r2(p.frais * 0.2), dotF = 0;
+    if (p.frais) {
+      if (p.fraisMode === 'prime') journal.push(U.entry(dA, 'Frais imputés sur la prime d’émission', [L('1041', p.frais, 0), L('44566', tvaF, 0), L('512', 0, U.r2(p.frais + tvaF))]));
+      if (p.fraisMode === 'charges') journal.push(U.entry(dA, 'Frais d’augmentation de capital', [L('6226', p.frais, 0), L('44566', tvaF, 0), L('512', 0, U.r2(p.frais + tvaF))]));
+      if (p.fraisMode === 'etab') journal.push(U.entry(dA, 'Frais d’augmentation de capital', [L('2013', p.frais, 0), L('44562', tvaF, 0), L('512', 0, U.r2(p.frais + tvaF))]));
+      c.push(['TVA sur frais', n(p.frais) + ' × 20 %', e(tvaF)]);
+    }
+    journal.push(U.entry(U.dt(p.vers.d, p.vers.m), 'Versement des fonds', [L('512', verse, 0), L('4563', 0, verse, { alt: ['4562'] })]));
+    if (p.frais && p.fraisMode === 'etab') {
+      var mo = 13 - p.date.m; dotF = U.r2(p.frais / 5 * mo / 12);
+      qs.push(Q('dotf', 'Dotation aux amortissements des frais au 31/12/N', dotF, '€'));
+      c.push(['Dotation des frais', n(p.frais) + ' × 1/5 × ' + mo + '/12', e(dotF)]);
+      journal.push(U.entry('31/12/N', 'Amortissement des frais d’augmentation de capital', [L('6811', dotF, 0), L('28013', 0, dotF)]));
+    }
+    var modal = U.ul(['apport en numéraire (cas présent) ;', 'apport en nature ;', 'incorporation de réserves (attribution d’actions gratuites) ;', 'compensation avec des créances liquides et exigibles sur la société (conversion de dettes) ;', 'paiement du dividende en actions.']);
+    var defDps = U.p('Le droit préférentiel de souscription (DPS) permet aux actionnaires anciens de souscrire en priorité aux actions nouvelles, proportionnellement à leur participation. Il compense la dilution : les actions nouvelles sont émises sous la valeur réelle, ce qui fait baisser la valeur de l’action. Il est négociable : l’actionnaire qui ne souscrit pas peut le vendre.');
+    com = 'L’augmentation de capital en numéraire apporte des ressources propres durables : ' + e(capT) + ' de capital et ' + e(prT) + ' de prime, soit ' + e(U.r2(capT + prT)) + ' de capitaux propres nouveaux, dont ' + e(verse) + ' encaissés immédiatement' + (nonApp ? ' et ' + e(nonApp) + ' à appeler dans les cinq ans' : '') + '. La prime d’émission rémunère l’écart entre la valeur réelle de l’action et son nominal : elle protège les anciens actionnaires, qui ont contribué aux réserves accumulées. ' + (p.N ? 'Le prix d’émission (' + e(p.E) + ') étant inférieur à la valeur réelle (' + e(p.V) + '), l’action perd ' + U.e2(dps) + ' de valeur théorique : c’est la valeur du DPS, qui indemnise exactement l’actionnaire ancien. ' : '') + 'Pour l’analyse financière, l’opération renforce le fonds de roulement et l’autonomie financière, et améliore la capacité d’emprunt. Le capital non appelé figure à l’actif (109) et doit être déduit des capitaux propres dans le bilan fonctionnel. ' + (p.fraisMode === 'prime' ? 'L’imputation des frais sur la prime évite de pénaliser le résultat de l’exercice.' : (p.fraisMode === 'etab' ? 'Les frais immobilisés sont étalés sur cinq ans ; le PCG modernisé privilégie leur imputation sur la prime ou leur passage en charges.' : 'Les frais passés en charges réduisent le résultat de l’exercice mais sont fiscalement déductibles.'));
+    return { enonce: en, questions: qs, journal: journal, steps: [{ h: 'Modalités', html: modal }, { h: 'Droit préférentiel de souscription', html: defDps }, { h: 'Calculs', html: U.calc(c) }], comment: com };
+  }
+};
+
+/* ---------- 11. Seuil de rentabilité ---------- */
+var PRODUITS = [['vélos électriques', 'vélo'], ['tables de jardin', 'table'], ['poêles à granulés', 'poêle'], ['kayaks', 'kayak'], ['casques audio', 'casque'], ['ruches connectées', 'ruche'], ['fauteuils de bureau', 'fauteuil'], ['trottinettes', 'trottinette']];
+function pointMortDate(jours) {
+  var d = Math.ceil(jours - 1e-9); if (d < 1) d = 1; if (d > 360) return 'au-delà de l’exercice';
+  var m = Math.ceil(d / 30), j = d - 30 * (m - 1);
+  return 'le ' + (j === 1 ? '1er' : j) + ' ' + U.MOIS[m - 1];
+}
+T.seuil = {
+  id: 'seuil', nom: 'Seuil de rentabilité et marge sur coût variable', famille: 'Comptabilité de gestion', ctrl: true, minutes: 15,
+  fiche: {
+    objectif: 'Présenter le compte de résultat différentiel et en déduire le seuil de rentabilité, le point mort, la marge et l’indice de sécurité, le levier opérationnel.',
+    etapes: [
+      'Compte de résultat différentiel : CA − charges variables = marge sur coût variable (MCV) ; MCV − charges fixes = résultat. Ajoute la colonne en % du CA.',
+      'Taux de MCV = MCV ÷ CA.',
+      'Seuil de rentabilité (SR) en valeur = charges fixes ÷ taux de MCV.',
+      'SR en quantité = charges fixes ÷ MCV unitaire, arrondi à l’unité supérieure.',
+      'Point mort = SR ÷ CA × 360 jours (ou × 12 mois) si l’activité est régulière ; traduis-le en date.',
+      'Marge de sécurité = CA − SR ; indice de sécurité = marge de sécurité ÷ CA.',
+      'Levier opérationnel = MCV ÷ résultat : variation du résultat (en %) pour 1 % de variation du CA.'
+    ],
+    pieges: [
+      'Arrondir le taux de MCV trop tôt (le corrigé officiel du sujet test arrondit à 0,5625 : 1 337 493 € au lieu de 1 337 545 €).',
+      'Arrondir le SR en quantité à l’inférieur : avec 385 unités le résultat reste négatif, il faut 386.',
+      'Point mort : année commerciale de 360 jours, mois de 30 jours, à partir du début de l’exercice.',
+      'Définir le compte de résultat différentiel : il classe les charges selon leur variabilité (et non selon leur nature).'
+    ],
+    comptes: []
+  },
+  gen: function (r) {
+    for (var i = 0; i < 100; i++) {
+      var pr = r.pick(PRODUITS), p = r.int(20, 3500), q = r.int(10, 400) * (p > 1000 ? 5 : 100);
+      var tx = r.int(25, 65) / 100, cvu = U.r2(p * (1 - tx)), CA = p * q, MCV = CA - cvu * q;
+      var CF = U.r0(MCV * r.int(55, 90) / 100 / 100) * 100;
+      if (MCV - CF <= 0) continue;
+      return { nom: U.nom(r), prod: pr, p: p, q: q, cvu: cvu, CF: CF, global: r.chance(0.4), dCA: r.pick([0.05, 0.1, 0.15, -0.1, 0.2]) };
+    }
+  },
+  calc: function (p) {
+    var CA = U.r2(p.p * p.q), CV = p.CV !== undefined ? p.CV : U.r2(p.cvu * p.q), MCV = U.r2(CA - CV), tx = MCV / CA, R = U.r2(MCV - p.CF);
+    var SR = U.r2(p.CF / tx), mcvu = MCV / p.q, SRq = p.CF / mcvu, SRqc = Math.ceil(SRq - 1e-9), PMj = SR / CA * 360;
+    var MS = U.r2(CA - SR), IS = MS / CA, LO = MCV / R, R2 = U.r2(MCV * (1 + p.dCA) - p.CF);
+    return { CA: CA, CV: CV, MCV: MCV, tx: tx, R: R, SR: SR, mcvu: mcvu, SRq: SRq, SRqc: SRqc, PMj: PMj, MS: MS, IS: IS, LO: LO, R2: R2 };
+  },
+  solve: function (p) {
+    var x = this.calc(p), e = U.e, n = U.n;
+    var en = '<p>La société <b>' + p.nom + '</b> fabrique des ' + p.prod[0] + '. Données de l’exercice N :</p>';
+    en += U.kv(p.global ? [['Prix de vente unitaire', e(p.p) + ' HT'], ['Chiffre d’affaires', e(x.CA) + ' HT'], ['Charges variables', e(x.CV)], ['Charges fixes', e(p.CF)]]
+      : [['Quantités vendues', n(p.q) + ' ' + p.prod[0]], ['Prix de vente unitaire', e(p.p) + ' HT'], ['Coût variable unitaire', U.e2(p.cvu)], ['Charges fixes annuelles', e(p.CF)]]);
+    en += '<p>L’activité est régulière sur l’année (exercice du 01/01 au 31/12).</p>';
+    en += '<p class="consigne">1. Définissez et présentez le compte de résultat différentiel. 2. Calculez le seuil de rentabilité en valeur et en quantité, puis le point mort. 3. Calculez la marge et l’indice de sécurité et le levier opérationnel ; que devient le résultat si le chiffre d’affaires varie de ' + (p.dCA > 0 ? '+' : '') + U.pcs(p.dCA) + ' ?</p>';
+    var qs = [Q('mcv', 'Marge sur coût variable', x.MCV, '€'), Q('tx', 'Taux de marge sur coût variable', U.rd(x.tx * 100, 2), '%', { tol: 0.06 }), Q('res', 'Résultat', x.R, '€'), Q('sr', 'Seuil de rentabilité en valeur', x.SR, '€', { tol: Math.max(2, x.SR * 0.001) }),
+      Q('srq', 'Seuil de rentabilité en quantité (arrondi supérieur)', x.SRqc, 'u', { tol: 1 }), Q('pm', 'Point mort (jour de l’année de 360 jours)', Math.ceil(x.PMj - 1e-9), 'j', { tol: 1 }), Q('ms', 'Marge de sécurité', x.MS, '€', { tol: Math.max(2, x.MS * 0.002) }),
+      Q('is', 'Indice de sécurité', U.rd(x.IS * 100, 2), '%', { tol: 0.1 }), Q('lo', 'Levier opérationnel', U.rd(x.LO, 2), '', { tol: 0.03 }), Q('r2', 'Résultat après variation du CA', x.R2, '€')];
+    var crd = U.tbl(['Compte de résultat différentiel', 'Montant', '% du CA'], [['Chiffre d’affaires' + (p.global ? '' : ' (' + n(p.q) + ' × ' + n(p.p) + ')'), e(x.CA), '100 %'], ['− Charges variables', e(x.CV), U.pc(x.CV / x.CA)], { cls: 'tot', cells: ['= Marge sur coût variable', e(x.MCV), U.pc(x.tx)] }, ['− Charges fixes', e(p.CF), U.pc(p.CF / x.CA)], { cls: 'tot', cells: ['= Résultat', e(x.R), U.pc(x.R / x.CA)] }]);
+    var c = [['Taux de MCV', n(x.MCV) + ' ÷ ' + n(x.CA), U.pc(x.tx, 4)], ['Seuil en valeur', n(p.CF) + ' ÷ ' + n(x.tx, 6), '<b>' + e(x.SR) + '</b>'],
+      ['MCV unitaire', n(x.MCV) + ' ÷ ' + n(p.q), U.e2(x.mcvu)], ['Seuil en quantité', n(p.CF) + ' ÷ ' + n(x.mcvu, 2) + ' = ' + n(x.SRq, 2), '<b>' + n(x.SRqc) + ' unités</b>'],
+      ['Point mort', n(x.SR) + ' ÷ ' + n(x.CA) + ' × 360 = ' + n(x.PMj, 1) + ' jours', pointMortDate(x.PMj)], ['Marge de sécurité', n(x.CA) + ' − ' + n(x.SR), e(x.MS)], ['Indice de sécurité', n(x.MS) + ' ÷ ' + n(x.CA), U.pc(x.IS)],
+      ['Levier opérationnel', n(x.MCV) + ' ÷ ' + n(x.R), n(x.LO, 2)], ['Résultat après variation', n(x.MCV) + ' × ' + n(1 + p.dCA, 2) + ' − ' + n(p.CF) + ' (soit ' + (p.dCA * x.LO > 0 ? '+' : '') + U.pc(p.dCA * x.LO, 1) + ')', e(x.R2)]];
+    var def = U.p('Le compte de résultat différentiel reclasse les charges selon leur comportement face à l’activité : les charges variables évoluent avec le volume vendu, les charges fixes en sont indépendantes à court terme. Il fait apparaître la marge sur coût variable, qui doit couvrir les charges fixes, et permet de calculer le seuil de rentabilité : le chiffre d’affaires pour lequel le résultat est nul.');
+    var com = 'Avec un taux de marge sur coût variable de ' + U.pc(x.tx, 1) + ', chaque euro de chiffre d’affaires dégage ' + n(x.tx, 2) + ' € pour couvrir les ' + e(p.CF) + ' de charges fixes. Le seuil de rentabilité est atteint pour ' + e(x.SR) + ' de chiffre d’affaires, soit ' + n(x.SRqc) + ' ' + p.prod[0] + ' ; si l’activité est régulière, le point mort est atteint ' + pointMortDate(x.PMj) + '. L’indice de sécurité de ' + U.pc(x.IS, 1) + ' signifie que le chiffre d’affaires peut baisser de ' + U.pc(x.IS, 1) + ' avant que l’entreprise ne devienne déficitaire : ' + (x.IS < 0.15 ? 'la marge est faible, l’entreprise est vulnérable à un retournement de la demande.' : (x.IS > 0.35 ? 'la marge est confortable.' : 'la sécurité est correcte sans être confortable.')) + ' Le levier opérationnel de ' + n(x.LO, 2) + ' indique qu’une variation de 1 % du chiffre d’affaires fait varier le résultat de ' + n(x.LO, 2) + ' % : ' + (x.LO > 5 ? 'le risque d’exploitation est élevé, lié au poids des charges fixes.' : 'le risque d’exploitation reste mesuré.') + ' Une variation de ' + U.pcs(p.dCA) + ' du chiffre d’affaires porterait ainsi le résultat à ' + e(x.R2) + '. Pour abaisser le seuil, l’entreprise peut réduire ses charges fixes, améliorer son taux de marge (prix, achats) ou transformer des charges fixes en charges variables (sous-traitance).';
+    return { enonce: en, questions: qs, journal: [], steps: [{ h: 'Définition', html: def }, { h: 'Compte de résultat différentiel', html: crd }, { h: 'Calculs', html: U.calc(c) }], comment: com };
+  }
+};
+
+/* ---------- 12. Commande spéciale et coût marginal ---------- */
+T.commande = {
+  id: 'commande', nom: 'Commande spéciale et coût marginal', famille: 'Comptabilité de gestion', ctrl: true, minutes: 15,
+  fiche: {
+    objectif: 'Décider d’accepter une commande supplémentaire à prix réduit par le raisonnement global puis par le coût marginal.',
+    etapes: [
+      'Raisonnement global : résultat sans la commande et résultat avec la commande (CA, charges variables, charges fixes), puis l’écart.',
+      'Coût marginal = coût de la série supplémentaire = charges variables de la commande + charges fixes supplémentaires éventuelles.',
+      'Recette marginale = quantité × prix négocié.',
+      'Résultat marginal = recette marginale − coût marginal (égal à l’écart du raisonnement global).',
+      'Conclusion : accepter si le résultat marginal est positif, en vérifiant la capacité, l’absence d’effet sur les prix des clients habituels et le caractère ponctuel.'
+    ],
+    pieges: [
+      'Comparer le prix proposé au coût complet unitaire : le coût complet intègre des charges fixes déjà couvertes.',
+      'Oublier une charge fixe supplémentaire (location d’une machine, embauche) ou un surcoût variable (heures supplémentaires).',
+      'Conclure sans réserve : risque commercial (clients habituels), saturation de la capacité.'
+    ],
+    comptes: []
+  },
+  gen: function (r) {
+    var pr = r.pick(PRODUITS), p = r.int(80, 900), cvu = U.r0(p * r.int(40, 65) / 100), q = r.int(5, 120) * 10;
+    var CF = U.r0(q * (p - cvu) * r.int(60, 90) / 100 / 100) * 100;
+    var q2 = U.r0(q * r.int(15, 45) / 100 / 10) * 10 || 10;
+    var v = r.pick(['simple', 'simple', 'surcout', 'refus']);
+    var p2, cvu2 = cvu, dCF = 0;
+    if (v === 'refus') { p2 = U.r0(cvu * r.int(85, 98) / 100); }
+    else { p2 = U.r0(cvu + (p - cvu) * r.int(10, 60) / 100); }
+    if (v === 'surcout') { cvu2 = U.r0(cvu * r.int(103, 110) / 100); dCF = Math.max(0, U.r0(q2 * (p2 - cvu2) * r.int(20, 130) / 100 / 100) * 100); }
+    return { nom: U.nom(r), prod: pr, p: p, cvu: cvu, q: q, CF: CF, q2: q2, p2: p2, cvu2: cvu2, dCF: dCF, mois: r.pick(U.MOIS) };
+  },
+  calc: function (p) {
+    var CA0 = p.q * p.p, CV0 = p.q * p.cvu, R0 = U.r2(CA0 - CV0 - p.CF);
+    var CA1 = U.r2(CA0 + p.q2 * p.p2), CV1 = U.r2(CV0 + p.q2 * p.cvu2), CF1 = U.r2(p.CF + p.dCF), R1 = U.r2(CA1 - CV1 - CF1);
+    var cm = U.r2(p.q2 * p.cvu2 + p.dCF), rm = U.r2(p.q2 * p.p2), res = U.r2(rm - cm);
+    return { CA0: CA0, CV0: CV0, R0: R0, CA1: CA1, CV1: CV1, CF1: CF1, R1: R1, cm: cm, cmu: cm / p.q2, rm: rm, res: res, cc: (CV0 + p.CF) / p.q };
+  },
+  solve: function (p) {
+    var x = this.calc(p), e = U.e, n = U.n;
+    var en = '<p>Chaque mois, la société <b>' + p.nom + '</b> fabrique et vend ' + n(p.q) + ' ' + p.prod[0] + ' au prix unitaire de ' + e(p.p) + '. Coût mensuel de cette production :</p>';
+    en += U.kv([['Charges variables', e(x.CV0) + ' (' + U.e2(p.cvu) + ' par unité)'], ['Charges fixes', e(p.CF)], ['Coût total', e(U.r2(x.CV0 + p.CF)) + ' (' + U.e2(x.cc) + ' par unité)']]);
+    en += '<p>Elle reçoit pour le mois ' + (/^[aeiou]/.test(p.mois) ? 'd’' : 'de ') + p.mois + ' une commande complémentaire de ' + n(p.q2) + ' ' + p.prod[0] + ' au prix négocié de ' + e(p.p2) + ' l’unité. ';
+    en += p.dCF || p.cvu2 !== p.cvu ? 'Pour l’exécuter, il faudrait recourir à des heures supplémentaires, qui portent le coût variable des unités de la commande à ' + U.e2(p.cvu2) + (p.dCF ? ', et louer un équipement pour ' + e(p.dCF) + ' sur le mois' : '') + '.</p>' : 'La capacité de production permet de l’exécuter sans modifier les charges fixes mensuelles.</p>';
+    en += '<p class="consigne">1. Présentez le raisonnement global. 2. Présentez le raisonnement par le coût marginal. 3. Concluez sur l’opportunité d’accepter la commande.</p>';
+    var qs = [Q('r0', 'Résultat mensuel sans la commande', x.R0, '€'), Q('r1', 'Résultat mensuel avec la commande', x.R1, '€'), Q('cm', 'Coût marginal de la commande', x.cm, '€'), Q('cmu', 'Coût marginal unitaire', U.r2(x.cmu), '€', { tol: 0.05 }),
+      Q('rm', 'Recette marginale', x.rm, '€'), Q('res', 'Résultat marginal', x.res, '€'), QC('dec', 'Décision', ['Accepter la commande', 'Refuser la commande'], x.res > 0 ? 0 : 1)];
+    var glob = U.tbl(['', 'Sans la commande', 'Avec la commande'], [['Chiffre d’affaires', n(p.q) + ' × ' + n(p.p) + ' = ' + e(x.CA0), n(x.CA0) + ' + ' + n(p.q2) + ' × ' + n(p.p2) + ' = ' + e(x.CA1)], ['Charges variables', n(p.q) + ' × ' + n(p.cvu, 2) + ' = ' + e(x.CV0), e(x.CV1)], ['Charges fixes', e(p.CF), e(x.CF1)], { cls: 'tot', cells: ['Résultat', e(x.R0), e(x.R1)] }]);
+    var c = [['Coût marginal', n(p.q2) + ' × ' + n(p.cvu2, 2) + (p.dCF ? ' + ' + n(p.dCF) : ''), e(x.cm)], ['Coût marginal unitaire', n(x.cm) + ' ÷ ' + n(p.q2), U.e2(x.cmu)], ['Recette marginale', n(p.q2) + ' × ' + n(p.p2), e(x.rm)], ['Résultat marginal', n(x.rm) + ' − ' + n(x.cm), '<b>' + e(x.res) + '</b>'], ['Écart global', n(x.R1) + ' − ' + n(x.R0), e(U.r2(x.R1 - x.R0))]];
+    var com = x.res > 0
+      ? 'La commande doit être acceptée : elle augmente le résultat mensuel de ' + e(x.res) + '. Le prix proposé (' + e(p.p2) + ') est inférieur au coût complet unitaire (' + U.e2(x.cc) + '), mais ce coût contient des charges fixes déjà couvertes par la production habituelle ; seul compte le coût marginal, ici ' + U.e2(x.cmu) + ' par unité, que le prix dépasse de ' + U.e2(p.p2 - x.cmu) + '. ' + (p.dCF ? 'Les charges fixes supplémentaires de ' + e(p.dCF) + ' sont absorbées par la marge de la commande. ' : '') + 'Trois réserves s’imposent : la capacité doit réellement absorber ' + n(p.q2) + ' unités sans désorganiser la production, les clients habituels ne doivent pas apprendre ce prix et réclamer la même remise, et l’opération doit rester ponctuelle, faute de quoi le prix ne couvrirait plus durablement les charges fixes. Il faut aussi vérifier la solvabilité du client et l’absence de coûts cachés (transport, garantie).'
+      : 'La commande doit être refusée : elle ' + (x.res < 0 ? 'réduirait' : 'ne modifierait pas') + ' le résultat mensuel (' + e(x.res) + '). ' + (p.p2 < p.cvu2 ? 'Le prix proposé (' + e(p.p2) + ') ne couvre même pas le coût variable unitaire (' + U.e2(p.cvu2) + ') : chaque unité vendue creuse la perte.' : 'Le prix couvre le coût variable, mais pas les charges supplémentaires qu’impose la commande : le coût marginal unitaire atteint ' + U.e2(x.cmu) + '.') + ' Le raisonnement par le coût marginal le montre directement : la recette marginale (' + e(x.rm) + ') est inférieure au coût marginal (' + e(x.cm) + '). L’entreprise pourrait renégocier le prix au-dessus de ' + U.e2(x.cmu) + ', ou accepter pour des raisons stratégiques (conquête d’un client, occupation de la capacité), mais en connaissant le coût de ce choix. Elle doit aussi éviter qu’un prix aussi bas ne serve de référence à ses clients habituels.';
+    return { enonce: en, questions: qs, journal: [], steps: [{ h: 'Raisonnement global', html: glob }, { h: 'Coût marginal', html: U.calc(c) }], comment: com };
+  }
+};
+
+/* ===== Analyse financière : SIG et CAF, bilan fonctionnel, ratios ===== */
+function uK(p) { return p.k ? function (x) { return U.n(x) + ' K€'; } : U.e; }
+
+/* ---------- 13. SIG et CAF ---------- */
+T.sig_caf = {
+  id: 'sig_caf', nom: 'SIG, EBE et CAF', famille: 'Analyse financière', ctrl: true, minutes: 20,
+  fiche: {
+    objectif: 'Calculer les soldes intermédiaires de gestion, puis la CAF par les deux méthodes et l’autofinancement.',
+    etapes: [
+      'Marge commerciale = ventes de marchandises − (achats de marchandises ± variation de stock).',
+      'Production de l’exercice = production vendue + stockée + immobilisée.',
+      'Valeur ajoutée = marge commerciale + production − consommations en provenance des tiers (matières ± variation, autres achats et charges externes).',
+      'EBE = VA + subventions d’exploitation − impôts et taxes − charges de personnel.',
+      'Résultat d’exploitation = EBE + reprises et autres produits − dotations et autres charges d’exploitation ; RCAI = RE + résultat financier ; résultat net = RCAI + résultat exceptionnel − participation − IS.',
+      'CAF soustractive : EBE + autres produits − autres charges + produits financiers (hors reprises) − charges financières (hors dotations) + produits exceptionnels (hors prix de cession, quote-part de subvention, reprises) − charges exceptionnelles (hors valeur des éléments cédés, dotations) − participation − IS.',
+      'CAF additive : résultat net + dotations − reprises + valeur comptable des éléments cédés − prix de cession − quote-part de subvention virée au résultat.',
+      'Autofinancement = CAF − dividendes mis en paiement dans l’exercice.'
+    ],
+    pieges: [
+      'Variation de stock : un stock qui augmente (variation négative) diminue le coût des achats consommés.',
+      'Charges financières : seuls les intérêts sont décaissables, pas les dotations financières.',
+      'Exclure de la CAF les cessions et la quote-part de subvention (757, 747 ou 775, 777).',
+      'Ne pas déduire une charge « décaissable » telle qu’une amende exceptionnelle : elle reste dans la CAF.',
+      'PCG 2025 : cessions et quote-part de subvention sont en exploitation ; elles sont toujours exclues de la CAF.',
+      'Les dotations d’un énoncé « EBE → CAF » sont un piège : la méthode soustractive part de l’EBE, calculé avant dotations.'
+    ],
+    comptes: []
+  },
+  gen: function (r) {
+    for (var t = 0; t < 200; t++) {
+      var p = { nom: U.nom(r), k: true };
+      var neg = r.chance(0.5);
+      p.VM = neg ? r.int(10, 300) * 10 : 0; p.AM = p.VM ? U.r0(p.VM * r.int(55, 75) / 100) : 0; p.VSM = p.VM ? r.int(-6, 6) * 5 : 0;
+      p.PV = r.int(50, 600) * 10; p.PS = r.int(-8, 10) * 5; p.PI = r.chance(0.4) ? r.int(1, 8) * 10 : 0;
+      p.AMP = U.r0(p.PV * r.int(20, 35) / 100); p.VSMP = r.int(-6, 6) * 5;
+      p.ACE = U.r0((p.PV + p.VM) * r.int(10, 20) / 100);
+      var VA = p.VM - p.AM - p.VSM + p.PV + p.PS + p.PI - p.AMP - p.VSMP - p.ACE;
+      if (VA <= 50) continue;
+      p.SE = r.chance(0.4) ? r.int(1, 8) * 5 : 0;
+      p.IT = U.r0(VA * r.int(3, 7) / 100);
+      var pers = U.r0(VA * r.int(55, 80) / 100);
+      p.SAL = U.r0(pers * 0.7); p.CS = pers - p.SAL;
+      var EBE = VA + p.SE - p.IT - p.SAL - p.CS;
+      if (EBE <= 10) continue;
+      p.DA = U.r0(EBE * r.int(25, 55) / 100); p.DDAC = r.int(0, 6) * 5; p.DPR = r.chance(0.5) ? r.int(1, 6) * 5 : 0; p.AC = r.int(0, 4) * 5;
+      p.RDP = r.int(0, 6) * 5; p.AP = r.int(0, 4) * 5;
+      p.INT = r.int(1, 12) * 5; p.DF = r.chance(0.4) ? r.int(1, 3) * 5 : 0; p.CFt = p.INT + p.DF;
+      p.RF = r.chance(0.4) ? r.int(1, 3) * 5 : 0; p.PFt = p.RF + r.int(0, 6) * 5;
+      p.PCEA = r.chance(0.6) ? r.int(2, 20) * 5 : 0; p.QPS = r.chance(0.5) ? r.int(1, 6) * 5 : 0; p.REX = 0; p.PEt = p.PCEA + p.QPS + r.int(0, 4) * 5;
+      p.VCEC = p.PCEA ? U.r0(p.PCEA * r.int(40, 130) / 100) : 0; p.DEX = r.chance(0.3) ? r.int(1, 4) * 5 : 0; p.CEt = p.VCEC + p.DEX + r.int(0, 3) * 5;
+      p.PART = r.chance(0.3) ? r.int(1, 6) * 5 : 0;
+      var RCAI = EBE + p.RDP + p.AP - p.DA - p.DDAC - p.DPR - p.AC + p.PFt - p.CFt;
+      var avIS = RCAI + p.PEt - p.CEt - p.PART;
+      p.IS = avIS > 0 ? U.r0(avIS * 0.25) : 0;
+      p.DIV = r.chance(0.7) ? U.r0(Math.max(0, avIS) * r.int(10, 40) / 100 / 5) * 5 : 0;
+      p.ebeOnly = r.chance(0.3);
+      if (p.ebeOnly) p.DAPtot = p.DA + p.DDAC + p.DPR;
+      return p;
+    }
+  },
+  calc: function (p) {
+    var x = {};
+    x.MC = p.VM - p.AM - p.VSM;
+    x.PROD = p.PV + p.PS + p.PI;
+    x.CI = p.AMP + p.VSMP + p.ACE;
+    x.VA = x.MC + x.PROD - x.CI;
+    x.EBE = p.ebeOnly && p.EBE !== undefined ? p.EBE : x.VA + p.SE - p.IT - p.SAL - p.CS;
+    x.RE = x.EBE + p.RDP + p.AP - p.DA - p.DDAC - p.DPR - p.AC;
+    x.RF = p.PFt - p.CFt; x.RCAI = x.RE + x.RF; x.REX = p.PEt - p.CEt;
+    x.RN = x.RCAI + x.REX - p.PART - p.IS;
+    x.CAFs = x.EBE + p.AP - p.AC + (p.PFt - p.RF) - (p.CFt - p.DF) + (p.PEt - p.PCEA - p.QPS - p.REX) - (p.CEt - p.VCEC - p.DEX) - p.PART - p.IS;
+    x.dot = p.DA + p.DDAC + p.DPR + p.DF + p.DEX; x.rep = p.RDP + p.RF + p.REX;
+    x.CAFa = x.RN + x.dot - x.rep + p.VCEC - p.PCEA - p.QPS;
+    x.AF = x.CAFs - p.DIV;
+    x.pers = p.SAL + p.CS;
+    for (var kk in x) x[kk] = U.r2(x[kk]);
+    return x;
+  },
+  solve: function (p) {
+    var x = this.calc(p), f = uK(p), n = U.n, en, qs, steps = [], com;
+    var exPE = p.PEt - p.PCEA - p.QPS - p.REX, exCE = p.CEt - p.VCEC - p.DEX;
+    var sous = U.tbl(['CAF (méthode soustractive)', 'Montant'], [['Excédent brut d’exploitation', n(x.EBE)], ['+ Autres produits d’exploitation', n(p.AP)], ['− Autres charges d’exploitation', n(p.AC)], ['+ Produits financiers (hors reprises : ' + n(p.PFt) + ' − ' + n(p.RF) + ')', n(p.PFt - p.RF)], ['− Charges financières (hors dotations : ' + n(p.CFt) + ' − ' + n(p.DF) + ')', n(p.CFt - p.DF)], ['+ Produits exceptionnels (hors cessions, quote-part de subvention et reprises : ' + n(p.PEt) + ' − ' + n(p.PCEA) + ' − ' + n(p.QPS) + ')', n(exPE)], ['− Charges exceptionnelles (hors valeur des éléments cédés et dotations : ' + n(p.CEt) + ' − ' + n(p.VCEC) + ' − ' + n(p.DEX) + ')', n(exCE)], ['− Participation des salariés', n(p.PART)], ['− Impôt sur les bénéfices', n(p.IS)], { cls: 'tot', cells: ['= CAF', n(x.CAFs)] }]);
+    if (p.ebeOnly) {
+      en = '<p>La société <b>' + p.nom + '</b> vous communique les éléments suivants relatifs à l’exercice N (en milliers d’euros, présentation de l’ancien PCG) :</p>';
+      var li = ['Excédent brut d’exploitation : ' + n(x.EBE), 'Dotations aux amortissements, dépréciations et provisions d’exploitation : ' + n(p.DAPtot || 0)];
+      if (p.AP) li.push('Autres produits d’exploitation : ' + n(p.AP)); if (p.AC) li.push('Autres charges d’exploitation : ' + n(p.AC));
+      li.push('Produits financiers : ' + n(p.PFt) + (p.RF ? ' (dont reprises sur dépréciations : ' + n(p.RF) + ')' : ''));
+      li.push('Charges financières : ' + n(p.CFt) + (p.DF ? ' (dont dotations : ' + n(p.DF) + ')' : ''));
+      li.push('Charges exceptionnelles : ' + n(p.CEt) + (p.VCEC || p.DEX ? ' (dont ' + [p.VCEC ? 'valeur comptable des éléments d’actif cédés – compte 675 : ' + n(p.VCEC) : '', p.DEX ? 'dotations exceptionnelles : ' + n(p.DEX) : ''].filter(Boolean).join(' ; ') + ')' : ''));
+      li.push('Produits exceptionnels : ' + n(p.PEt) + (p.PCEA || p.QPS ? ' (dont ' + [p.PCEA ? 'produits des cessions – compte 775 : ' + n(p.PCEA) : '', p.QPS ? 'quote-part des subventions virée au résultat – compte 777 : ' + n(p.QPS) : ''].filter(Boolean).join(' ; ') + ')' : ''));
+      li.push('Impôt sur les bénéfices : ' + n(p.IS)); if (p.PART) li.push('Participation des salariés : ' + n(p.PART));
+      li.push('Dividendes versés aux actionnaires en N : ' + n(p.DIV));
+      en += U.ul(li) + '<p class="consigne">Après avoir défini l’EBE et la CAF, et précisé l’utilité de la CAF, déterminez la CAF de N et l’autofinancement.</p>';
+      qs = [Q('caf', 'Capacité d’autofinancement (K€)', x.CAFs, '€', { tol: 0.5 }), Q('af', 'Autofinancement (K€)', x.AF, '€', { tol: 0.5 })];
+      steps.push({ h: 'Définitions', html: U.p('L’EBE est la ressource dégagée par la seule exploitation, avant politique de financement, d’amortissement et d’impôt : il mesure la performance industrielle et commerciale. La CAF est la ressource interne potentielle dégagée par l’activité de l’exercice : produits encaissables moins charges décaissables. Elle finance le renouvellement des immobilisations, le remboursement des emprunts et la distribution de dividendes ; elle sert aussi à mesurer la capacité de remboursement (dettes financières ÷ CAF).') });
+      steps.push({ h: 'CAF à partir de l’EBE', html: sous });
+      steps.push({ h: 'Autofinancement', html: U.calc([['Autofinancement', 'CAF ' + n(x.CAFs) + ' − dividendes ' + n(p.DIV), '<b>' + f(x.AF) + '</b>']]) });
+      com = 'La CAF de ' + f(x.CAFs) + ' représente la ressource que l’exercice a dégagée pour financer l’entreprise par elle-même. Les dotations (' + n(p.DAPtot || 0) + ') ne sont pas à retrancher : la méthode soustractive part de l’EBE, calculé avant dotations, et les charges calculées ne sont pas décaissées. De même, les produits de cession et la quote-part de subvention sont exclus, car ils relèvent de l’investissement et non de l’activité. Après versement de ' + f(p.DIV) + ' de dividendes, l’autofinancement atteint ' + f(x.AF) + ' : c’est la part réellement réinvestie dans l’entreprise. ' + (p.DIV > x.CAFs * 0.5 ? 'La distribution absorbe plus de la moitié de la CAF : la politique de dividendes limite la capacité d’investir sans emprunter.' : 'La distribution reste modérée, ce qui préserve la capacité d’investissement.') + ' Rapportée à l’EBE, la CAF en conserve ' + U.pc(x.CAFs / x.EBE, 1) + ' après frais financiers, participation et impôt. Il faudra comparer cette CAF aux investissements prévus et aux échéances d’emprunt pour juger de l’indépendance financière.';
+      return { enonce: en, questions: qs, journal: [], steps: steps, comment: com };
+    }
+    en = '<p>Compte de résultat de la société <b>' + p.nom + '</b> pour l’exercice N, en milliers d’euros (présentation de l’ancien PCG : cessions et quote-part de subvention en exceptionnel).</p>';
+    var ch = [], pr = [];
+    if (p.VM) { ch.push(['Achats de marchandises', n(p.AM)], ['Variation de stock de marchandises', n(p.VSM)]); pr.push(['Ventes de marchandises', n(p.VM)]); }
+    ch.push(['Achats de matières premières', n(p.AMP)], ['Variation de stock de matières', n(p.VSMP)], ['Autres achats et charges externes', n(p.ACE)], ['Impôts et taxes', n(p.IT)], ['Salaires et traitements', n(p.SAL)], ['Charges sociales', n(p.CS)], ['Dotations aux amortissements', n(p.DA)], ['Dotations aux dépréciations de l’actif circulant', n(p.DDAC)], ['Dotations aux provisions pour risques', n(p.DPR)], ['Autres charges', n(p.AC)], ['Charges financières' + (p.DF ? ' (dont ' + n(p.INT) + ' d’intérêts et ' + n(p.DF) + ' de dotations)' : ' (intérêts)'), n(p.CFt)], ['Charges exceptionnelles' + (p.VCEC || p.DEX ? ' (dont ' + [p.VCEC ? n(p.VCEC) + ' de valeur comptable des éléments cédés' : '', p.DEX ? n(p.DEX) + ' de dotations' : ''].filter(Boolean).join(' et ') + ')' : ''), n(p.CEt)], ['Participation des salariés', n(p.PART)], ['Impôt sur les bénéfices', n(p.IS)]);
+    pr.push(['Production vendue', n(p.PV)], ['Production stockée', n(p.PS)], ['Production immobilisée', n(p.PI)], ['Subventions d’exploitation', n(p.SE)], ['Reprises sur dépréciations et provisions d’exploitation', n(p.RDP)], ['Autres produits', n(p.AP)], ['Produits financiers' + (p.RF ? ' (dont ' + n(p.RF) + ' de reprises)' : ''), n(p.PFt)], ['Produits exceptionnels' + (p.PCEA || p.QPS ? ' (dont ' + [p.PCEA ? n(p.PCEA) + ' de prix de cession' : '', p.QPS ? n(p.QPS) + ' de quote-part de subvention' : ''].filter(Boolean).join(' et ') + ')' : ''), n(p.PEt)]);
+    en += '<div class="two">' + U.tbl(['Charges', 'K€'], ch) + U.tbl(['Produits', 'K€'], pr) + '</div>';
+    en += '<p>Dividendes mis en paiement en N : ' + n(p.DIV) + ' K€.</p><p class="consigne">1. Calculez les soldes intermédiaires de gestion. 2. Calculez la CAF par les deux méthodes, puis l’autofinancement. 3. Commentez la part de la valeur ajoutée absorbée par les charges de personnel.</p>';
+    qs = [];
+    if (p.VM) qs.push(Q('mc', 'Marge commerciale (K€)', x.MC, '€', { tol: 0.5 }));
+    qs.push(Q('prod', 'Production de l’exercice (K€)', x.PROD, '€', { tol: 0.5 }), Q('va', 'Valeur ajoutée (K€)', x.VA, '€', { tol: 0.5 }), Q('ebe', 'Excédent brut d’exploitation (K€)', x.EBE, '€', { tol: 0.5 }), Q('re', 'Résultat d’exploitation (K€)', x.RE, '€', { tol: 0.5 }), Q('rcai', 'Résultat courant avant impôt (K€)', x.RCAI, '€', { tol: 0.5 }), Q('rex', 'Résultat exceptionnel (K€)', x.REX, '€', { tol: 0.5 }), Q('rn', 'Résultat net (K€)', x.RN, '€', { tol: 0.5 }), Q('caf', 'CAF (K€)', x.CAFs, '€', { tol: 0.5 }), Q('af', 'Autofinancement (K€)', x.AF, '€', { tol: 0.5 }), Q('pva', 'Charges de personnel ÷ valeur ajoutée', U.rd(x.pers / x.VA * 100, 1), '%', { tol: 0.15 }));
+    var sig = [];
+    if (p.VM) sig.push(['Marge commerciale', n(p.VM) + ' − (' + n(p.AM) + ' ' + (p.VSM < 0 ? '− ' + n(-p.VSM) : '+ ' + n(p.VSM)) + ')', n(x.MC)]);
+    sig.push(['Production de l’exercice', n(p.PV) + ' + ' + n(p.PS) + ' + ' + n(p.PI), n(x.PROD)], ['Consommations en provenance des tiers', n(p.AMP) + ' ' + (p.VSMP < 0 ? '− ' + n(-p.VSMP) : '+ ' + n(p.VSMP)) + ' + ' + n(p.ACE), n(x.CI)], ['Valeur ajoutée', (p.VM ? n(x.MC) + ' + ' : '') + n(x.PROD) + ' − ' + n(x.CI), '<b>' + n(x.VA) + '</b>'],
+      ['EBE', n(x.VA) + ' + ' + n(p.SE) + ' − ' + n(p.IT) + ' − ' + n(p.SAL) + ' − ' + n(p.CS), '<b>' + n(x.EBE) + '</b>'], ['Résultat d’exploitation', n(x.EBE) + ' + ' + n(p.RDP) + ' + ' + n(p.AP) + ' − (' + n(p.DA) + ' + ' + n(p.DDAC) + ' + ' + n(p.DPR) + ') − ' + n(p.AC), n(x.RE)],
+      ['Résultat financier', n(p.PFt) + ' − ' + n(p.CFt), n(x.RF)], ['RCAI', n(x.RE) + ' ' + (x.RF < 0 ? '− ' + n(-x.RF) : '+ ' + n(x.RF)), n(x.RCAI)], ['Résultat exceptionnel', n(p.PEt) + ' − ' + n(p.CEt), n(x.REX)], ['Résultat net', n(x.RCAI) + ' ' + (x.REX < 0 ? '− ' + n(-x.REX) : '+ ' + n(x.REX)) + ' − ' + n(p.PART) + ' − ' + n(p.IS), '<b>' + n(x.RN) + '</b>']);
+    steps.push({ h: 'Soldes intermédiaires de gestion (K€)', html: U.calc(sig) });
+    steps.push({ h: 'CAF – méthode soustractive', html: sous });
+    steps.push({ h: 'CAF – méthode additive', html: U.tbl(['CAF (méthode additive)', 'Montant'], [['Résultat net', n(x.RN)], ['+ Dotations (' + [p.DA, p.DDAC, p.DPR, p.DF, p.DEX].filter(Boolean).map(n).join(' + ') + ')', n(x.dot)], ['− Reprises (' + ([p.RDP, p.RF, p.REX].filter(Boolean).map(n).join(' + ') || '0') + ')', n(x.rep)], ['+ Valeur comptable des éléments cédés', n(p.VCEC)], ['− Produits des cessions', n(p.PCEA)], ['− Quote-part des subventions virée au résultat', n(p.QPS)], { cls: 'tot', cells: ['= CAF', n(x.CAFa)] }]) });
+    steps.push({ h: 'Autofinancement', html: U.calc([['Autofinancement', n(x.CAFs) + ' − ' + n(p.DIV), '<b>' + n(x.AF) + ' K€</b>']]) });
+    var tp = x.pers / x.VA, tm = x.EBE / x.VA;
+    com = 'Les charges de personnel (' + n(x.pers) + ' K€) absorbent ' + U.pc(tp, 1) + ' de la valeur ajoutée, ' + (tp > 0.7 ? 'une part élevée qui caractérise une activité de main-d’œuvre et laisse peu de marge pour rémunérer les capitaux' : 'une part modérée qui laisse une marge confortable pour rémunérer les capitaux') + '. Le taux de marge (EBE ÷ VA) n’est que de ' + U.pc(tm, 1) + (tm < 0.2 ? ', ce qui rend l’entreprise sensible à toute hausse des salaires.' : ', ce qui protège l’entreprise face à une hausse des coûts.') + ' Les dotations (' + n(p.DA + p.DDAC + p.DPR) + ' K€) ramènent le résultat d’exploitation à ' + n(x.RE) + ' K€ ; ' + (x.RF < 0 ? 'les charges financières pèsent ensuite sur le RCAI (' + n(x.RCAI) + ' K€). ' : 'le résultat financier est positif. ') + 'Le résultat net s’établit à ' + n(x.RN) + ' K€, soit ' + U.pc(x.RN / (p.VM + x.PROD), 1) + ' du chiffre d’affaires. La CAF (' + n(x.CAFs) + ' K€), identique par les deux méthodes, ' + (x.AF > 0 ? 'couvre les dividendes et laisse un autofinancement de ' + n(x.AF) + ' K€ pour investir et rembourser les emprunts.' : 'ne couvre pas les dividendes versés : l’entreprise s’appauvrit et devra trouver des financements externes.');
+    return { enonce: en, questions: qs, journal: [], steps: steps, comment: com };
+  }
+};
+
+/* ---------- 14. Bilan fonctionnel ---------- */
+T.bilan_fonc = {
+  id: 'bilan_fonc', nom: 'Bilan fonctionnel (FRNG, BFR, trésorerie)', famille: 'Analyse financière', ctrl: true, minutes: 20,
+  fiche: {
+    objectif: 'Reclasser le bilan comptable en valeurs brutes selon les cycles, puis calculer FRNG, BFRE, BFRHE et trésorerie nette.',
+    etapes: [
+      'Emplois stables = immobilisations brutes (incorporelles, corporelles, financières).',
+      'Ressources stables = capitaux propres (capital non appelé déduit) + amortissements et dépréciations (de tout l’actif) + provisions pour risques + dettes financières hors concours bancaires courants et hors intérêts courus.',
+      'Actif circulant d’exploitation = stocks bruts + créances clients brutes + avances versées + charges constatées d’avance d’exploitation.',
+      'Dettes d’exploitation = fournisseurs + dettes fiscales et sociales hors IS + avances reçues + produits constatés d’avance d’exploitation.',
+      'Hors exploitation : autres créances (actif) ; IS, dettes sur immobilisations, intérêts courus, dividendes à payer (passif).',
+      'Trésorerie active = VMP brutes + disponibilités ; trésorerie passive = concours bancaires courants.',
+      'FRNG = RS − ES ; BFRE = ACE − DE ; BFRHE = ACHE − DHE ; TN = FRNG − BFR, vérifiée par TA − TP.',
+      'BFRE en jours de CA = BFRE ÷ CA HT × 360.'
+    ],
+    pieges: [
+      'Reprendre les valeurs nettes : le bilan fonctionnel est en valeurs brutes, les amortissements et dépréciations passent en ressources stables.',
+      'Laisser les concours bancaires dans les emprunts.',
+      'Classer l’IS en dettes d’exploitation (il est hors exploitation).',
+      'Les subventions d’investissement font partie des capitaux propres.',
+      'Vérifier toujours FRNG − BFR = TA − TP.'
+    ],
+    comptes: []
+  },
+  gen: function (r) {
+    for (var t = 0; t < 300; t++) {
+      var p = { nom: U.nom(r), k: true };
+      p.II = [r.int(2, 40) * 10, 0]; p.II[1] = U.r0(p.II[0] * r.int(20, 60) / 100);
+      p.IC = [r.int(50, 600) * 10, 0]; p.IC[1] = U.r0(p.IC[0] * r.int(25, 60) / 100);
+      p.IF = [r.int(0, 30) * 10, 0]; p.IF[1] = p.IF[0] ? r.int(0, 3) * 5 : 0;
+      p.ST = [r.int(10, 150) * 10, 0]; p.ST[1] = r.int(0, 6) * 5;
+      p.CL = [r.int(10, 200) * 10, 0]; p.CL[1] = r.int(0, 8) * 5;
+      p.AUT = r.int(0, 20) * 10; p.VMP = r.int(0, 10) * 10; p.DISP = r.int(1, 30) * 10; p.CCA = r.int(0, 6) * 5;
+      p.CSNA = r.chance(0.2) ? r.int(1, 10) * 10 : 0;
+      p.CAP = r.int(20, 200) * 10 + p.CSNA * 2; p.RES_ = r.int(1, 25) * 10; p.SUB = r.chance(0.5) ? r.int(1, 15) * 10 : 0; p.PROV = r.int(0, 10) * 10;
+      p.EMP = r.int(10, 300) * 10; p.CBC = r.chance(0.6) ? r.int(1, 25) * 10 : 0; p.ICNE = r.chance(0.3) ? r.int(1, 4) * 5 : 0; p.EMP += p.CBC + p.ICNE;
+      p.FOU = U.r0((p.ST[0] + p.CL[0]) * r.int(30, 70) / 100 / 10) * 10; p.DFS = r.int(5, 60) * 10; p.ISD = r.chance(0.7) ? U.r0(p.DFS * r.int(10, 30) / 100 / 5) * 5 : 0;
+      p.DIMMO = r.chance(0.5) ? r.int(1, 10) * 10 : 0; p.PCA = r.int(0, 6) * 5;
+      var actif = (p.II[0] - p.II[1]) + (p.IC[0] - p.IC[1]) + (p.IF[0] - p.IF[1]) + (p.ST[0] - p.ST[1]) + (p.CL[0] - p.CL[1]) + p.AUT + p.VMP + p.DISP + p.CCA + p.CSNA;
+      var passifSansRes = p.CAP + p.RES_ + p.SUB + p.PROV + p.EMP + p.FOU + p.DFS + p.DIMMO + p.PCA;
+      p.RESV = actif - passifSansRes;
+      if (p.RESV < 20 || p.RESV > p.CAP * 2) continue;
+      p.CA = U.r0((p.ST[0] + p.CL[0]) * r.int(25, 60) / 10 / 100) * 100;
+      return p;
+    }
+  },
+  calc: function (p) {
+    var x = {};
+    x.ES = p.II[0] + p.IC[0] + p.IF[0];
+    x.AMD = p.II[1] + p.IC[1] + p.IF[1] + p.ST[1] + p.CL[1] + (p.VMPd || 0);
+    x.CP = p.CAP + p.RESV + p.RES_ + p.SUB - p.CSNA;
+    x.EMPs = p.EMP - p.CBC - p.ICNE;
+    x.RS = x.CP + x.AMD + p.PROV + x.EMPs;
+    x.ACE = p.ST[0] + p.CL[0] + p.CCA; x.ACHE = p.AUT; x.TA = p.VMP + (p.VMPd || 0) + p.DISP;
+    x.DE = p.FOU + (p.DFS - p.ISD) + p.PCA; x.DHE = p.ISD + p.DIMMO + p.ICNE + (p.DIVP || 0); x.TP = p.CBC;
+    x.FRNG = x.RS - x.ES; x.BFRE = x.ACE - x.DE; x.BFRHE = x.ACHE - x.DHE; x.BFR = x.BFRE + x.BFRHE; x.TN = x.FRNG - x.BFR; x.TN2 = x.TA - x.TP;
+    x.totE = x.ES + x.ACE + x.ACHE + x.TA; x.totR = x.RS + x.DE + x.DHE + x.TP;
+    x.jours = x.BFRE / p.CA * 360;
+    for (var kk in x) x[kk] = U.r2(x[kk]);
+    return x;
+  },
+  solve: function (p) {
+    var x = this.calc(p), n = U.n;
+    var net = function (a) { return n(a[0] - a[1]); };
+    var rows = [['Immobilisations incorporelles', n(p.II[0]), n(p.II[1]), net(p.II)], ['Immobilisations corporelles', n(p.IC[0]), n(p.IC[1]), net(p.IC)]];
+    if (p.IF[0]) rows.push(['Immobilisations financières', n(p.IF[0]), n(p.IF[1]), net(p.IF)]);
+    if (p.CSNA) rows.unshift(['Capital souscrit – non appelé', n(p.CSNA), '', n(p.CSNA)]);
+    rows.push(['Stocks de marchandises', n(p.ST[0]), n(p.ST[1]), net(p.ST)], ['Clients et comptes rattachés', n(p.CL[0]), n(p.CL[1]), net(p.CL)]);
+    if (p.AUT) rows.push(['Autres créances (hors exploitation)', n(p.AUT), '', n(p.AUT)]);
+    if (p.VMP) rows.push(['Valeurs mobilières de placement', n(p.VMP + (p.VMPd || 0)), p.VMPd ? n(p.VMPd) : '', n(p.VMP)]);
+    rows.push(['Disponibilités', n(p.DISP), '', n(p.DISP)]);
+    if (p.CCA) rows.push(['Charges constatées d’avance (exploitation)', n(p.CCA), '', n(p.CCA)]);
+    var tb = U.r2(rows.reduce(function (a, r) { return a + U.parseNum(r[1]); }, 0)), tam = x.AMD, tn = U.r2(tb - tam);
+    rows.push({ cls: 'tot', cells: ['Total', n(tb), n(tam), n(tn)] });
+    var pr = [['Capital', n(p.CAP)], ['Réserves', n(p.RESV)], ['Résultat de l’exercice', n(p.RES_)]];
+    if (p.SUB) pr.push(['Subventions d’investissement', n(p.SUB)]);
+    if (p.PROV) pr.push(['Provisions pour risques', n(p.PROV)]);
+    pr.push(['Emprunts auprès des établissements de crédit' + (p.CBC || p.ICNE ? ' (dont ' + [p.CBC ? n(p.CBC) + ' de concours bancaires courants' : '', p.ICNE ? n(p.ICNE) + ' d’intérêts courus' : ''].filter(Boolean).join(' et ') + ')' : ''), n(p.EMP)], ['Fournisseurs', n(p.FOU)], ['Dettes fiscales et sociales' + (p.ISD ? ' (dont ' + n(p.ISD) + ' d’impôt sur les sociétés)' : ''), n(p.DFS)]);
+    if (p.DIMMO) pr.push(['Dettes sur immobilisations', n(p.DIMMO)]);
+    if (p.PCA) pr.push(['Produits constatés d’avance (exploitation)', n(p.PCA)]);
+    pr.push({ cls: 'tot', cells: ['Total', n(tn)] });
+    var en = '<p>Bilan de la société <b>' + p.nom + '</b> au 31/12/N, en milliers d’euros. Chiffre d’affaires HT de N : ' + n(p.CA) + ' K€.</p>';
+    en += U.tbl(['Actif', 'Brut', 'Amort. et dépr.', 'Net'], rows) + U.tbl(['Passif', 'Montant'], pr);
+    en += '<p class="consigne">1. Établissez le bilan fonctionnel condensé. 2. Calculez le FRNG, le BFRE, le BFRHE et la trésorerie nette, et vérifiez celle-ci. 3. Exprimez le BFRE en jours de CA et commentez l’équilibre financier.</p>';
+    var t = { tol: 0.5 };
+    var qs = [Q('es', 'Emplois stables (K€)', x.ES, '€', t), Q('rs', 'Ressources stables (K€)', x.RS, '€', t), Q('frng', 'FRNG (K€)', x.FRNG, '€', t), Q('bfre', 'BFRE (K€)', x.BFRE, '€', t), Q('bfrhe', 'BFRHE (K€)', x.BFRHE, '€', t), Q('tn', 'Trésorerie nette (K€)', x.TN, '€', t), Q('j', 'BFRE en jours de CA', U.rd(x.jours, 1), 'j', { tol: 1 })];
+    var bf = U.tbl(['Emplois', 'K€', 'Ressources', 'K€'], [
+      ['Emplois stables (' + [p.II[0], p.IC[0], p.IF[0]].filter(Boolean).map(n).join(' + ') + ')', n(x.ES), 'Ressources stables : capitaux propres ' + n(x.CP) + (p.CSNA ? ' (capital non appelé ' + n(p.CSNA) + ' déduit)' : '') + ' + amortissements et dépréciations ' + n(x.AMD) + ' + provisions ' + n(p.PROV) + ' + emprunts hors concours bancaires' + (p.ICNE ? ' et intérêts courus' : '') + ' ' + n(x.EMPs), n(x.RS)],
+      ['Actif circulant d’exploitation (' + [p.ST[0], p.CL[0], p.CCA].filter(Boolean).map(n).join(' + ') + ')', n(x.ACE), 'Dettes d’exploitation (' + [p.FOU, p.DFS - p.ISD, p.PCA].filter(Boolean).map(n).join(' + ') + ')', n(x.DE)],
+      ['Actif circulant hors exploitation', n(x.ACHE), 'Dettes hors exploitation (' + ([p.ISD, p.DIMMO, p.ICNE].filter(Boolean).map(n).join(' + ') || '0') + ')', n(x.DHE)],
+      ['Trésorerie active (' + [p.VMP, p.DISP].filter(Boolean).map(n).join(' + ') + ')', n(x.TA), 'Trésorerie passive', n(x.TP)],
+      { cls: 'tot', cells: ['Total', n(x.totE), 'Total', n(x.totR)] }]);
+    var c = [['FRNG', n(x.RS) + ' − ' + n(x.ES), '<b>' + n(x.FRNG) + '</b>'], ['BFRE', n(x.ACE) + ' − ' + n(x.DE), n(x.BFRE)], ['BFRHE', n(x.ACHE) + ' − ' + n(x.DHE), n(x.BFRHE)], ['BFR', n(x.BFRE) + ' + ' + n(x.BFRHE), n(x.BFR)], ['Trésorerie nette', n(x.FRNG) + ' − ' + n(x.BFR), '<b>' + n(x.TN) + '</b>'], ['Vérification', n(x.TA) + ' − ' + n(x.TP), n(x.TN2)], ['BFRE en jours de CA', n(x.BFRE) + ' ÷ ' + n(p.CA) + ' × 360', n(x.jours, 1) + ' jours']];
+    var com = [];
+    com.push('Le FRNG ' + (x.FRNG >= 0 ? 'est positif (' + n(x.FRNG) + ' K€) : les ressources stables financent la totalité des immobilisations et dégagent un excédent pour le cycle d’exploitation.' : 'est négatif (' + n(x.FRNG) + ' K€) : une partie des immobilisations est financée par des ressources à court terme, situation risquée.'));
+    com.push('Le BFRE atteint ' + n(x.BFRE) + ' K€, soit ' + n(x.jours, 0) + ' jours de chiffre d’affaires : ' + (x.BFRE < 0 ? 'le cycle d’exploitation dégage une ressource, ce qui est typique de la distribution.' : (x.jours > 60 ? 'c’est un besoin lourd, lié aux stocks et au crédit client.' : 'c’est un besoin raisonnable.')));
+    com.push(x.TN >= 0 ? 'Le FRNG couvre le BFR et la trésorerie nette est positive (' + n(x.TN) + ' K€) : l’équilibre financier est respecté' + (x.TP ? ', même si l’entreprise recourt à ' + n(x.TP) + ' K€ de concours bancaires.' : '.') : 'Le FRNG ne couvre pas le BFR : la trésorerie nette est négative (' + n(x.TN) + ' K€) et l’entreprise dépend de ses concours bancaires (' + n(x.TP) + ' K€), une source de financement coûteuse et révocable.');
+    com.push('Une croissance de l’activité augmenterait le BFR à proportion du chiffre d’affaires et pèserait sur la trésorerie.');
+    com.push('Pour renforcer l’équilibre : allonger les ressources stables (mise en réserve des bénéfices, augmentation de capital, emprunt à long terme) et réduire le BFR (délais clients, gestion des stocks, négociation des délais fournisseurs dans la limite légale).');
+    return { enonce: en, questions: qs, journal: [], steps: [{ h: 'Bilan fonctionnel condensé (K€)', html: bf }, { h: 'Grands équilibres', html: U.calc(c) }], comment: com.join(' ') };
+  }
+};
+
+/* ---------- 15. Ratios ---------- */
+T.ratios = {
+  id: 'ratios', nom: 'Ratios d’endettement, de liquidité et de rentabilité', famille: 'Analyse financière', ctrl: true, minutes: 15,
+  fiche: {
+    objectif: 'Calculer les ratios demandés et les commenter : chiffre, repère, conséquence pour l’entreprise.',
+    etapes: [
+      'Endettement général = dettes totales ÷ total du passif (au-delà de 2/3, forte dépendance aux créanciers) ; autonomie financière = capitaux propres ÷ total du passif (au moins 20 à 25 %).',
+      'Liquidité générale = actif circulant ÷ dettes à court terme (> 1) ; réduite = (actif circulant − stocks) ÷ dettes à court terme ; immédiate = disponibilités ÷ dettes à court terme.',
+      'Solvabilité générale = total de l’actif ÷ total des dettes (> 1).',
+      'Rentabilité financière = résultat net ÷ capitaux propres ; rentabilité économique = résultat d’exploitation après impôt ÷ actif économique ; marge nette = résultat net ÷ CA.',
+      'Délais : clients = créances clients TTC ÷ CA TTC × 360 ; fournisseurs = dettes fournisseurs TTC ÷ achats TTC × 360.',
+      'Effet de levier : Rf = Re + (Re − i) × D ÷ CP, avec Re et i après impôt.',
+      'Commentaire : 5 à 10 lignes, chiffre + norme + cause + conséquence.'
+    ],
+    pieges: [
+      'Endettement : prendre toutes les dettes (long terme et court terme), pas seulement les emprunts.',
+      'Rendement des capitaux propres sur le résultat net, pas sur le CA.',
+      'Délais clients et fournisseurs : TTC sur TTC.',
+      'Ne pas oublier la conclusion : l’entreprise peut-elle encore s’endetter ? payer ses dettes ? rémunérer ses actionnaires ?'
+    ],
+    comptes: []
+  },
+  gen: function (r, opt) {
+    for (var t = 0; t < 200; t++) {
+      var TP = r.int(5, 100) * 100000, CP = U.r0(TP * r.int(18, 60) / 100 / 10000) * 10000, PC = U.r0(TP * r.int(15, 45) / 100 / 10000) * 10000, DLT = TP - CP - PC;
+      if (DLT < 0) continue;
+      var AC = U.r0(TP * r.int(25, 65) / 100 / 10000) * 10000, ST = U.r0(AC * r.int(15, 45) / 100 / 1000) * 1000, DISP = U.r0(AC * r.int(8, 35) / 100 / 1000) * 1000, CL = AC - ST - DISP;
+      if (CL <= 0) continue;
+      var CA = U.r0(TP * r.int(60, 200) / 100 / 10000) * 10000;
+      var lev = (!opt || opt.profil !== 'C') && r.chance(0.35);
+      var p = { nom: U.nom(r), TP: TP, CP: CP, PC: PC, DLT: DLT, AC: AC, ST: ST, DISP: DISP, CL: CL, CA: CA };
+      if (lev) { p.lev = true; p.i = r.pick([0.03, 0.04, 0.05, 0.06]); p.RE = U.r0(TP * r.int(4, 16) / 100 / 1000) * 1000; p.RN = U.r0((p.RE - p.i * DLT) * 0.75); if (p.RN <= 0) continue; }
+      else p.RN = U.r0(CP * r.int(-5, 25) / 100 / 1000) * 1000;
+      p.FOU = U.r0(PC * r.int(40, 80) / 100 / 1000) * 1000; p.ACH = U.r0(CA * r.int(30, 60) / 100 / 1000) * 1000;
+      var all = ['endet', 'auto', 'liqG', 'liqR', 'liqI', 'solv', 'roe', 'marge', 'delaiC', 'delaiF'];
+      p.liste = ['endet', 'liqG', 'roe'].concat(r.pickN(all.filter(function (k) { return ['endet', 'liqG', 'roe'].indexOf(k) < 0; }), r.int(1, 3)));
+      return p;
+    }
+  },
+  solve: function (p) {
+    var e = U.e, n = U.n, D = p.DLT + p.PC;
+    var R = {
+      endet: { l: 'Ratio d’endettement général', v: D / p.TP, u: '%', calc: '(' + n(p.DLT) + ' + ' + n(p.PC) + ') ÷ ' + n(p.TP) },
+      auto: { l: 'Autonomie financière', v: p.CP / p.TP, u: '%', calc: n(p.CP) + ' ÷ ' + n(p.TP) },
+      liqG: { l: 'Liquidité générale', v: p.AC / p.PC, u: '', calc: n(p.AC) + ' ÷ ' + n(p.PC) },
+      liqR: { l: 'Liquidité réduite', v: (p.AC - p.ST) / p.PC, u: '', calc: '(' + n(p.AC) + ' − ' + n(p.ST) + ') ÷ ' + n(p.PC) },
+      liqI: { l: 'Liquidité immédiate', v: p.DISP / p.PC, u: '', calc: n(p.DISP) + ' ÷ ' + n(p.PC) },
+      solv: { l: 'Solvabilité générale', v: p.TP / D, u: '', calc: n(p.TP) + ' ÷ ' + n(D) },
+      roe: { l: 'Rentabilité des capitaux propres', v: p.RN / p.CP, u: '%', calc: n(p.RN) + ' ÷ ' + n(p.CP) },
+      marge: { l: 'Taux de marge nette', v: p.RN / p.CA, u: '%', calc: n(p.RN) + ' ÷ ' + n(p.CA) },
+      delaiC: { l: 'Délai de règlement clients (jours)', v: p.CL / (p.CA * 1.2) * 360, u: 'j', calc: n(p.CL) + ' ÷ (' + n(p.CA) + ' × 1,2) × 360' },
+      delaiF: { l: 'Délai de règlement fournisseurs (jours)', v: p.FOU / (p.ACH * 1.2) * 360, u: 'j', calc: n(p.FOU) + ' ÷ (' + n(p.ACH) + ' × 1,2) × 360' }
+    };
+    var en = '<p>La société <b>' + p.nom + '</b> présente les données suivantes pour l’exercice N-1 :</p>';
+    var d = [['Total actif', e(p.TP)], ['Total passif', e(p.TP)], ['Capitaux propres', e(p.CP)], ['Résultat net', e(p.RN)], ['Chiffre d’affaires HT', e(p.CA)], ['Dettes à long terme', e(p.DLT)], ['Actif circulant', e(p.AC)]];
+    if (!p.hideST) d.push(['dont stocks', e(p.ST)], ['dont créances clients (TTC)', e(p.CL)]);
+    d.push([p.hideST ? 'Liquidités' : 'dont liquidités', e(p.DISP)], ['Passif circulant (dettes à court terme)', e(p.PC)]);
+    if (p.liste.indexOf('delaiF') >= 0) d.push(['dont dettes fournisseurs (TTC)', e(p.FOU)], ['Achats de l’exercice (HT)', e(p.ACH)]);
+    if (p.lev) d.push(['Résultat d’exploitation', e(p.RE)], ['Taux d’intérêt des dettes à long terme', U.pcs(p.i)], ['Taux de l’impôt sur les sociétés', '25 %']);
+    en += U.kv(d) + '<p>TVA 20 %. Année de 360 jours.' + (p.lev ? ' Le résultat net se limite au résultat d’exploitation diminué des intérêts des dettes à long terme et de l’impôt.' : '') + '</p>';
+    var qs = [], c = [];
+    p.liste.forEach(function (k) {
+      var r = R[k], v = r.u === '%' ? U.rd(r.v * 100, 2) : U.rd(r.v, 2);
+      qs.push(Q(k, r.l, v, r.u === '%' ? '%' : (r.u === 'j' ? 'j' : ''), r.u === '%' ? { tol: 0.15 } : (r.u === 'j' ? { tol: 1 } : { tol: 0.015 })));
+      c.push([r.l, r.calc, r.u === '%' ? U.pc(r.v, 1) : (r.u === 'j' ? n(r.v, 1) + ' jours' : n(r.v, 2))]);
+    });
+    var Re, iN, Rf;
+    if (p.lev) {
+      Re = p.RE * 0.75 / (p.CP + p.DLT); iN = p.i * 0.75; Rf = Re + (Re - iN) * p.DLT / p.CP;
+      qs.push(Q('re', 'Rentabilité économique après impôt (RE × 0,75 ÷ (CP + DLT))', U.rd(Re * 100, 2), '%', { tol: 0.1 }), Q('rf', 'Rentabilité financière par la formule du levier', U.rd(Rf * 100, 2), '%', { tol: 0.15 }));
+      c.push(['Rentabilité économique', n(p.RE) + ' × 0,75 ÷ (' + n(p.CP) + ' + ' + n(p.DLT) + ')', U.pc(Re)], ['Coût de la dette après impôt', U.pcs(p.i) + ' × 0,75', U.pc(iN)], ['Rf = Re + (Re − i) × D ÷ CP', U.pc(Re) + ' + (' + U.pc(Re) + ' − ' + U.pc(iN) + ') × ' + n(p.DLT) + ' ÷ ' + n(p.CP), '<b>' + U.pc(Rf) + '</b> (= RN ÷ CP)']);
+    }
+    en += '<p class="consigne">Calculez les ratios suivants et commentez chacun en 5 à 10 lignes : ' + p.liste.map(function (k) { return R[k].l.toLowerCase(); }).join(', ') + (p.lev ? ', puis la rentabilité économique et l’effet de levier' : '') + '.</p>';
+    var com = [];
+    var en_ = R.endet.v, lg = R.liqG.v, roe = R.roe.v;
+    com.push('Endettement : ' + U.pc(en_, 1) + ' du financement provient de tiers ; l’autonomie financière n’est que de ' + U.pc(p.CP / p.TP, 1) + '. ' + (en_ > 2 / 3 ? 'Au-delà des deux tiers, l’entreprise dépend fortement de ses créanciers et sa capacité d’emprunt est réduite.' : 'Sous le seuil des deux tiers, l’entreprise conserve une capacité d’emprunt.') + (p.DLT > p.CP ? ' Les dettes à long terme dépassent les capitaux propres : les banques seront réticentes à prêter davantage.' : ' Les dettes à long terme restent inférieures aux capitaux propres.'));
+    com.push('Liquidité : le ratio de ' + n(lg, 2) + (lg >= 1 ? ' indique que l’actif circulant couvre les dettes à court terme' + (lg < 1.2 ? ', avec une marge faible de ' + e(p.AC - p.PC) : '') + '.' : ' signale que l’actif circulant ne couvre pas les dettes à court terme : risque d’insolvabilité à court terme.') + ' La liquidité immédiate n’est que de ' + n(p.DISP / p.PC, 2) + ' : l’entreprise dépend de l’encaissement de ses créances et de l’écoulement de ses stocks. La solvabilité générale est ' + (p.TP / D > 1 ? 'assurée (l’actif couvre ' + n(p.TP / D, 2) + ' fois les dettes).' : 'compromise.'));
+    com.push('Rentabilité : la rentabilité des capitaux propres atteint ' + U.pc(roe, 1) + (roe > 0.1 ? ', une bonne rémunération des actionnaires, supérieure aux placements sans risque' : (roe < 0 ? ' : l’exercice est déficitaire et détruit de la valeur pour les actionnaires' : ', une rémunération faible au regard du risque pris')) + ' ; elle s’explique par une marge nette de ' + U.pc(p.RN / p.CA, 1) + (p.lev ? ' et par l’effet de levier : la rentabilité économique (' + U.pc(Re, 1) + ') ' + (Re > iN ? 'dépasse le coût de la dette après impôt (' + U.pc(iN, 2) + '), donc l’endettement améliore la rentabilité financière (' + U.pc(Rf, 1) + ').' : 'est inférieure au coût de la dette après impôt (' + U.pc(iN, 2) + ') : l’endettement dégrade la rentabilité financière (effet de massue).') : ' et par l’effet de levier de l’endettement.'));
+    if (p.liste.indexOf('delaiC') >= 0) com.push('Le délai clients de ' + n(R.delaiC.v, 0) + ' jours ' + (R.delaiC.v > 60 ? 'dépasse les usages et pèse sur le BFR.' : 'reste maîtrisé.'));
+    if (p.liste.indexOf('delaiF') >= 0) com.push('Le délai fournisseurs de ' + n(R.delaiF.v, 0) + ' jours ' + (R.delaiF.v > 60 ? 'excède la limite légale de 60 jours.' : 'respecte la limite légale de 60 jours.'));
+    return { enonce: en, questions: qs, journal: [], steps: [{ h: 'Calculs', html: U.calc(c) }], comment: com.join(' ') };
+  }
+};
+
+/* ===== Impôt sur les sociétés, opérations en devises (option inspecteur) ===== */
+
+/* ---------- 16. Impôt sur les sociétés ---------- */
+T.is = {
+  id: 'is', nom: 'Impôt sur les sociétés', famille: 'Fiscalité', ctrl: false, minutes: 15,
+  fiche: {
+    objectif: 'Passer du résultat comptable au résultat fiscal, calculer l’IS (taux réduit PME), les acomptes et le solde, puis comptabiliser.',
+    etapes: [
+      'Résultat fiscal = résultat comptable avant IS + réintégrations − déductions (tableau 2058-A, hors comptabilité).',
+      'Réintégrations usuelles : amendes et pénalités, taxes sur les véhicules de tourisme, amortissement excédentaire des véhicules de tourisme (au-delà du plafond fixé selon les émissions de CO2), dépenses somptuaires, quote-part de frais et charges de 5 % sur les dividendes mère-fille, l’IS lui-même s’il est déjà comptabilisé.',
+      'Déductions usuelles : dividendes relevant du régime mère-fille (participation d’au moins 5 %).',
+      'Taux : 25 % ; PME (CA HT < 10 M€, capital entièrement libéré et détenu à 75 % au moins par des personnes physiques) : 15 % jusqu’à 42 500 € de bénéfice.',
+      'Quatre acomptes (15 mars, 15 juin, 15 septembre, 15 décembre), puis solde le 15 mai N+1 pour un exercice clos le 31/12.',
+      'Écritures : acomptes D 444 / C 512 ; IS de l’exercice D 695 / C 444 ; solde D 444 / C 512.'
+    ],
+    pieges: [
+      'Réintégrer l’IS alors que le résultat est donné « avant impôt ».',
+      'Déduire 100 % des dividendes mère-fille sans réintégrer la quote-part de 5 %.',
+      'Appliquer le taux de 15 % à une société détenue par une holding.',
+      'Calculer l’amortissement excédentaire sur la valeur HT d’un véhicule de tourisme (TVA non récupérable : coût TTC).'
+    ],
+    comptes: ['444 État – impôts sur les bénéfices', '695 Impôts sur les bénéfices', '512 Banque']
+  },
+  gen: function (r) {
+    var pme = r.chance(0.55);
+    var RC = r.int(20, 600) * 1000 + r.int(0, 9) * 100;
+    var p = { nom: U.nom(r), RC: RC, CA: pme ? r.int(10, 95) * 100000 : r.int(30, 300) * 100000, pme: pme, detention: pme ? 'des personnes physiques' : r.pick(['une société holding à hauteur de 60 %', 'un groupe industriel à hauteur de 80 %']) };
+    if (!pme && p.CA < 10000000 && r.chance(0.5)) p.detention = 'une société holding à hauteur de 60 %';
+    p.amendes = r.chance(0.6) ? r.int(2, 30) * 100 : 0;
+    p.tvs = r.chance(0.5) ? r.int(5, 40) * 100 : 0;
+    p.vp = r.chance(0.6) ? { P: r.int(35, 70) * 1000, plaf: 18300 } : null;
+    p.somp = r.chance(0.3) ? r.int(10, 60) * 100 : 0;
+    p.div = r.chance(0.5) ? Math.min(r.int(5, 80) * 1000, U.r0(RC * 0.5 / 1000) * 1000) : 0;
+    p.isN1 = U.r0(RC * r.int(15, 28) / 100 / 4) * 4;
+    return p;
+  },
+  calc: function (p) {
+    var vpR = p.vp ? U.r2((p.vp.P - p.vp.plaf) / 5) : 0, qp = U.r2(p.div * 0.05);
+    var reint = U.r2(p.amendes + p.tvs + vpR + p.somp + qp), ded = p.div;
+    var RF = U.r2(p.RC + reint - ded);
+    var IS = RF <= 0 ? 0 : (p.pme ? U.r0(Math.min(RF, 42500) * 0.15 + Math.max(0, RF - 42500) * 0.25) : U.r0(RF * 0.25));
+    var ac = U.r2(p.isN1 / 4), acT = U.r2(ac * 4), solde = U.r2(IS - acT), RN = U.r2(p.RC - IS);
+    return { vpR: vpR, qp: qp, reint: reint, ded: ded, RF: RF, IS: IS, ac: ac, acT: acT, solde: solde, RN: RN };
+  },
+  solve: function (p) {
+    var x = this.calc(p), e = U.e, n = U.n, L = U.L;
+    var en = '<p>La société anonyme <b>' + p.nom + '</b> (exercice du 01/01 au 31/12/N) réalise un chiffre d’affaires HT de ' + e(p.CA) + '. Son capital, entièrement libéré, est détenu par ' + p.detention + '. Le résultat comptable avant impôt de N s’élève à ' + e(p.RC) + '. Il comprend notamment :</p>';
+    var li = [];
+    if (p.amendes) li.push('des amendes et pénalités pour ' + e(p.amendes) + ' ;');
+    if (p.tvs) li.push('des taxes annuelles sur les véhicules de tourisme pour ' + e(p.tvs) + ' ;');
+    if (p.vp) li.push('l’amortissement linéaire sur 5 ans d’une voiture de tourisme acquise ' + e(p.vp.P) + ' TTC le 01/01/N-1 (plafond de déductibilité : ' + e(p.vp.plaf) + ') ;');
+    if (p.somp) li.push('des frais de chasse offerts à des clients pour ' + e(p.somp) + ' ;');
+    if (p.div) li.push('des dividendes de ' + e(p.div) + ' reçus d’une filiale détenue à 30 % depuis six ans (régime mère-fille) ;');
+    if (!li.length) li.push('aucune charge non déductible particulière ;');
+    en += U.ul(li) + '<p>L’IS de N-1 s’élevait à ' + e(p.isN1) + ' ; quatre acomptes égaux de ' + e(x.ac) + ' ont été versés en N.</p>';
+    en += '<p class="consigne">1. Déterminez le résultat fiscal et l’impôt sur les sociétés de N. 2. Calculez le solde à verser le 15/05/N+1. 3. Passez les écritures du premier acompte, de l’IS au 31/12/N et du solde.</p>';
+    var qs = [Q('re', 'Total des réintégrations', x.reint, '€'), Q('de', 'Total des déductions', x.ded, '€'), Q('rf', 'Résultat fiscal', x.RF, '€'), Q('is', 'Impôt sur les sociétés de N', x.IS, '€', { tol: 2 }), Q('so', 'Solde à verser (négatif si excédent)', x.solde, '€', { tol: 2 }), Q('rn', 'Résultat net comptable', x.RN, '€', { tol: 2 })];
+    var c = [];
+    if (p.amendes) c.push(['Amendes et pénalités', 'non déductibles', '+ ' + e(p.amendes)]);
+    if (p.tvs) c.push(['Taxes sur véhicules de tourisme', 'non déductibles', '+ ' + e(p.tvs)]);
+    if (p.vp) c.push(['Amortissement excédentaire', '(' + n(p.vp.P) + ' − ' + n(p.vp.plaf) + ') ÷ 5', '+ ' + e(x.vpR)]);
+    if (p.somp) c.push(['Dépenses somptuaires (chasse)', 'non déductibles', '+ ' + e(p.somp)]);
+    if (p.div) { c.push(['Quote-part de frais et charges', n(p.div) + ' × 5 %', '+ ' + e(x.qp)]); c.push(['Dividendes mère-fille', 'déduction', '− ' + e(p.div)]); }
+    c.push(['Résultat fiscal', n(p.RC) + ' + ' + n(x.reint) + ' − ' + n(x.ded), '<b>' + e(x.RF) + '</b>']);
+    c.push(['IS', p.pme ? (x.RF > 42500 ? '42 500 × 15 % + ' + n(x.RF - 42500) + ' × 25 %' : n(x.RF) + ' × 15 %') + ' (PME : CA < 10 M€, capital libéré, détenu par des personnes physiques)' : n(x.RF) + ' × 25 % (pas de taux réduit : ' + (p.CA >= 10000000 ? 'CA ≥ 10 M€' : 'capital détenu par une société') + ')', '<b>' + e(x.IS) + '</b>']);
+    c.push(['Solde', n(x.IS) + ' − 4 × ' + n(x.ac), e(x.solde)]);
+    c.push(['Résultat net', n(p.RC) + ' − ' + n(x.IS), e(x.RN)]);
+    var journal = [U.entry('15/03/N', 'Premier acompte d’IS', [L('444', x.ac, 0), L('512', 0, x.ac)]), U.entry('31/12/N', 'Impôt sur les sociétés de N', [L('695', x.IS, 0), L('444', 0, x.IS)])];
+    if (x.solde > 0) journal.push(U.entry('15/05/N+1', 'Paiement du solde d’IS', [L('444', x.solde, 0), L('512', 0, x.solde)]));
+    if (x.solde < 0) journal.push(U.entry('15/05/N+1', 'Remboursement de l’excédent d’acomptes', [L('512', -x.solde, 0), L('444', 0, -x.solde)]));
+    var com = 'Le résultat fiscal (' + e(x.RF) + ') diffère du résultat comptable (' + e(p.RC) + ') car la loi fiscale refuse la déduction de certaines charges et exonère certains produits ; ces retraitements sont opérés de façon extra-comptable sur le tableau 2058-A, sans modifier la comptabilité. ' + (p.div ? 'Le régime mère-fille évite une double imposition des bénéfices de la filiale : seule une quote-part de 5 % reste taxée. ' : '') + (p.pme ? 'La société remplit les conditions du taux réduit de 15 % jusqu’à 42 500 € de bénéfice, ce qui allège son impôt de ' + e(U.r0(Math.min(x.RF, 42500) * 0.10)) + ' par rapport au taux normal. ' : 'Elle ne remplit pas les conditions du taux réduit et supporte le taux normal de 25 %. ') + 'Le taux effectif d’imposition rapporté au résultat comptable atteint ' + U.pc(x.IS / p.RC, 1) + '. Les acomptes, calculés sur l’impôt de N-1, ' + (x.solde >= 0 ? 'sont inférieurs à l’impôt de N : un solde de ' + e(x.solde) + ' sera versé le 15 mai N+1.' : 'dépassent l’impôt de N : l’excédent de ' + e(-x.solde) + ' sera remboursé ou imputé.') + ' L’IS est une dette hors exploitation dans le bilan fonctionnel et vient en déduction de la CAF.';
+    return { enonce: en, questions: qs, journal: journal, steps: [{ h: 'Passage au résultat fiscal et calcul de l’IS', html: U.calc(c) }], comment: com };
+  }
+};
+
+/* ---------- 17. Opérations en devises ---------- */
+T.devises = {
+  id: 'devises', nom: 'Opérations en devises', famille: 'Comptabilité générale', ctrl: false, minutes: 15,
+  fiche: {
+    objectif: 'Enregistrer une créance ou une dette en devises, l’évaluer à la clôture et constater le résultat de change au règlement.',
+    etapes: [
+      'À l’opération : conversion au cours du jour (si 1 € = c devises, montant en euros = montant en devises ÷ c).',
+      'À la clôture : réévaluation au cours du 31/12 ; l’écart est inscrit en différence de conversion : 476 (actif) si perte latente, 477 (passif) si gain latent.',
+      'Perte latente : provision pour perte de change, D 6865 / C 1515. Gain latent : jamais en produit (prudence).',
+      'À l’ouverture de N+1 : contrepassation des écarts de conversion.',
+      'Au règlement : écart entre la valeur d’origine et la somme réellement encaissée ou payée → 656 perte de change ou 756 gain de change (opérations commerciales) ; reprise de la provision D 1515 / C 7865.'
+    ],
+    pieges: [
+      'Sens du cours : avec « 1 € = 1,10 USD », on divise par le cours ; une hausse du cours (euro plus fort) diminue la valeur en euros.',
+      'Créance : la baisse de sa valeur en euros est une perte ; dette : la hausse est une perte.',
+      'Comptabiliser le gain latent en produit.',
+      'Opération commerciale : 656 / 756 (opération financière : 666 / 766).'
+    ],
+    comptes: ['411 / 401 Clients / Fournisseurs', '476 / 477 Différences de conversion', '6865 / 1515 Provision pour perte de change', '7865 Reprise', '656 / 756 Pertes et gains de change']
+  },
+  gen: function (r) {
+    var dev = r.pick([['USD', 1.05, 1.22], ['GBP', 0.82, 0.90], ['CHF', 0.91, 1.00]]);
+    var c0 = U.rd(dev[1] + (dev[2] - dev[1]) * r.f(), 4), c1, c2;
+    do { c1 = U.rd(c0 * (1 + (r.f() - 0.5) * 0.12), 4); } while (Math.abs(c1 - c0) / c0 < 0.01);
+    do { c2 = U.rd(c1 * (1 + (r.f() - 0.5) * 0.08), 4); } while (Math.abs(c2 - c0) / c0 < 0.005);
+    return { nom: U.nom(r), sens: r.pick(['vente', 'achat']), dev: dev[0], X: r.int(10, 400) * 1000, c0: c0, c1: c1, c2: c2, d0: { d: r.int(2, 28), m: r.int(10, 12) }, dR: { d: r.int(5, 28), m: r.int(1, 3) } };
+  },
+  calc: function (p) {
+    var V0 = U.r2(p.X / p.c0), V1 = U.r2(p.X / p.c1), V2 = U.r2(p.X / p.c2);
+    var ecart = U.r2(V1 - V0);
+    var perteLat = p.sens === 'vente' ? ecart < 0 : ecart > 0;
+    var res = p.sens === 'vente' ? U.r2(V2 - V0) : U.r2(V0 - V2);
+    return { V0: V0, V1: V1, V2: V2, ecart: Math.abs(ecart), perteLat: perteLat, prov: perteLat ? Math.abs(ecart) : 0, res: res };
+  },
+  solve: function (p) {
+    var x = this.calc(p), e = U.e, n = U.n, L = U.L, D = p.dev, vente = p.sens === 'vente';
+    var d0 = U.dt(p.d0.d, p.d0.m), dR = U.dt(p.dR.d, p.dR.m, 1);
+    var en = '<p>La société <b>' + p.nom + '</b> ' + (vente ? 'vend des marchandises à un client établi hors de l’Union européenne' : 'achète des marchandises à un fournisseur établi hors de l’Union européenne') + ' le ' + d0 + ' pour ' + n(p.X) + ' ' + D + ', payables le ' + dR + '. On ne tient pas compte de la TVA.</p>';
+    en += U.tbl(['Date', 'Cours'], [[d0, '1 € = ' + n(p.c0, 4) + ' ' + D], ['31/12/N', '1 € = ' + n(p.c1, 4) + ' ' + D], [dR, '1 € = ' + n(p.c2, 4) + ' ' + D]]);
+    en += '<p class="consigne">1. Comptabilisez l’opération du ' + d0 + '. 2. Évaluez ' + (vente ? 'la créance' : 'la dette') + ' au 31/12/N et passez les écritures d’inventaire. 3. Comptabilisez le règlement du ' + dR + ' (après contrepassation des écarts de conversion).</p>';
+    var qs = [Q('v0', 'Valeur en euros à l’origine', x.V0, '€'), Q('v1', 'Valeur en euros au 31/12/N', x.V1, '€'), Q('ec', 'Écart de conversion (montant)', x.ecart, '€'), QC('nat', 'Nature de l’écart', ['Perte latente (476)', 'Gain latent (477)'], x.perteLat ? 0 : 1), Q('pr', 'Provision pour perte de change', x.prov, '€'), Q('rs', 'Résultat de change au règlement (+ gain, − perte)', x.res, '€')];
+    var c = [['Valeur d’origine', n(p.X) + ' ÷ ' + n(p.c0, 4), e(x.V0)], ['Valeur au 31/12', n(p.X) + ' ÷ ' + n(p.c1, 4), e(x.V1)], ['Écart', (vente ? 'créance ' : 'dette ') + (x.V1 > x.V0 ? 'en hausse' : 'en baisse') + ' de ' + n(x.ecart), x.perteLat ? 'perte latente' : 'gain latent'], ['Provision', x.perteLat ? 'égale à la perte latente' : 'aucune (gain latent non comptabilisé)', e(x.prov)], ['Montant réglé', n(p.X) + ' ÷ ' + n(p.c2, 4), e(x.V2)], ['Résultat de change', vente ? n(x.V2) + ' − ' + n(x.V0) : n(x.V0) + ' − ' + n(x.V2), '<b>' + (x.res >= 0 ? 'gain ' : 'perte ') + e(Math.abs(x.res)) + '</b>']];
+    var J = [];
+    J.push(vente ? U.entry(d0, 'Vente à l’exportation', [L('411', x.V0, 0), L('707', 0, x.V0)]) : U.entry(d0, 'Achat à l’importation', [L('607', x.V0, 0), L('401', 0, x.V0)]));
+    var tiers = vente ? '411' : '401';
+    if (x.perteLat) {
+      J.push(U.entry('31/12/N', 'Écart de conversion (perte latente)', vente ? [L('476', x.ecart, 0), L('411', 0, x.ecart)] : [L('476', x.ecart, 0), L('401', 0, x.ecart)]));
+      J.push(U.entry('31/12/N', 'Provision pour perte de change', [L('6865', x.prov, 0), L('1515', 0, x.prov)]));
+    } else {
+      J.push(U.entry('31/12/N', 'Écart de conversion (gain latent)', vente ? [L('411', x.ecart, 0), L('477', 0, x.ecart)] : [L('401', x.ecart, 0), L('477', 0, x.ecart)]));
+    }
+    var reg = vente ? [L('512', x.V2, 0), L('656', x.res < 0 ? -x.res : 0, 0), L('411', 0, x.V0), L('756', 0, x.res > 0 ? x.res : 0)]
+      : [L('401', x.V0, 0), L('656', x.res < 0 ? -x.res : 0, 0), L('512', 0, x.V2), L('756', 0, x.res > 0 ? x.res : 0)];
+    J.push(U.entry(dR, 'Règlement', reg));
+    if (x.prov) J.push(U.entry(dR, 'Reprise de la provision pour perte de change', [L('1515', x.prov, 0), L('7865', 0, x.prov)]));
+    var com = 'Une opération en devises expose l’entreprise au risque de change entre la date de l’opération et celle du règlement. À la clôture, ' + (vente ? 'la créance' : 'la dette') + ' est réévaluée au cours du 31/12 pour donner une image fidèle du bilan, mais l’écart n’est pas encore réalisé : il est inscrit en compte d’attente (' + (x.perteLat ? '476' : '477') + ') et n’affecte pas directement le résultat. ' + (x.perteLat ? 'S’agissant d’une perte latente, la prudence impose de constituer une provision de ' + e(x.prov) + ', qui réduit le résultat de N.' : 'S’agissant d’un gain latent, il n’est pas comptabilisé en produit : la prudence interdit de constater un gain non réalisé.') + ' Les écarts de conversion sont contrepassés à l’ouverture de N+1 et le résultat de change réel n’apparaît qu’au règlement : ' + (x.res >= 0 ? 'un gain' : 'une perte') + ' de ' + e(Math.abs(x.res)) + ', en compte ' + (x.res >= 0 ? '756' : '656') + ' pour une opération commerciale. ' + (x.prov ? 'La provision devenue sans objet est reprise. ' : '') + 'Pour se protéger, l’entreprise peut facturer en euros, couvrir l’opération par une vente ou un achat à terme de devises, ou recourir à des options de change.';
+    return { enonce: en, questions: qs, journal: J, steps: [{ h: 'Calculs', html: U.calc(c) }], comment: com };
+  }
+};
+
+/* ===== Sujets réels : données des annales, résultats attendus (corrigés publiés ou recalculés) ===== */
+ANNALES = [
+  { id: 'ifip26_1', src: 'Inspecteur 2026 – exercice 1', type: 'commande', ctrl: false,
+    p: { nom: 'PATRA', prod: ['tables de jardin en fibre composite', 'table'], p: 582, cvu: 300, q: 700, CF: 127400, q2: 280, p2: 345, cvu2: 300, dCF: 0, mois: 'mai' },
+    attendu: { r0: 70000, r1: 82600, cm: 84000, cmu: 300, rm: 96600, res: 12600, dec: 0 } },
+  { id: 'ifip26_2', src: 'Inspecteur 2026 – exercice 2', type: 'ratios', ctrl: false,
+    note: 'Dans le PDF, la colonne des montants est décalée d’une ligne ; les valeurs retenues sont celles qui équilibrent le bilan (capitaux propres 700 000 €, résultat 120 000 €, CA 1 500 000 €, dettes à long terme 600 000 €, liquidités 300 000 €, actif circulant 1 000 000 €, passif circulant 900 000 €).',
+    p: { nom: 'BARRINGTON', TP: 2200000, CP: 700000, RN: 120000, CA: 1500000, DLT: 600000, DISP: 300000, AC: 1000000, PC: 900000, ST: 0, CL: 700000, FOU: 0, ACH: 0, liste: ['endet', 'liqG', 'roe'], hideST: true },
+    attendu: { endet: 68.18, liqG: 1.11, roe: 17.14 } },
+  { id: 'ifip26_3', src: 'Inspecteur 2026 – exercice 3', type: 'affectation', ctrl: true,
+    p: { nom: 'ALBOROSIE', C: 1000000, v: 10, lib: 1, RL0: 60000, RAN0: 1500, R: 110000, t: 0.05, RS: 0, F: 0, arr: 0.5, mode: 'super', dateAG: '28/06/N+1' },
+    attendu: { rl: 5500, bd: 106000, is: 50000, du: 1, dt: 100000, ran: 6000 } },
+  { id: 'ifip26_4', src: 'Inspecteur 2026 – exercice 4', type: 'tva_coef', ctrl: false,
+    note: 'Lecture retenue par les corrigés publiés : formation exonérée, donc dans le champ (assujettissement 1, taxation 0,68). Si l’on traite la formation comme hors champ (étages 3 et 4), assujettissement 3/5 = 0,6 et taxation 1 : déduction 0,6.',
+    p: { nom: 'SIZZLA', actT: 'la construction d’aéronefs', actE: 'la formation en mécanique aéronautique', exoTxt: 'exonérée de TVA', T: 11220000, E: 5280000, P: 825700, m: 8, duree: 30, niveaux: 5, hc: 0 },
+    attendu: { as: 1, ta: 0.68, ad: 1, de: 0.68, tvad: 112295.20, cout: 878544.80, dot: 12202.01 } },
+  { id: 'cfip26_1', src: 'Contrôleur 2026 – question 1', type: 'affectation', ctrl: true,
+    p: { nom: 'CORFU', C: 45000, v: 15, lib: 1, RL0: 4320, RAN0: -870, R: 5745, t: 0, RS: 0, F: 800, arr: 1, mode: 'unique' },
+    attendu: { rl: 180, bd: 4695, du: 1, dt: 3000, ran: 895 } },
+  { id: 'cfip26_2', src: 'Contrôleur 2026 – question 2', type: 'derog', ctrl: true,
+    p: { nom: 'MADRIGAL', bien: { lib: 'un bras robotique', compte: '2154', amort: '28154' }, prix: 25000, remise: 0, frais: [{ lib: 'Frais de montage', mt: 3000, incl: true }], mes: { d: 1, m: 7 }, n: 10, fiscal: 'deg' },
+    attendu: { cout: 28000, c0: 1400, f0: 3150, d0: 1750, f1: 5591.25, s2: 6074.47 } },
+  { id: 'cfip26_3', src: 'Contrôleur 2026 – question 3', type: 'tva_ca3', ctrl: true,
+    note: 'Dans le PDF, la colonne des montants est décalée ; montants retenus : 4452 = 2 457 ; 44562 = 2 489 ; 445661 = 38 657 ; 445662 = 2 796 ; 44567 = 1 678 ; 4457 = 86 355.',
+    p: { nom: 'BIJADOM’', mode: 'soldes', mois: 11, s: { c4457: 86355, c4452: 2457, d44562: 2489, d44566: 38657, d445662: 2796, d44567: 1678 } },
+    attendu: { coll: 86355, due: 2457, ded: 43942, sens: 0, net: 43192 } },
+  { id: 'test_1', src: 'Sujet test inspecteur – cas 1', type: 'augcap', ctrl: false,
+    note: 'Le corrigé officiel porte 400 € de TVA sur les frais : c’est une coquille (20 % de 4 000 € = 800 €, cohérent avec le décaissement de 4 800 €).',
+    p: { nom: 'CAPITALISONS', mode: 'num', v: 100, n: 2000, E: 120, lib: 0.25, frais: 4000, fraisMode: 'etab', date: { d: 1, m: 6 }, vers: { d: 14, m: 6 } },
+    attendu: { pr: 40000, ve: 90000, na: 150000, dotf: 466.67 } },
+  { id: 'test_2', src: 'Sujet test inspecteur – cas 2', type: 'seuil', ctrl: true,
+    note: 'Le corrigé officiel arrondit le taux de MCV à 0,5625 : 1 337 493 € et 385 unités. Sans arrondi : 1 337 545 € et 386 unités (avec 385, le résultat reste négatif).',
+    p: { nom: 'le sujet test', prod: ['produits', 'produit'], p: 3470, q: 1200, CV: 1821840, cvu: 1518.2, CF: 752340, global: true, dCA: 0.1 },
+    attendu: { mcv: 2342160, tx: 56.25, sr: 1337545, srq: 386 } },
+  { id: 'test_3', src: 'Sujet test inspecteur – cas 3', type: 'sig_caf', ctrl: true,
+    p: { nom: 'CORSIC’AUBRAC', k: true, ebeOnly: true, EBE: 514, DAPtot: 110, AP: 0, AC: 0, PFt: 14, RF: 0, CFt: 6, DF: 0, PEt: 75, PCEA: 38, QPS: 14, REX: 0, CEt: 33, VCEC: 23, DEX: 0, PART: 50, IS: 130, DIV: 120, RDP: 0, DA: 110, DDAC: 0, DPR: 0 },
+    attendu: { caf: 355, af: 235 } },
+  { id: 'blanc_1', src: 'Sujet blanc (dossier d’entraînement) – NOVALIS', type: 'sig_caf', ctrl: true,
+    p: { nom: 'NOVALIS', k: true, VM: 1200, AM: 700, VSM: -20, PV: 2800, PS: 50, PI: 30, AMP: 1100, VSMP: 30, ACE: 600, SE: 40, IT: 80, SAL: 900, CS: 360, DA: 250, DDAC: 30, DPR: 20, AC: 10, RDP: 20, AP: 10, PFt: 15, RF: 5, CFt: 50, INT: 45, DF: 5, PEt: 60, PCEA: 50, QPS: 10, REX: 0, CEt: 45, VCEC: 40, DEX: 0, PART: 0, IS: 15, DIV: 20 },
+    attendu: { mc: 520, prod: 2880, va: 1670, ebe: 370, re: 90, rcai: 55, rex: 15, rn: 55, caf: 315, af: 295, pva: 75.4 } },
+  { id: 'blanc_2', src: 'Sujet blanc (dossier d’entraînement) – BELCAMP', type: 'bilan_fonc', ctrl: true,
+    p: { nom: 'BELCAMP', k: true, II: [200, 80], IC: [3000, 1200], IF: [150, 10], ST: [400, 20], CL: [900, 40], AUT: 120, VMP: 60, DISP: 90, CCA: 20, CSNA: 0, CAP: 1000, RESV: 600, RES_: 150, SUB: 100, PROV: 80, EMP: 730, CBC: 70, ICNE: 0, FOU: 600, DFS: 250, ISD: 40, DIMMO: 50, PCA: 30, CA: 4000 },
+    attendu: { es: 3350, rs: 3940, frng: 590, bfre: 480, bfrhe: 30, tn: 80, j: 43.2 } },
+  { id: 'blanc_3', src: 'Sujet blanc (dossier d’entraînement) – TERRANOVA, machine', type: 'derog', ctrl: true,
+    p: { nom: 'TERRANOVA', bien: { lib: 'une machine', compte: '2154', amort: '28154' }, prix: 48000, remise: 0, frais: [{ lib: 'Transport', mt: 1500, incl: true }, { lib: 'Installation', mt: 2500, incl: true }, { lib: 'Formation des opérateurs', mt: 1000, incl: false }], mes: { d: 1, m: 4 }, n: 5, fiscal: 'deg' },
+    attendu: { cout: 52000, c0: 7800, f0: 13650, d0: 5850, f1: 13422.5 } },
+  { id: 'blanc_3b', src: 'Sujet blanc (dossier d’entraînement) – TERRANOVA, créance et litige', type: 'depreciations', ctrl: false,
+    p: { nom: 'TERRANOVA', items: [{ k: 'douteux', cl: 'Dupuis', ttc: 3600, p: 0.3 }, { k: 'litige', obj: 'Un salarié licencié réclame 15 000 € aux prud’hommes', est: 15000, prev: 0 }] },
+    attendu: { i0: 900, i1: 15000 } },
+  { id: 'blanc_3c', src: 'Sujet blanc (dossier d’entraînement) – TERRANOVA, régularisations', type: 'regul', ctrl: true,
+    p: { nom: 'TERRANOVA', items: [{ k: 'cca_loyer', per: 3, mt: 4500, m: 12 }, { k: 'fnp', nat: ['électricité de décembre', '6061'], ht: 1200 }] },
+    attendu: { i0: 3000, i1: 1440 } },
+  { id: 'blanc_4', src: 'Sujet blanc (dossier d’entraînement) – ORBIS', type: 'seuil', ctrl: true,
+    p: { nom: 'ORBIS', prod: ['articles', 'article'], p: 40, q: 20000, cvu: 24, CF: 240000, global: false, dCA: 0.1 },
+    attendu: { mcv: 320000, tx: 40, res: 80000, sr: 600000, srq: 15000, pm: 270, ms: 200000, is: 25, lo: 4, r2: 112000 } }
+];
+
+if (typeof module !== "undefined") module.exports = { T: T, ANNALES: ANNALES, U: U, AM: AM };

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>QRC · Fiches</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600;6..72,700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="../composants.css">
+</head>
+<body data-app="qrc" data-tab="fiches">
+<main class="wrap page">
+  <div class="fl">
+    <nav class="sheet tight toc-wrap" aria-label="Fiches">
+      <input class="input" type="search" placeholder="Chercher une fiche, un compte…" aria-label="Chercher">
+      <div class="toc">
+        <h4>Comptabilité des sociétés</h4>
+        <a href="#" aria-current="true">Affectation du résultat <span class="badge mono">15 min</span></a>
+        <a href="#">Augmentation de capital <span class="badge mono">20 min</span></a>
+        <h4>TVA</h4>
+        <a href="#">Déclaration mensuelle (CA3) <span class="badge mono">15 min</span></a>
+        <a href="#">Coefficient de déduction <span class="badge mono">10 min</span></a>
+        <a href="#">Régularisations <span class="badge mono">15 min</span></a>
+        <h4>Immobilisations</h4>
+        <a href="#">Plan d'amortissement <span class="badge mono">15 min</span></a>
+        <a href="#">Amortissement dérogatoire <span class="badge mono">15 min</span></a>
+        <a href="#">Cession d'immobilisation <span class="badge mono">15 min</span></a>
+      </div>
+    </nav>
+
+    <article class="sheet">
+      <div class="reading">
+        <div class="hero">
+          <span class="eyebrow">Fiche · comptabilité des sociétés</span>
+          <h1 class="h-page">Affectation du résultat</h1>
+          <p class="lede">Répartir le bénéfice entre réserves, dividendes et report à nouveau, dans l'ordre imposé par la loi puis par les statuts.</p>
+        </div>
+
+        <h4>Étapes</h4>
+        <ol class="steps">
+          <li><span>Apurer le report à nouveau <b>débiteur</b> (pertes antérieures) avant toute autre affectation.</span></li>
+          <li><span>Réserve légale : <span class="mono">5 % × (bénéfice − pertes antérieures)</span>, jusqu'à ce qu'elle atteigne <mark class="hl">10 % du capital social</mark>. Retiens le plus petit des deux montants.</span></li>
+          <li><span>Réserves statutaires selon les statuts (montant ou pourcentage indiqué).</span></li>
+          <li><span>Bénéfice distribuable = bénéfice − pertes antérieures − réserve légale − réserves statutaires + report à nouveau créditeur.</span></li>
+          <li><span>Intérêt statutaire = taux × capital <b>libéré</b> (et non souscrit).</span></li>
+          <li><span>Superdividende par action = reste ÷ nombre d'actions, arrondi <b>toujours à l'inférieur</b>.</span></li>
+          <li><span>Le reliquat va en report à nouveau. Présente le tableau d'affectation (origines = affectations), puis l'écriture.</span></li>
+        </ol>
+
+        <h4>Pièges</h4>
+        <ul class="traps">
+          <li><span data-ico="cross"></span><span>Ajouter le report à nouveau créditeur dans la base de la réserve légale : il n'y entre pas.</span></li>
+          <li><span data-ico="cross"></span><span>Doter 5 % alors que la réserve est presque pleine : seul le complément jusqu'à 10 % du capital est doté.</span></li>
+          <li><span data-ico="cross"></span><span>Arrondir le dividende au plus proche : on distribuerait plus que le distribuable.</span></li>
+          <li><span data-ico="cross"></span><span>Écriture : le 110 ancien est débité, le 110 nouveau est crédité ; les dividendes vont au 457.</span></li>
+        </ul>
+
+        <h4>Comptes</h4>
+        <div class="accts">
+          <span><b>120</b>Résultat (bénéfice)</span>
+          <span><b>110</b>Report à nouveau créditeur</span>
+          <span><b>119</b>Report à nouveau débiteur</span>
+          <span><b>1061</b>Réserve légale</span>
+          <span><b>1063</b>Réserves statutaires</span>
+          <span><b>457</b>Associés · dividendes à payer</span>
+        </div>
+
+        <div class="row" style="margin-top:8px">
+          <a class="btn pri" href="qrc-exercice.html">S'entraîner sur ce type · 15 min</a>
+          <span class="small muted">Ton niveau : <span class="pips" style="vertical-align:-1px"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span></span>
+        </div>
+      </div>
+    </article>
+  </div>
+</main>
+<style>
+  .fl { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: var(--s5); align-items: start; }
+  .toc-wrap { position: sticky; top: 124px; }
+  .traps li > span[data-ico] { display: flex; } .traps li > span[data-ico] svg { width: 16px; height: 16px; color: var(--bad); margin-top: 3px; stroke-width: 2.4; }
+  @media (max-width: 819px) { .fl { grid-template-columns: minmax(0, 1fr); } .toc-wrap { position: static; } .toc { display: none; } }
+</style>
+<script src="shell.js"></script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>QRC · Progression</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600;6..72,700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="../composants.css">
+</head>
+<body data-app="qrc" data-tab="dash">
+<main class="wrap page">
+  <section class="hero">
+    <span class="eyebrow">Concours inspecteur · écrit le 7 décembre</span>
+    <h1 class="h-page">Où en es-tu ? <mark class="hl">5 types</mark> à revoir aujourd'hui</h1>
+    <p class="lede">L'atelier suit tes résultats par type d'exercice et te ressort en priorité ceux que tu rates, ceux que tu fais trop lentement et ceux dont la révision est due (1, 3, 7, 14 puis 30 jours après chaque réussite).</p>
+  </section>
+
+  <div class="stats">
+    <div class="stat"><span>Exercices corrigés</span><b>14</b><span class="delta up">+4 cette semaine</span></div>
+    <div class="stat"><span>Score moyen</span><b>68 <small>%</small></b><span class="delta up">+9 pts</span></div>
+    <div class="stat"><span>Types maîtrisés</span><b>4 <small>/ 17</small></b><span>niveau 4 ou plus</span></div>
+    <div class="stat"><span>Épreuves blanches</span><b>1</b><span>11,5 / 20 · 2 h 30</span></div>
+  </div>
+
+  <section class="stack">
+    <div class="row between"><h2 class="h-sec">À travailler maintenant</h2><a class="btn ghost sm" href="#">Point faible au hasard</a></div>
+    <div class="reco">
+      <a href="qrc-exercice.html" class="first">
+        <span class="eyebrow">Comptabilité des sociétés</span>
+        <b>Affectation du résultat</b>
+        <span class="why"><span class="dot bad"></span>Dernier score 52 % · piège de la réserve légale</span>
+        <span data-ico="arrow"></span>
+      </a>
+      <a href="#">
+        <span class="eyebrow">TVA</span>
+        <b>Coefficient de déduction</b>
+        <span class="why"><span class="dot warn"></span>Révision due depuis 2 jours</span>
+        <span data-ico="arrow"></span>
+      </a>
+      <a href="#">
+        <span class="eyebrow">Analyse financière</span>
+        <b>Bilan fonctionnel (FRNG, BFR)</b>
+        <span class="why"><span class="dot"></span>Jamais travaillé · 20 min</span>
+        <span data-ico="arrow"></span>
+      </a>
+    </div>
+  </section>
+
+  <article class="sheet">
+    <div class="row between">
+      <h2 class="h-sec">Progression par type</h2>
+      <div class="chips"><button aria-pressed="true">Tous · 17</button><button aria-pressed="false"><span class="dot warn"></span>À revoir · 5</button><button aria-pressed="false"><span class="dot"></span>Jamais faits · 8</button></div>
+    </div>
+    <div class="tw"><table class="t">
+      <thead><tr><th>Type d'exercice</th><th>Niveau</th><th class="num">Moyenne</th><th class="num hide-sm">Dernier</th><th>Révision</th></tr></thead>
+      <tbody>
+        <tr class="click"><td><b>Affectation du résultat</b><div class="small muted">Comptabilité des sociétés</div></td><td><span class="pips"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span></td><td class="num">61 %</td><td class="num hide-sm">52 %</td><td><span class="badge bad">Fragile</span></td></tr>
+        <tr class="click"><td><b>TVA : coefficient de déduction</b><div class="small muted">TVA</div></td><td><span class="pips"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span></td><td class="num">74 %</td><td class="num hide-sm">80 %</td><td><span class="badge warn">Due · J+2</span></td></tr>
+        <tr class="click"><td><b>Plan d'amortissement</b><div class="small muted">Immobilisations</div></td><td><span class="pips"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span></td><td class="num">88 %</td><td class="num hide-sm">94 %</td><td><span class="badge ok">Dans 7 j</span></td></tr>
+        <tr class="click"><td><b>Seuil de rentabilité et MCV</b><div class="small muted">Comptabilité de gestion</div></td><td><span class="pips"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span></td><td class="num">93 %</td><td class="num hide-sm">100 %</td><td><span class="badge ok">Dans 14 j</span></td></tr>
+        <tr class="click"><td><b>Cession d'immobilisation</b><div class="small muted">Immobilisations</div></td><td><span class="pips"><i class="on"></i><i></i><i></i><i></i><i></i></span></td><td class="num">45 %</td><td class="num hide-sm">45 %</td><td><span class="badge warn">Due aujourd'hui</span></td></tr>
+        <tr class="click"><td><b>Bilan fonctionnel (FRNG, BFR, trésorerie)</b><div class="small muted">Analyse financière</div></td><td><span class="pips"><i></i><i></i><i></i><i></i><i></i></span></td><td class="num muted">—</td><td class="num hide-sm muted">—</td><td><span class="badge out">Nouveau</span></td></tr>
+      </tbody>
+    </table></div>
+  </article>
+</main>
+<style>@media (max-width:559px){.hide-sm{display:none}} .reco a > span[data-ico]{position:absolute;top:16px;right:14px;color:var(--accent);display:flex} .reco a > span[data-ico] svg{width:18px;height:18px}</style>
+<script src="shell.js"></script>
+</body>
+</html>
