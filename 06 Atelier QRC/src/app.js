@@ -6,7 +6,7 @@
     I: { label: 'inspecteur', date: new Date(2026, 11, 7), n: 4, min: 70, txt: '4 exercices en 1 h 10' },
     C: { label: 'contrôleur', date: new Date(2027, 0, 11), n: 3, min: 60, txt: '3 exercices en 1 h' }
   };
-  var S = { prog: blank(), view: 'dash', train: null, trainType: null, annale: null, exam: null, confirmReset: false };
+  var S = { prog: blank(), view: 'dash', train: null, trainType: null, annale: null, exam: null, fiche: null, confirmReset: false };
   var uid = 0;
   var COURT = { affectation: 'Affectation', tva_ca3: 'TVA CA3', tva_coef: 'Coef. TVA', tva_regul: 'Régul. TVA', amort: 'Amortissement', derog: 'Dérogatoire', cession: 'Cession', depreciations: 'Dépréciations', regul: 'Régularisations', augcap: 'Capital', seuil: 'Seuil', commande: 'Coût marginal', sig_caf: 'SIG et CAF', bilan_fonc: 'Bilan fonct.', ratios: 'Ratios', is: 'IS', devises: 'Devises' };
   function blank() { return { v: 1, updated: 0, types: {}, epreuves: [], settings: { profil: 'I', pcgOld: false } }; }
@@ -22,6 +22,19 @@
   function mmss(s) { s = Math.max(0, Math.round(s)); var m = Math.floor(s / 60), r = s % 60; return (m < 10 ? '0' : '') + m + ':' + (r < 10 ? '0' : '') + r; }
   function pct(x) { return Math.round(x * 100) + ' %'; }
   function profil() { return S.prog.settings.profil === 'C' ? 'C' : 'I'; }
+  // Pictogrammes de la charte (trait 1,8 px, 24 × 24)
+  var ICO = {
+    check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+    cross: '<path d="m6.5 6.5 11 11M17.5 6.5l-11 11"/>',
+    info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.8v.2"/>',
+    arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+    clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    scale: '<path d="M12 4v16M7 20h10M4.5 8h15M7 8l-3 6a3 3 0 0 0 6 0zM17 8l-3 6a3 3 0 0 0 6 0z"/>',
+    flag: '<path d="M5.5 21V4.5M5.5 5h11l-2 4 2 4h-11"/>',
+    book: '<path d="M4.5 5.5c2.5-1 5-1 7.5.5v13c-2.5-1.5-5-1.5-7.5-.5zM19.5 5.5c-2.5-1-5-1-7.5.5v13c2.5-1.5 5-1.5 7.5-.5z"/>'
+  };
+  function ico(n) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICO[n] + '</svg>'; }
 
   /* ---------- Stockage : base de l'Artifact (espace privé) + navigateur ---------- */
   var Store = {
@@ -62,7 +75,7 @@
   };
   function status() {
     var el = $('#store'); if (!el) return;
-    el.textContent = Store.remote && Store.ref ? 'Progression enregistrée dans votre espace privé claude.ai (retrouvée sur tous vos appareils).' : 'Progression enregistrée dans ce navigateur.';
+    el.textContent = Store.remote && Store.ref ? 'Progression enregistrée dans ton espace privé claude.ai (retrouvée sur tous tes appareils).' : 'Progression enregistrée dans ce navigateur.';
   }
 
   /* ---------- Répétition espacée par type ---------- */
@@ -138,66 +151,92 @@
   function qHtml(ex, q) {
     var r = ex.res && ex.res.qr[q.id], cls = r ? (r.ok ? ' ok' : ' bad') : '';
     var v = ex.answers[q.id] === undefined ? '' : ex.answers[q.id], dis = ex.checked ? ' disabled' : '', id = 'q' + ex.uid + '-' + q.id, inp;
+    var isCls = r ? (r.ok ? ' is-ok' : ' is-bad') : '';
     if (q.kind === 'choice') {
-      inp = '<select class="n" id="' + id + '" data-q="' + q.id + '"' + dis + '><option value="">Choisir…</option>' + q.options.map(function (o, i) { return '<option value="' + i + '"' + (String(i) === String(v) ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>';
+      inp = '<select class="input' + isCls + '" id="' + id + '" data-q="' + q.id + '"' + dis + '><option value="">Choisir…</option>' + q.options.map(function (o, i) { return '<option value="' + i + '"' + (String(i) === String(v) ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>';
     } else {
-      inp = '<input class="n" id="' + id + '" inputmode="decimal" autocomplete="off" data-q="' + q.id + '" value="' + esc(v) + '"' + dis + '><span class="unit">' + unitTxt(q) + '</span>';
+      inp = '<input class="input n' + isCls + '" id="' + id + '" inputmode="decimal" autocomplete="off" data-q="' + q.id + '" value="' + esc(v) + '"' + dis + '>';
     }
-    var fb = r ? '<div class="fb">' + (r.ok ? '✓ Exact' + (q.kind !== 'choice' ? ' : ' + fmtAns(q) : '') : (r.empty ? 'Non répondu' : '✗ Inexact') + ' — attendu : ' + esc(fmtAns(q))) + '</div>' : '';
-    return '<div class="q' + cls + '"><label for="' + id + '">' + esc(q.label) + '</label><div class="in">' + inp + '</div>' + fb + '</div>';
+    var fb = r ? '<div class="fb">' + ico(r.ok ? 'check' : 'cross') + '<span>' + (r.ok ? 'Exact' + (q.kind !== 'choice' ? ' : <b>' + esc(fmtAns(q)) + '</b>' : '') : (r.empty ? 'Non répondu' : 'Inexact') + ' · attendu : <b>' + esc(fmtAns(q)) + '</b>') + '</span></div>' : '';
+    return '<div class="ans' + cls + '"><label for="' + id + '">' + esc(q.label) + '</label><div class="in" data-u="' + unitTxt(q) + '">' + inp + '</div>' + fb + '</div>';
   }
   var ST = { manquant: 'compte absent ou erroné', sens: 'saisi du mauvais côté', montant: 'montant inexact' };
+  // État d'une ligne saisie, une fois l'écriture corrigée : juste, compte juste mais sens ou montant faux, compte inattendu.
+  function rowSt(en, l) {
+    if (!String(l.a || '').trim() && !String(l.d || '').trim() && !String(l.c || '').trim()) return '';
+    var r = U.checkEntry(en, [l]);
+    if (r.detail.some(function (x) { return x.st === 'ok'; })) return 'ok';
+    return r.extra.length ? 'bad' : 'warn';
+  }
+  // Pied d'équilibre : totaux de la saisie
+  function footHtml(ex, i) {
+    var tD = 0, tC = 0, any = false;
+    ex.jl[i].forEach(function (l) { var d = U.parseNum(l.d), c = U.parseNum(l.c); if (!isNaN(d)) { tD += d; any = true; } if (!isNaN(c)) { tC += c; any = true; } });
+    var eq = Math.abs(tD - tC) < 0.005;
+    var lbl = !any ? '<span class="lbl muted">' + ico('scale') + 'Totaux</span>'
+      : eq ? '<span class="lbl">' + ico('check') + 'Total débit = total crédit</span>'
+      : '<span class="lbl warn">' + ico('scale') + 'Écart : ' + U.n(Math.abs(tD - tC), 2) + '</span>';
+    return lbl + '<span class="r">' + U.n(tD, 2) + '</span><span class="r">' + U.n(tC, 2) + '</span><span></span>';
+  }
   function jedHtml(ex, en, i) {
     var r = ex.res && ex.res.jr[i], dis = ex.checked ? ' disabled' : '';
-    var h = '<div class="jed"><div class="jed-h"><b>' + esc(en.date) + '</b><span>' + esc(en.lib) + '</span></div><div class="jgrid"><span class="hd">Compte</span><span class="hd r">Débit</span><span class="hd r">Crédit</span>';
+    var h = '<div class="journal"><div class="j-head"><b>' + esc(en.date) + '</b><span>' + esc(en.lib) + '</span></div><div class="j-body"><div class="j-grid"><span class="hd">Compte</span><span class="hd r">Débit</span><span class="hd r">Crédit</span><span class="hd"></span>';
     ex.jl[i].forEach(function (l, k) {
       var b = ' data-j="' + i + '" data-r="' + k + '"', lab = ' ligne ' + (k + 1) + ' de l’écriture du ' + en.date;
-      h += '<input class="ac" id="j' + ex.uid + '-' + i + '-' + k + 'a" inputmode="numeric" autocomplete="off" aria-label="Compte,' + lab + '"' + b + ' data-f="a" value="' + esc(l.a) + '"' + dis + '>';
-      h += '<input class="n" id="j' + ex.uid + '-' + i + '-' + k + 'd" inputmode="decimal" autocomplete="off" aria-label="Débit,' + lab + '"' + b + ' data-f="d" value="' + esc(l.d) + '"' + dis + '>';
-      h += '<input class="n" id="j' + ex.uid + '-' + i + '-' + k + 'c" inputmode="decimal" autocomplete="off" aria-label="Crédit,' + lab + '"' + b + ' data-f="c" value="' + esc(l.c) + '"' + dis + '>';
+      var rs = r ? rowSt(en, l) : '', cr = String(l.c || '').trim() && !String(l.d || '').trim();
+      h += '<div class="j-row' + (cr ? ' cr' : '') + '"><span class="j-acc"><input class="input" id="j' + ex.uid + '-' + i + '-' + k + 'a" inputmode="numeric" autocomplete="off" aria-label="Compte,' + lab + '"' + b + ' data-f="a" value="' + esc(l.a) + '"' + dis + '><small>' + esc(U.lib(String(l.a || '').trim())) + '</small></span>';
+      h += '<span><input class="input n" id="j' + ex.uid + '-' + i + '-' + k + 'd" inputmode="decimal" autocomplete="off" aria-label="Débit,' + lab + '"' + b + ' data-f="d" value="' + esc(l.d) + '"' + dis + '></span>';
+      h += '<span><input class="input n" id="j' + ex.uid + '-' + i + '-' + k + 'c" inputmode="decimal" autocomplete="off" aria-label="Crédit,' + lab + '"' + b + ' data-f="c" value="' + esc(l.c) + '"' + dis + '></span>';
+      h += '<span class="j-st' + (rs ? ' ' + rs : '') + '"' + (rs ? ' title="' + { ok: 'Ligne juste', warn: 'Compte attendu, sens ou montant à revoir', bad: 'Compte inattendu' }[rs] + '"' : '') + '>' + (rs ? ico(rs === 'ok' ? 'check' : rs === 'bad' ? 'cross' : 'info') : '') + '</span></div>';
     });
-    h += '</div>';
-    if (!ex.checked) h += '<button type="button" class="jadd" data-act="addline" data-j="' + i + '">+ Ajouter une ligne</button>';
+    h += '</div></div>';
+    if (!ex.checked) h += '<button type="button" class="j-add" data-act="addline" data-j="' + i + '">' + ico('plus') + 'Ajouter une ligne</button>';
+    h += '<div class="j-foot" id="jf' + ex.uid + '-' + i + '">' + footHtml(ex, i) + '</div>';
     if (r) {
       h += '<div class="jfb">' + r.detail.map(function (x) {
         var got = x.side === 'd' ? x.got.d : x.got.c;
-        return '<div class="l ' + (x.st === 'ok' ? 'ok' : 'bad') + '">' + (x.st === 'ok' ? '✓' : '✗') + ' <span class="mono">' + x.a + '</span> ' + esc(U.lib(x.a)) + ' · ' + (x.side === 'd' ? 'débit ' : 'crédit ') + U.n(x.mt, 2) + (x.st === 'ok' ? '' : ' — ' + ST[x.st] + (x.st === 'montant' ? ' (saisi : ' + U.n(got, 2) + ')' : '')) + '</div>';
-      }).join('') + r.extra.map(function (x) { return '<div class="l bad">✗ <span class="mono">' + esc(x.a || '?') + '</span> ' + (x.d ? 'débit ' + U.n(x.d, 2) : 'crédit ' + U.n(x.c, 2)) + ' — ligne en trop</div>'; }).join('') + (!r.equilibre ? '<div class="l bad">Votre écriture n’est pas équilibrée (débits ' + U.n(r.tD, 2) + ', crédits ' + U.n(r.tC, 2) + ').</div>' : '') + '</div>';
+        return '<div class="l ' + (x.st === 'ok' ? 'ok' : 'bad') + '">' + ico(x.st === 'ok' ? 'check' : 'cross') + '<span><span class="mono">' + x.a + '</span> ' + esc(U.lib(x.a)) + ' · ' + (x.side === 'd' ? 'débit ' : 'crédit ') + U.n(x.mt, 2) + (x.st === 'ok' ? '' : ' : ' + ST[x.st] + (x.st === 'montant' ? ' (saisi : ' + U.n(got, 2) + ')' : '')) + '</span></div>';
+      }).join('') + r.extra.map(function (x) { return '<div class="l bad">' + ico('cross') + '<span><span class="mono">' + esc(x.a || '?') + '</span> ' + (x.d ? 'débit ' + U.n(x.d, 2) : 'crédit ' + U.n(x.c, 2)) + ' : ligne en trop</span></div>'; }).join('') + (!r.equilibre ? '<div class="l bad">' + ico('scale') + '<span>Ton écriture n’est pas équilibrée (débits ' + U.n(r.tD, 2) + ', crédits ' + U.n(r.tC, 2) + ').</span></div>' : '') + '</div>';
     }
     return h + '</div>';
   }
   function corrHtml(ex) {
-    var d = ex.data, h = '<section class="steps" id="corr' + ex.uid + '"><h3>Corrigé pas à pas</h3>';
-    d.steps.forEach(function (s) { h += '<section><h4>' + esc(s.h) + '</h4>' + s.html + '</section>'; });
-    if (d.journal.length) h += '<section><h4>Écritures au journal</h4>' + U.journalHtml(d.journal) + '</section>';
-    h += '<section><h4>Interprétation (à rédiger sur la copie)</h4><p class="interp">' + d.comment + '</p></section></section>';
+    var d = ex.data, h = '<article class="sheet" id="corr' + ex.uid + '"><h2 class="h-sec">Corrigé pas à pas</h2>';
+    d.steps.forEach(function (s) { h += '<section class="part"><h3>' + esc(s.h) + '</h3>' + s.html + '</section>'; });
+    if (d.journal.length) h += '<section class="part"><h3>Écritures au journal</h3>' + U.journalHtml(d.journal) + '</section>';
+    h += '<div class="callout"><span class="ic">' + ico('info') + '</span><div><h4>Interprétation (à rédiger sur la copie)</h4><p>' + d.comment + '</p></div></div></article>';
     return h;
   }
   function scoreHtml(ex) {
     var R = ex.res, t = T[ex.typeId], s = st(ex.typeId);
-    return '<div class="score" role="status"><b>' + pct(R.score) + '</b><div>' + R.ok + ' sur ' + R.nq + ' résultats exacts' + (R.js !== null ? ' · écritures : ' + pct(R.js) : '') + '<br><span class="meta">Temps : ' + mmss(ex.secs) + ' (objectif ' + t.minutes + ' min)' + (ex.secs > t.minutes * 60 ? ' — trop lent, recommence pour gagner en vitesse' : '') + '</span></div><span class="chip ' + (R.score >= 0.8 ? 'ok' : (R.score >= 0.5 ? 'warn' : 'bad')) + '">Prochaine révision : ' + nextTxt(s) + '</span></div>';
+    return '<div class="score" role="status"><span class="big">' + Math.round(R.score * 100) + '<small> %</small></span><div class="stack" style="gap:4px"><b>' + R.ok + ' sur ' + R.nq + ' résultats exacts' + (R.js !== null ? ' · écritures : ' + pct(R.js) : '') + '</b><span class="small muted">Temps : ' + mmss(ex.secs) + ' (objectif ' + t.minutes + ' min)' + (ex.secs > t.minutes * 60 ? ' : trop lent, recommence pour gagner en vitesse' : '') + '</span><div><span class="badge ' + (R.score >= 0.8 ? 'ok' : (R.score >= 0.5 ? 'warn' : 'bad')) + '">Prochaine révision : ' + nextTxt(s) + '</span></div></div></div>';
   }
   function exHtml(ex, mode) {
     var t = T[ex.typeId], d = ex.data;
-    var h = '<article class="panel enter" id="ex' + ex.uid + '"><div class="exhead"><div><div class="eyebrow">' + esc(t.famille) + ' · ' + (ex.src ? esc(ex.src) : 'variante n° ' + ex.seed) + '</div><h2>' + esc(t.nom) + '</h2></div>';
-    if (mode !== 'exam' && mode !== 'review') h += '<span class="clock" id="clock" data-target="' + t.minutes * 60 + '">' + mmss(elapsed(ex)) + ' / ' + t.minutes + ':00</span>';
-    h += '</div>';
-    if (ex.note) h += '<p class="note">' + esc(ex.note) + '</p>';
-    h += '<div class="enonce">' + d.enonce + '</div>';
-    h += '<section class="steps"><h3>Résultats chiffrés</h3><p class="meta">Saisis les montants sans séparateur ou avec des espaces ; virgule décimale. Pourcentages en %.</p><div class="qs">' + d.questions.map(function (q) { return qHtml(ex, q); }).join('') + '</div></section>';
-    if (d.journal.length) h += '<section class="steps"><h3>Écritures au journal</h3><p class="meta">Une ligne par compte ; numéros du PCG, anciens ou nouveaux.</p>' + d.journal.map(function (en, i) { return jedHtml(ex, en, i); }).join('') + '</section>';
-    else h += '<p class="meta">Pas d’écriture comptable dans cet exercice : la conclusion rédigée compte autant que les calculs.</p>';
+    var h = '<div class="ex enter" id="ex' + ex.uid + '"><section class="ex-head"><div class="hero"><span class="eyebrow">' + esc(t.famille) + ' · ' + (ex.src ? esc(ex.src) : 'variante n° ' + ex.seed) + '</span><h1 class="h-page">' + esc(t.nom) + '</h1></div>';
+    if (mode !== 'exam' && mode !== 'review') h += '<span class="clock" title="Temps passé / objectif">' + ico('clock') + '<span id="clock" data-target="' + t.minutes * 60 + '">' + mmss(elapsed(ex)) + ' / ' + t.minutes + ':00</span></span>';
+    h += '</section>';
+    if (ex.note) h += '<div class="callout warn"><span class="ic">' + ico('flag') + '</span><p>' + esc(ex.note) + '</p></div>';
+    h += '<article class="sheet"><div class="enonce">' + d.enonce + '</div></article>';
     if (ex.res) h += scoreHtml(ex);
+    h += '<article class="sheet"><h2 class="h-sec">Résultats chiffrés</h2><p class="small muted">Saisis les montants sans séparateur ou avec des espaces ; virgule décimale. Pourcentages en %.</p><div class="answers">' + d.questions.map(function (q) { return qHtml(ex, q); }).join('') + '</div></article>';
+    h += '<article class="sheet">';
+    if (d.journal.length) {
+      var eq = ex.res ? ex.res.jr.every(function (r) { return r.equilibre; }) : null;
+      h += '<div class="row between"><h2 class="h-sec">' + (d.journal.length > 1 ? 'Écritures au journal' : 'Écriture au journal') + '</h2>' + (eq === null ? '' : '<span class="badge ' + (eq ? 'ok' : 'bad') + '">' + ico('scale') + (eq ? 'Équilibrée' : 'Déséquilibrée') + '</span>') + '</div><p class="small muted">Une ligne par compte ; numéros du PCG, anciens ou nouveaux.</p>' + d.journal.map(function (en, i) { return jedHtml(ex, en, i); }).join('');
+    } else h += '<p class="small muted">Pas d’écriture comptable dans cet exercice : la conclusion rédigée compte autant que les calculs.</p>';
     if (mode !== 'exam') {
       h += '<div class="row">';
       if (!ex.checked) h += '<button type="button" class="btn pri" data-act="check">Vérifier mes réponses</button>';
       h += '<button type="button" class="btn" data-act="corr">' + (ex.corr ? 'Masquer le corrigé' : 'Voir le corrigé') + '</button>';
       if (mode === 'train') h += '<button type="button" class="btn ghost" data-act="next">Nouvelle variante</button>';
       if (mode === 'annale') h += '<button type="button" class="btn ghost" data-act="backannales">Retour aux sujets</button>';
+      h += '<button type="button" class="btn ghost" data-fiche="' + ex.typeId + '">' + ico('book') + 'Fiche</button>';
       h += '</div>';
     }
+    h += '</article>';
     if (ex.corr) h += corrHtml(ex);
-    return h + '</article>';
+    return h + '</div>';
   }
   function currentEx() {
     if (S.view === 'train') return S.train;
@@ -208,73 +247,86 @@
 
   /* ---------- Vues ---------- */
   function daysTo(d) { var t = new Date(); t.setHours(0, 0, 0, 0); return Math.round((d - t) / DAY); }
-  function boxes(b) { var h = '<span class="boxes" aria-label="Niveau ' + b + ' sur 5">'; for (var i = 0; i < 5; i++) h += '<i class="' + (i < b ? 'on' : '') + '"></i>'; return h + '</span>'; }
+  function pips(b) { var h = '<span class="pips" role="img" aria-label="Niveau ' + b + ' sur 5">'; for (var i = 0; i < 5; i++) h += '<i class="' + (i < b ? 'on' : '') + '"></i>'; return h + '</span>'; }
+  function dateTxt(d) { return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }); }
   function viewDash() {
-    var el = eligible(), nEx = 0, sum = 0, due = 0;
-    el.forEach(function (t) { var s = st(t.id); nEx += s.n; sum += s.sum; if (isDue(s)) due++; });
-    var cfg = EXAMS[profil()], j = daysTo(cfg.date);
-    var h = '<section class="panel"><div class="eyebrow">Concours ' + cfg.label + ' · ' + (j > 0 ? 'J-' + j : 'jour J') + '</div><h2>Où en es-tu ?</h2><p class="lede">L’outil suit tes résultats par type d’exercice et te ressort en priorité ceux que tu rates, ceux que tu fais trop lentement et ceux dont la révision est due (répétition espacée : 1, 3, 7, 14 puis 30 jours après chaque réussite).</p>';
-    h += '<div class="stats"><div class="stat"><b>' + nEx + '</b><span>exercices corrigés</span></div><div class="stat"><b>' + (nEx ? pct(sum / nEx) : '—') + '</b><span>score moyen</span></div><div class="stat"><b>' + due + '</b><span>types à revoir</span></div><div class="stat"><b>' + S.prog.epreuves.filter(function (e) { return e.p === profil(); }).length + '</b><span>épreuves blanches</span></div></div></section>';
-    h += '<section class="panel"><h3>À travailler maintenant</h3><div class="reco">' + recommend(3).map(function (t) { return '<button type="button" data-train="' + t.id + '"><span class="fam">' + esc(t.famille) + '</span><b>' + esc(t.nom) + '</b><span class="why">' + esc(why(t)) + '</span></button>'; }).join('') + '</div></section>';
-    h += '<section class="panel"><h3>Progression par type</h3><div class="tw"><table class="types"><thead><tr><th>Type d’exercice</th><th>Niveau</th><th class="hide-sm">Moyenne</th><th class="hide-sm">Dernier</th><th>Révision</th></tr></thead><tbody>';
+    var el = eligible(), nEx = 0, sum = 0, due = 0, solid = 0;
+    el.forEach(function (t) { var s = st(t.id); nEx += s.n; sum += s.sum; if (s.n && isDue(s)) due++; if ((s.box || 0) >= 4) solid++; });
+    var cfg = EXAMS[profil()], ep = S.prog.epreuves.filter(function (e) { return e.p === profil(); });
+    var h = '<section class="hero"><span class="eyebrow">Concours ' + cfg.label + ' · écrit le ' + dateTxt(cfg.date) + '</span><h1 class="h-page">Où en es-tu ? ' + (due ? '<mark class="hl">' + due + ' type' + (due > 1 ? 's' : '') + '</mark> à revoir aujourd’hui' : !nEx ? '<mark class="hl">' + el.length + ' types</mark> à découvrir' : 'Rien à revoir aujourd’hui') + '</h1><p class="lede">L’atelier suit tes résultats par type d’exercice et te ressort en priorité ceux que tu rates, ceux que tu fais trop lentement et ceux dont la révision est due (1, 3, 7, 14 puis 30 jours après chaque réussite).</p></section>';
+    h += '<div class="stats"><div class="stat"><span>Exercices corrigés</span><b>' + nEx + '</b></div><div class="stat"><span>Score moyen</span><b>' + (nEx ? Math.round(sum / nEx * 100) + ' <small>%</small>' : '—') + '</b></div><div class="stat"><span>Types maîtrisés</span><b>' + solid + ' <small>/ ' + el.length + '</small></b><span>niveau 4 ou plus</span></div><div class="stat"><span>Épreuves blanches</span><b>' + ep.length + '</b>' + (ep.length ? '<span>dernière : ' + pct(ep[0].s) + '</span>' : '') + '</div></div>';
+    h += '<section class="stack"><div class="row between"><h2 class="h-sec">À travailler maintenant</h2><button type="button" class="btn ghost sm" data-act="auto">Point faible</button></div><div class="reco">' + recommend(3).map(function (t, i) { var dc = { weak: 'bad', due: 'warn', good: 'ok', '': '' }[dotCls(t)]; return '<button type="button" data-train="' + t.id + '"' + (i === 0 ? ' class="first"' : '') + '><span class="eyebrow">' + esc(t.famille) + '</span><b>' + esc(t.nom) + '</b><span class="why"><span class="dot ' + dc + '"></span>' + esc(why(t)) + '</span>' + ico('arrow') + '</button>'; }).join('') + '</div></section>';
+    h += '<article class="sheet"><h2 class="h-sec">Progression par type</h2><div class="tw"><table class="t"><thead><tr><th>Type d’exercice</th><th>Niveau</th><th class="num hide-sm">Moyenne</th><th class="num hide-sm">Dernier</th><th>Révision</th></tr></thead><tbody>';
     el.forEach(function (t) {
       var s = st(t.id), l = (s.last || [])[0], a = avg(s), nt = nextTxt(s);
-      h += '<tr class="click" data-train="' + t.id + '" tabindex="0"><td><b>' + esc(t.nom) + '</b><br><span class="fam">' + esc(t.famille) + (t.ctrl ? '' : ' · inspecteur') + '</span></td><td>' + boxes(s.box || 0) + '</td><td class="hide-sm mono">' + (a === null ? '—' : pct(a)) + '</td><td class="hide-sm mono">' + (l ? pct(l.s) + ' · ' + mmss(l.t) : '—') + '</td><td><span class="chip ' + (nt === 'à revoir' ? 'warn' : (nt === 'nouveau' ? 'acc' : 'ok')) + '">' + nt + '</span></td></tr>';
+      h += '<tr class="click" data-train="' + t.id + '" tabindex="0"><td><b>' + esc(t.nom) + '</b><div class="small muted">' + esc(t.famille) + (t.ctrl ? '' : ' · inspecteur') + '</div></td><td>' + pips(s.box || 0) + '</td><td class="num hide-sm">' + (a === null ? '—' : pct(a)) + '</td><td class="num hide-sm">' + (l ? pct(l.s) + ' · ' + mmss(l.t) : '—') + '</td><td><span class="badge ' + (nt === 'à revoir' ? 'warn' : (nt === 'nouveau' ? 'out' : 'ok')) + '">' + nt + '</span></td></tr>';
     });
-    h += '</tbody></table></div></section>';
-    var ep = S.prog.epreuves.filter(function (e) { return e.p === profil(); }).slice(0, 6);
-    if (ep.length) h += '<section class="panel"><h3>Dernières épreuves blanches</h3><div class="tw"><table class="types"><thead><tr><th>Date</th><th>Score</th><th>Durée</th><th class="hide-sm">Exercices</th></tr></thead><tbody>' + ep.map(function (e) { return '<tr><td class="mono">' + new Date(e.d).toLocaleDateString('fr-FR') + '</td><td class="mono">' + pct(e.s) + '</td><td class="mono">' + mmss(e.t) + '</td><td class="hide-sm">' + e.x.map(function (x) { return esc((T[x.id] || { nom: x.id }).nom) + ' (' + pct(x.s) + ')'; }).join(', ') + '</td></tr>'; }).join('') + '</tbody></table></div></section>';
-    h += '<section class="panel"><h3>Réglages</h3><div class="row"><span>Comptes affichés dans les corrigés :</span><div class="seg" role="group" aria-label="Plan comptable"><button type="button" data-pcg="0" aria-pressed="' + !S.prog.settings.pcgOld + '">PCG 2025 (657, 757)</button><button type="button" data-pcg="1" aria-pressed="' + !!S.prog.settings.pcgOld + '">Ancien PCG (675, 775)</button></div></div>';
-    h += S.confirmReset ? '<div class="confirm"><span>Effacer toute la progression ? Cette action est définitive.</span><button type="button" class="btn danger" data-act="resetyes">Effacer</button><button type="button" class="btn" data-act="resetno">Annuler</button></div>' : '<div class="row"><button type="button" class="btn ghost danger" data-act="reset">Effacer ma progression</button></div>';
-    return h + '</section>';
+    h += '</tbody></table></div></article>';
+    if (ep.length) h += '<article class="sheet"><h2 class="h-sec">Dernières épreuves blanches</h2><div class="tw"><table class="t"><thead><tr><th>Date</th><th class="num">Score</th><th class="num">Durée</th><th class="hide-sm">Exercices</th></tr></thead><tbody>' + ep.slice(0, 6).map(function (e) { return '<tr><td>' + new Date(e.d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) + '</td><td class="num"><b>' + pct(e.s) + '</b></td><td class="num">' + mmss(e.t) + '</td><td class="hide-sm small">' + e.x.map(function (x) { return esc((T[x.id] || { nom: x.id }).nom) + ' (' + pct(x.s) + ')'; }).join(', ') + '</td></tr>'; }).join('') + '</tbody></table></div></article>';
+    h += '<article class="sheet"><h2 class="h-sec">Réglages</h2>';
+    h += '<div class="seg-row"><span>Programme</span><div class="seg" role="group" aria-label="Programme"><button type="button" data-p="I" aria-pressed="' + (profil() === 'I') + '">Inspecteur</button><button type="button" data-p="C" aria-pressed="' + (profil() === 'C') + '">Contrôleur</button></div></div>';
+    h += '<div class="seg-row"><span>Comptes affichés dans les corrigés</span><div class="seg" role="group" aria-label="Plan comptable"><button type="button" data-pcg="0" aria-pressed="' + !S.prog.settings.pcgOld + '">PCG 2025 (657, 757)</button><button type="button" data-pcg="1" aria-pressed="' + !!S.prog.settings.pcgOld + '">Ancien PCG (675, 775)</button></div></div>';
+    h += S.confirmReset ? '<div class="confirm"><span>Effacer toute la progression ? Cette action est définitive.</span><button type="button" class="btn sm danger" data-act="resetyes">Effacer</button><button type="button" class="btn sm" data-act="resetno">Annuler</button></div>' : '<div class="row"><button type="button" class="btn sm danger" data-act="reset">Effacer ma progression</button></div>';
+    return h + '</article>';
   }
   function dotCls(t) { var s = st(t.id), l = (s.last || [])[0]; if (!s.n) return ''; if (l && l.s < 0.6) return 'weak'; if (isDue(s)) return 'due'; return 'good'; }
   function viewTrain() {
     var el = eligible();
     if (S.trainType && !el.some(function (t) { return t.id === S.trainType; })) { S.trainType = null; S.train = null; }
     if (!S.train) { S.trainType = recommend(1)[0].id; S.train = makeEx(S.trainType); }
-    var h = '<section class="panel"><div class="eyebrow">Mode entraînement</div><h2>Un type, une variante, un chrono</h2><p class="lede">Choisis un type ou laisse l’outil choisir ton point faible. Saisis tes résultats et tes écritures, puis vérifie : le corrigé détaille chaque calcul, les écritures et l’interprétation attendue.</p>';
+    var h = '<section class="hero"><span class="eyebrow">Mode entraînement</span><h1 class="h-page">Un type, une variante, un chrono</h1><p class="lede">Choisis un type ou laisse l’atelier choisir ton point faible. Saisis tes résultats et tes écritures, puis vérifie : le corrigé détaille chaque calcul, les écritures et l’interprétation attendue.</p></section>';
     var fams = []; el.forEach(function (t) { if (fams.indexOf(t.famille) < 0) fams.push(t.famille); });
-    var sel = '<select class="n pick" id="pick-type" aria-label="Type d’exercice">' + fams.map(function (f) {
-      return '<optgroup label="' + esc(f) + '">' + el.filter(function (t) { return t.famille === f; }).map(function (t) { return '<option value="' + t.id + '"' + (S.trainType === t.id ? ' selected' : '') + '>' + esc(t.nom) + ' — ' + nextTxt(st(t.id)) + '</option>'; }).join('') + '</optgroup>';
+    var sel = '<select class="input pick" id="pick-type" aria-label="Type d’exercice">' + fams.map(function (f) {
+      return '<optgroup label="' + esc(f) + '">' + el.filter(function (t) { return t.famille === f; }).map(function (t) { return '<option value="' + t.id + '"' + (S.trainType === t.id ? ' selected' : '') + '>' + esc(t.nom) + ' · ' + nextTxt(st(t.id)) + '</option>'; }).join('') + '</optgroup>';
     }).join('') + '</select>';
-    h += '<div class="row pickrow">' + sel + '<button type="button" class="btn" data-act="picked">Nouvel exercice</button><button type="button" class="btn pri" data-act="auto">Point faible</button></div></section>';
+    h += '<div class="sheet tight"><div class="row pickrow">' + sel + '<button type="button" class="btn" data-act="picked">Nouvel exercice</button><button type="button" class="btn pri" data-act="auto">Point faible</button></div></div>';
     if (S.train) h += exHtml(S.train, 'train');
     return h;
+  }
+  function acctHtml(x) {
+    var m = /^(\d[\d \/]*\d|\d)\s+(.+)$/.exec(x);
+    return m ? '<span><b>' + esc(m[1]) + '</b>' + esc(m[2]) + '</span>' : '<span>' + esc(x) + '</span>';
   }
   function viewFiches() {
     var el = eligible(), fams = [];
     el.forEach(function (t) { if (fams.indexOf(t.famille) < 0) fams.push(t.famille); });
-    var h = '<section class="panel"><div class="eyebrow">Fiches-procédure</div><h2>La méthode de chaque type</h2><p class="lede">Étapes dans l’ordre de la copie, pièges relevés dans les corrigés et le rapport du jury, comptes utiles. ' + (profil() === 'C' ? 'Filtre contrôleur actif : IS, devises, augmentation de capital et provisions pour risques sont masqués.' : '') + '</p></section>';
-    fams.forEach(function (f) {
-      h += '<h3 class="famh">' + esc(f) + '</h3>';
-      el.filter(function (t) { return t.famille === f; }).forEach(function (t) {
-        var fi = t.fiche;
-        h += '<details class="fiche"><summary><h3>' + esc(t.nom) + '</h3><span class="chip">' + t.minutes + ' min</span></summary><div class="fbody"><p>' + esc(fi.objectif) + '</p><h4>Étapes</h4><ol>' + fi.etapes.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ol><h4>Pièges</h4><ul class="pieges">' + fi.pieges.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' + (fi.comptes.length ? '<h4>Comptes</h4><ul>' + fi.comptes.map(function (x) { return '<li class="mono">' + esc(x) + '</li>'; }).join('') + '</ul>' : '') + '<div class="row"><button type="button" class="btn pri" data-train="' + t.id + '">S’entraîner sur ce type</button></div></div></details>';
-      });
-    });
-    return h;
+    if (!S.fiche || !el.some(function (t) { return t.id === S.fiche; })) S.fiche = el[0].id;
+    var cur = T[S.fiche], fi = cur.fiche;
+    var h = '<div class="fl"><nav class="sheet tight toc-wrap" aria-label="Fiches">';
+    h += '<select class="input" id="pick-fiche" aria-label="Choisir une fiche">' + fams.map(function (f) {
+      return '<optgroup label="' + esc(f) + '">' + el.filter(function (t) { return t.famille === f; }).map(function (t) { return '<option value="' + t.id + '"' + (t.id === S.fiche ? ' selected' : '') + '>' + esc(t.nom) + '</option>'; }).join('') + '</optgroup>';
+    }).join('') + '</select>';
+    h += '<div class="toc">' + fams.map(function (f) {
+      return '<h4>' + esc(f) + '</h4>' + el.filter(function (t) { return t.famille === f; }).map(function (t) { return '<a href="#fiches" data-fiche="' + t.id + '"' + (t.id === S.fiche ? ' aria-current="true"' : '') + '>' + esc(t.nom) + ' <span class="badge mono">' + t.minutes + ' min</span></a>'; }).join('');
+    }).join('') + '</div></nav>';
+    h += '<article class="sheet"><div class="reading"><div class="hero"><span class="eyebrow">Fiche · ' + esc(cur.famille) + '</span><h1 class="h-page">' + esc(cur.nom) + '</h1><p class="lede">' + esc(fi.objectif) + '</p></div>';
+    if (profil() === 'C') h += '<p class="small muted">Filtre contrôleur actif : IS, devises, augmentation de capital et provisions pour risques sont masqués.</p>';
+    h += '<h4>Étapes</h4><ol class="steps">' + fi.etapes.map(function (x) { return '<li><span>' + esc(x) + '</span></li>'; }).join('') + '</ol>';
+    h += '<h4>Pièges</h4><ul class="traps">' + fi.pieges.map(function (x) { return '<li>' + ico('cross') + '<span>' + esc(x) + '</span></li>'; }).join('') + '</ul>';
+    if (fi.comptes.length) h += '<h4>Comptes</h4><div class="accts">' + fi.comptes.map(acctHtml).join('') + '</div>';
+    h += '<div class="row" style="margin-top:8px"><button type="button" class="btn pri" data-train="' + cur.id + '">S’entraîner sur ce type · ' + cur.minutes + ' min</button><span class="small muted">Ton niveau : ' + pips(st(cur.id).box || 0) + '</span></div>';
+    return h + '</div></article></div>';
   }
   function viewAnnales() {
     if (S.annale) return exHtml(S.annale, 'annale');
     var list = ANNALES.filter(function (a) { return profil() === 'I' || a.ctrl; });
-    var h = '<section class="panel"><div class="eyebrow">Sujets réels</div><h2>Les exercices des annales, corrigés automatiquement</h2><p class="lede">Mêmes données que les sujets 2026 (inspecteur et contrôleur), le sujet test inspecteur et le sujet blanc du dossier. Les corrigés ont été recalculés ; les écarts avec les corrigés publiés sont signalés.</p></section><section class="panel"><div class="tw"><table class="types"><thead><tr><th>Sujet</th><th>Type</th><th></th></tr></thead><tbody>';
-    list.forEach(function (a) { h += '<tr><td><b>' + esc(a.p.nom) + '</b><br><span class="fam">' + esc(a.src) + '</span></td><td>' + esc(T[a.type].nom) + '</td><td><button type="button" class="btn" data-annale="' + a.id + '">Faire</button></td></tr>'; });
-    return h + '</tbody></table></div></section>';
+    var h = '<section class="hero"><span class="eyebrow">Sujets réels</span><h1 class="h-page">Les exercices des annales, corrigés automatiquement</h1><p class="lede">Mêmes données que les sujets 2026 (inspecteur et contrôleur), le sujet test inspecteur et le sujet blanc du dossier. Les corrigés ont été recalculés ; les écarts avec les corrigés publiés sont signalés.</p></section><article class="sheet"><div class="tw"><table class="t"><thead><tr><th>Sujet</th><th class="hide-sm">Type</th><th></th></tr></thead><tbody>';
+    list.forEach(function (a) { h += '<tr><td><b>' + esc(a.p.nom) + '</b><div class="small muted">' + esc(a.src) + '</div></td><td class="hide-sm">' + esc(T[a.type].nom) + '</td><td class="r"><button type="button" class="btn sm" data-annale="' + a.id + '">Faire</button></td></tr>'; });
+    return h + '</tbody></table></div></article>';
   }
   function viewExam() {
     var cfg = EXAMS[profil()], E = S.exam;
     if (!E) {
-      return '<section class="panel"><div class="eyebrow">Épreuve blanche · ' + cfg.label + '</div><h2>' + cfg.txt + '</h2><p class="lede">Tirage au hasard parmi les types du programme ' + cfg.label + ', avec priorité aux types que tu rates ou que tu n’as pas revus. Pas de correction avant la remise de la copie. À la fin du temps, la copie est rendue automatiquement : entraîne-toi à tout traiter, même partiellement, comme le demande le jury.</p><div class="row"><button type="button" class="btn pri" data-act="startexam">Commencer l’épreuve</button></div></section>';
+      return '<section class="hero"><span class="eyebrow">Épreuve blanche · ' + cfg.label + '</span><h1 class="h-page">' + cfg.txt + '</h1><p class="lede">Tirage au hasard parmi les types du programme ' + cfg.label + ', avec priorité aux types que tu rates ou que tu n’as pas revus. Pas de correction avant la remise de la copie. À la fin du temps, la copie est rendue automatiquement : entraîne-toi à tout traiter, même partiellement, comme le demande le jury.</p></section><div class="row"><button type="button" class="btn pri" data-act="startexam">Commencer l’épreuve ' + ico('arrow') + '</button></div>';
     }
-    var h = '<div class="exambar">';
+    var h = '<div class="exambar"><div class="row">';
     var rem = E.done ? 0 : E.dur - (Date.now() - E.start) / 1000;
-    h += E.done ? '<span class="big">' + pct(E.score) + '</span>' : '<span class="big" id="cd">' + mmss(rem) + '</span>';
-    h += '<div class="pills">' + E.items.map(function (x, i) { return '<button type="button" data-pill="' + i + '" aria-current="' + (i === E.cur) + '">' + (i + 1) + '. ' + esc(COURT[x.typeId] || x.typeId) + (E.done ? ' · ' + pct(x.res.score) : '') + '</button>'; }).join('') + '</div>';
-    h += E.done ? '<button type="button" class="btn" data-act="newexam">Nouvelle épreuve</button>' : '<button type="button" class="btn pri" data-act="submit">Rendre la copie</button>';
+    h += E.done ? '<span class="big">' + pct(E.score) + '</span>' : '<span class="clock" title="Temps restant">' + ico('clock') + '<span id="cd">' + mmss(rem) + '</span></span>';
+    h += '<div class="pills">' + E.items.map(function (x, i) { return '<button type="button" data-pill="' + i + '" aria-current="' + (i === E.cur) + '">' + (i + 1) + '. ' + esc(COURT[x.typeId] || x.typeId) + (E.done ? ' · ' + pct(x.res.score) : '') + '</button>'; }).join('') + '</div></div>';
+    h += E.done ? '<button type="button" class="btn sm" data-act="newexam">Nouvelle épreuve</button>' : '<button type="button" class="btn sm" data-act="submit">Rendre la copie</button>';
     h += '</div>';
     if (E.done) {
-      h += '<section class="panel"><h3>Résultat de l’épreuve</h3><div class="tw"><table class="types"><thead><tr><th>Exercice</th><th>Score</th><th>Temps passé</th></tr></thead><tbody>' + E.items.map(function (x, i) { return '<tr class="click" data-pill="' + i + '"><td>' + (i + 1) + '. ' + esc(T[x.typeId].nom) + '</td><td class="mono">' + pct(x.res.score) + '</td><td class="mono">' + mmss(E.spent[i]) + '</td></tr>'; }).join('') + '<tr class="tot"><td>Total</td><td class="mono">' + pct(E.score) + '</td><td class="mono">' + mmss(E.used) + ' / ' + cfg.min + ':00</td></tr></tbody></table></div><p class="meta">Les résultats sont intégrés à ta progression ; ouvre chaque exercice pour voir le corrigé.</p></section>';
+      h += '<article class="sheet"><h2 class="h-sec">Résultat de l’épreuve</h2><div class="tw"><table class="t"><thead><tr><th>Exercice</th><th class="num">Score</th><th class="num">Temps passé</th></tr></thead><tbody>' + E.items.map(function (x, i) { return '<tr class="click" data-pill="' + i + '"><td>' + (i + 1) + '. ' + esc(T[x.typeId].nom) + '</td><td class="num">' + pct(x.res.score) + '</td><td class="num">' + mmss(E.spent[i]) + '</td></tr>'; }).join('') + '<tr class="tot"><td>Total</td><td class="num">' + pct(E.score) + '</td><td class="num">' + mmss(E.used) + ' / ' + cfg.min + ':00</td></tr></tbody></table></div><p class="small muted">Les résultats sont intégrés à ta progression ; ouvre chaque exercice pour voir le corrigé.</p></article>';
       h += exHtml(E.items[E.cur], 'review');
     } else h += exHtml(E.items[E.cur], 'exam');
     return h;
@@ -308,22 +360,25 @@
 
   /* ---------- Rendu et événements ---------- */
   function render() {
-    document.querySelectorAll('#tabs button').forEach(function (b) { if (b.dataset.v === S.view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
-    document.querySelectorAll('#profil button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.p === profil())); });
+    document.querySelectorAll('#tabs [data-v], #bottomnav [data-v]').forEach(function (b) { if (b.dataset.v === S.view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
     var cfg = EXAMS[profil()], j = daysTo(cfg.date);
-    $('#countdown').textContent = 'Écrit ' + cfg.label + ' le ' + cfg.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) + (j > 0 ? ' · J-' + j : '');
+    $('#countdown').textContent = 'Écrit ' + cfg.label + ' le ' + cfg.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    $('#stamp').innerHTML = '<b>' + (j > 0 ? 'J-' + j : 'Jour J') + '</b><span>écrit ' + cfg.label + ' · ' + cfg.date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) + '</span>';
     var v = $('#view');
     v.innerHTML = S.view === 'dash' ? viewDash() : S.view === 'train' ? viewTrain() : S.view === 'fiches' ? viewFiches() : S.view === 'annales' ? viewAnnales() : viewExam();
+    document.querySelectorAll('[data-p]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.p === profil())); });
     measure();
   }
-  function measure() { var t = $('.top'); if (t) document.documentElement.style.setProperty('--hh', t.offsetHeight + 'px'); }
+  function measure() { var t = $('.appbar'); if (t) document.documentElement.style.setProperty('--hh', t.offsetHeight + 'px'); }
   function startTrain(id) { S.view = 'train'; S.trainType = id; S.train = makeEx(id); render(); var a = $('#ex' + S.train.uid); if (a) a.scrollIntoView({ block: 'start' }); }
   function go(v) { S.view = v; S.confirmReset = false; render(); window.scrollTo(0, 0); }
 
   document.addEventListener('click', function (ev) {
-    var b = ev.target.closest('button, tr[data-train], tr[data-pill]'); if (!b) return;
+    var b = ev.target.closest('button, a[data-v], a[data-fiche], tr[data-train], tr[data-pill]'); if (!b) return;
     var ds = b.dataset, ex = currentEx();
+    if (b.tagName === 'A') ev.preventDefault();
     if (ds.v) return go(ds.v);
+    if (ds.fiche) { S.fiche = ds.fiche; return go('fiches'); }
     if (ds.p) { S.prog.settings.profil = ds.p; Store.save(); if (S.exam && !S.exam.done) { } else S.exam = null; return render(); }
     if (ds.train) return startTrain(ds.train);
     if (ds.annale) { var a = ANNALES.filter(function (x) { return x.id === ds.annale; })[0]; S.annale = makeEx(a.type, { params: a.p, src: a.src, note: a.note }); render(); window.scrollTo(0, 0); return; }
@@ -361,9 +416,15 @@
   function onInput(ev) {
     var t = ev.target;
     if (t.id === 'pick-type') { if (ev.type === 'change') startTrain(t.value); return; }
+    if (t.id === 'pick-fiche') { if (ev.type === 'change') { S.fiche = t.value; render(); } return; }
     var ex = currentEx(); if (!ex || ex.checked) return;
     if (t.dataset.q) ex.answers[t.dataset.q] = t.value;
-    else if (t.dataset.j !== undefined && t.dataset.f) ex.jl[Number(t.dataset.j)][Number(t.dataset.r)][t.dataset.f] = t.value;
+    else if (t.dataset.j !== undefined && t.dataset.f) {
+      ex.jl[Number(t.dataset.j)][Number(t.dataset.r)][t.dataset.f] = t.value;
+      // Intitulé du compte et pied d'équilibre suivent la saisie
+      if (t.dataset.f === 'a') { var sm = t.nextElementSibling; if (sm) sm.textContent = U.lib(t.value.trim()); }
+      var jf = $('#jf' + ex.uid + '-' + t.dataset.j); if (jf) jf.innerHTML = footHtml(ex, Number(t.dataset.j));
+    }
   }
   document.addEventListener('input', onInput);
   document.addEventListener('change', onInput);
