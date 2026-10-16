@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Prépa DGFiP 2027</title>
+<meta name="description" content="Deux outils de révision pour le concours DGFiP 2027 : QCM et atelier QRC de comptabilité.">
+<link rel="icon" href="qcm.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,600;6..72,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Page d'accueil GitHub Pages · charte « Copie double » (07 Charte DA) */
+:root {
+  --paper: #F5F3EE; --surface: #FFFFFF; --ink: #16213A; --muted: #5A6377; --line: #DAD5CA;
+  --qcm: #2A44C7; --qcm-soft: #E7EBFB; --qrc: #0E6871; --qrc-soft: #E0F0F0; --hl: #FFE45E; --hl-ink: #16213A;
+  --shadow: 0 1px 0 rgba(22, 33, 58, .04), 0 1px 3px rgba(22, 33, 58, .06);
+  --shadow-lift: 0 2px 4px rgba(22, 33, 58, .06), 0 8px 24px rgba(22, 33, 58, .08);
+  --f-display: "Newsreader", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --f-ui: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --f-num: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0F141F; --surface: #171E2C; --ink: #E8ECF4; --muted: #9BA4B8; --line: #2B3447;
+    --qcm: #93A5FF; --qcm-soft: #1F2850; --qrc: #62C3CB; --qrc-soft: #12313A; --hl: #5A4E12; --hl-ink: #FFF3B8;
+    --shadow: 0 1px 0 rgba(0, 0, 0, .3); --shadow-lift: 0 8px 28px rgba(0, 0, 0, .45);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0F141F; --surface: #171E2C; --ink: #E8ECF4; --muted: #9BA4B8; --line: #2B3447;
+  --qcm: #93A5FF; --qcm-soft: #1F2850; --qrc: #62C3CB; --qrc-soft: #12313A; --hl: #5A4E12; --hl-ink: #FFF3B8;
+  --shadow: 0 1px 0 rgba(0, 0, 0, .3); --shadow-lift: 0 8px 28px rgba(0, 0, 0, .45);
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { background: var(--paper); -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-ui); font-size: 1rem; line-height: 1.55; }
+.wrap { max-width: 880px; margin: 0 auto; padding: 56px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 32px; }
+.hero { display: flex; flex-direction: column; gap: 8px; padding-left: 16px; border-left: 3px solid var(--qcm); }
+.eyebrow { font-size: .75rem; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+h1 { margin: 0; font-family: var(--f-display); font-size: clamp(1.75rem, 5vw, 2.5rem); font-weight: 600; line-height: 1.15; letter-spacing: -.01em; text-wrap: balance; }
+mark { background: linear-gradient(transparent 52%, var(--hl) 52%, var(--hl) 92%, transparent 92%); color: inherit; padding: 0 .12em; }
+.lede { margin: 0; color: var(--muted); max-width: 60ch; }
+.apps { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.app { --ink-app: var(--qcm); --soft: var(--qcm-soft); display: flex; flex-direction: column; gap: 12px; padding: 24px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow); color: inherit; text-decoration: none; position: relative; }
+.app.qrc { --ink-app: var(--qrc); --soft: var(--qrc-soft); }
+.app:hover { border-color: var(--ink-app); box-shadow: var(--shadow-lift); }
+.app:focus-visible { outline: 2px solid var(--ink-app); outline-offset: 2px; }
+.app img { width: 48px; height: 48px; border-radius: 12px; }
+.app h2 { margin: 0; font-family: var(--f-display); font-size: 1.375rem; font-weight: 700; }
+.app p { margin: 0; color: var(--muted); }
+.app .go { margin-top: auto; display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; min-height: 44px; padding: 0 18px; border-radius: 10px; background: var(--ink-app); color: var(--paper); font-weight: 600; font-size: .9375rem; }
+.app .go svg { width: 18px; height: 18px; }
+.app ul { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+.app li { font-size: .75rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--soft); color: var(--ink-app); }
+footer { font-size: .8125rem; color: var(--muted); }
+.stamp { display: inline-flex; gap: 6px; align-items: baseline; padding: 3px 9px 4px; background: var(--hl); color: var(--hl-ink); border-radius: 4px; transform: rotate(-1.5deg); font-size: .75rem; align-self: flex-start; }
+.stamp b { font-family: var(--f-num); font-size: .95rem; }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <section class="hero">
+    <span class="eyebrow">Concours DGFiP 2027</span>
+    <h1>Deux outils pour préparer <mark>l'écrit</mark></h1>
+    <p class="lede">Des QCM en révision espacée et des exercices de comptabilité corrigés pas à pas. Ta progression reste enregistrée dans ton navigateur.</p>
+    <span class="stamp" id="stamp" hidden></span>
+  </section>
+  <div class="apps">
+    <a class="app" href="qcm/">
+      <img src="qcm.svg" alt="">
+      <h2>QCM DGFiP 2027</h2>
+      <p>Épreuve écrite n° 2, partie QCM : session du jour, examen blanc chronométré, progrès comparés au jury.</p>
+      <ul><li>Inspecteur</li><li>Contrôleur</li></ul>
+      <span class="go">Ouvrir le QCM <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+    </a>
+    <a class="app qrc" href="qrc/">
+      <img src="qrc.svg" alt="">
+      <h2>Atelier QRC compta</h2>
+      <p>Comptabilité et analyse financière : exercices à variantes, écritures au journal, fiches de méthode et sujets réels.</p>
+      <ul><li>Inspecteur</li><li>Contrôleur</li></ul>
+      <span class="go">Ouvrir l'atelier <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+    </a>
+  </div>
+  <footer>Outil personnel de révision, sans lien avec la DGFiP.</footer>
+</main>
+<script>
+  // Compte à rebours jusqu'à l'écrit inspecteur (7 décembre 2026)
+  (function () {
+    var t = new Date(); t.setHours(0, 0, 0, 0);
+    var j = Math.round((new Date(2026, 11, 7) - t) / 86400000), s = document.getElementById("stamp");
+    if (j > 0) { s.innerHTML = "<b>J-" + j + "</b><span>écrit inspecteur · 7 déc.</span>"; s.hidden = false; }
+  })();
+</script>
+</body>
+</html>
