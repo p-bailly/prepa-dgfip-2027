@@ -128,6 +128,10 @@ mark.hl { background: linear-gradient(transparent 52%, var(--hl) 52%, var(--hl) 
 .seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--sunk); border: 1px solid var(--line); border-radius: var(--r-pill); }
 .seg button { border: 0; background: none; padding: 5px 12px; border-radius: var(--r-pill); font-size: var(--t-sm); font-weight: 600; color: var(--muted); cursor: pointer; min-height: 30px; }
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+/* Bascule clair / sombre */
+.theme-btn { width: 40px; height: 40px; flex: none; display: grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--surface); color: var(--ink); cursor: pointer; }
+.theme-btn:hover { border-color: var(--accent); color: var(--accent); }
+.theme-btn svg { width: 18px; height: 18px; }
 
 /* Onglets (≥ 720 px) */
 .tabs { display: flex; gap: var(--s1); overflow-x: auto; scrollbar-width: none; }
