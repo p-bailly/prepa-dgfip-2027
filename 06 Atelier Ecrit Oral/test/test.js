@@ -38,6 +38,8 @@ refs.forEach(r => { const [k, p] = String(r).split(':'); ok(D.SRC[k], 'source in
 const docs = path.join(ROOT, '..', 'site', 'docs');
 const pdfs = Object.values(D.SRC).map(s => s.pdf);
 D.SUJETS.forEach(s => { if (s.pdf) pdfs.push(s.pdf); if (s.corrige) pdfs.push(s.corrige.pdf); });
+// Rapports de jury : liens officiels externes
+D.SUJETS.forEach(s => { if (s.rapport) ok(/^https:\/\/www\.economie\.gouv\.fr\/files\/.+\.pdf$/.test(s.rapport.url) && s.rapport.t, 'rapport de jury : ' + s.id); });
 pdfs.forEach(u => {
   ok(/^\.\.\/docs\//.test(u), 'lien relatif ../docs/ : ' + u);
   const f = path.join(docs, u.replace(/^\.\.\/docs\//, '').replace(/#.*$/, ''));

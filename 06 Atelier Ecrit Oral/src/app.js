@@ -325,15 +325,18 @@
     var p = profil(), ep = epOf(p), list = sujetsOf(ep), sel = selSujet(ep);
     var h = '<section class="hero"><span class="eyebrow">Écrit · concours ' + tx(ep.concours) + '</span><h1 class="h-page">' + tx(ep.nom) + '</h1></section>';
     h += profSeg();
-    h += '<article class="sheet"><h2 class="h-sec">Choisis ton sujet</h2><div class="choices">';
-    list.forEach(function (s) {
+    // Sujets du format actuel d'abord ; les annales des sessions précédentes dans un bloc repliable
+    var choice = function (s) {
       var on = s.id === sel.id;
-      h += '<div class="choice' + (on ? ' on' : '') + '"><button type="button" class="pick" data-sujet="' + s.id + '" aria-pressed="' + on + '"><span class="radio" aria-hidden="true"></span><span class="ct"><span><span class="badge out">' + tx(s.kind) + '</span></span><b>' + tx(s.titre) + '</b></span></button>';
-      h += '<div class="links">' + (s.pdf ? pdfBtn(s.pdf, 'Sujet') : '') + '</div>';
-      if (on && s.libre) h += '<label class="field extra"><span>Titre du sujet</span><input class="input" id="libre-t" type="text" maxlength="120" autocomplete="off" value="' + esc(UI.libre) + '" placeholder="Par exemple : sujet 2025, économie des JO"></label>';
-      h += '</div>';
-    });
-    h += '</div>';
+      var c = '<div class="choice' + (on ? ' on' : '') + '"><button type="button" class="pick" data-sujet="' + s.id + '" aria-pressed="' + on + '"><span class="radio" aria-hidden="true"></span><span class="ct"><span><span class="badge out">' + tx(s.kind) + '</span></span><b>' + tx(s.titre) + '</b>' + (on && s.info && s.annale ? '<span class="small muted">' + tx(s.info) + '</span>' : '') + '</span></button>';
+      c += '<div class="links">' + (s.pdf ? pdfBtn(s.pdf, 'Sujet') : '') + '</div>';
+      if (on && s.libre) c += '<label class="field extra"><span>Titre du sujet</span><input class="input" id="libre-t" type="text" maxlength="120" autocomplete="off" value="' + esc(UI.libre) + '" placeholder="Par exemple : douanes 2026, la mode éphémère"></label>';
+      return c + '</div>';
+    };
+    var main = list.filter(function (s) { return !s.annale; }), ann = list.filter(function (s) { return s.annale; });
+    h += '<article class="sheet"><h2 class="h-sec">Choisis ton sujet</h2><div class="choices">' + main.filter(function (s) { return !s.libre; }).map(choice).join('') + '</div>';
+    if (ann.length) h += '<details class="pistes"' + (sel.annale ? ' open' : '') + '><summary>Annales des sessions précédentes · ' + ann.length + ' sujets</summary><div class="body"><div class="choices">' + ann.map(choice).join('') + '</div></div></details>';
+    h += '<div class="choices">' + main.filter(function (s) { return s.libre; }).map(choice).join('') + '</div>';
     if (sel.consigne) h += '<details class="pistes"><summary>Consignes du sujet</summary><div class="body"><ol class="consigne-l">' + sel.consigne.map(function (c) { return '<li>' + tx(c) + '</li>'; }).join('') + '</ol></div></details>';
     h += '<div class="startrow"><button type="button" class="btn pri" data-act="start">' + ico('clock') + 'Commencer · ' + tx(C.hm(ep.min)) + '</button></div></article>';
     h += '<details class="sheet fold"><summary><h2 class="h-sec">Copie faite sur papier ? Dépose-la</h2></summary>' + depotCard({ kind: 'ecrit', ep: ep.id, sujet: sel.id, titre: sel.libre ? (UI.libre || 'Sujet libre') : sel.titre }) + '</details>';
@@ -384,7 +387,7 @@
   function viewGrade(run) {
     var ep = D.EP[run.ep], s = sujetBy(run.sujet), g = C.gridNote(ep.grille, run.scores), used = run.used || C.elapsed(run, Date.now());
     var h = '<h1 class="sr">Note ta copie</h1><div class="score" aria-live="polite"><span class="big" id="gnote">' + gradeVal(g) + '<small>/20</small></span><div class="stack" style="gap:4px"><b id="grated">' + gradedTxt(g) + '</b><span class="small muted">' + tx('Moyenne des candidats en 2026 : ' + num(ep.moyenne.v) + '/20') + '</span></div>';
-    h += '<div class="row" style="margin-left:auto">' + (s && s.pdf ? pdfBtn(s.pdf, 'Sujet') : '') + (s && s.corrige ? pdfBtn(s.corrige.pdf, 'Corrigé', 'ghost') : '') + '</div></div>';
+    h += '<div class="row" style="margin-left:auto">' + (s && s.pdf ? pdfBtn(s.pdf, 'Sujet') : '') + (s && s.corrige ? pdfBtn(s.corrige.pdf, 'Corrigé', 'ghost') : '') + (s && s.rapport ? pdfBtn(s.rapport.url, s.rapport.t, 'ghost') : '') + '</div></div>';
     h += '<details class="sheet fold"><summary><h2 class="h-sec">Faire corriger ta copie par Claude</h2></summary>' + depotCard({ kind: 'ecrit', ep: run.ep, sujet: run.sujet, runId: run.id, titre: titreOf(run), used: run.used }) + '</details>';
     h += '<article class="sheet"><div class="row between"><h2 class="h-sec">Grille du jury</h2><span class="scale">0 absent · 1 insuffisant · 2 moyen · 3 bien · 4 très bien</span></div>';
     var parts = [];

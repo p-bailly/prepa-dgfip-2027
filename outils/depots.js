@@ -113,6 +113,8 @@ function fiche(d) {
     L.push("## Sujet", "", "**" + titre(d) + "**" + (s ? " (" + s.kind + ")" : ""));
     if (s && s.pdf) L.push("", "Sujet : `" + path.relative(ROOT, docPath(s.pdf)) + "`");
     if (s && s.corrige && s.corrige.pdf) L.push("Pour calibrer : " + s.corrige.t + " `" + path.relative(ROOT, docPath(s.corrige.pdf)) + "`");
+    if (s && s.rapport) L.push("Attentes du jury pour ce sujet : " + s.rapport.t + " (" + s.rapport.url + ")");
+    if (s && s.annale && /ancien format/.test(s.kind)) L.push("Ancien format : la seconde partie est une note de propositions ; note-la avec les critères « avis » et « action ».");
     if (s && s.consigne) { L.push("", "Consignes :"); s.consigne.forEach((c, i) => L.push((i + 1) + ". " + c)); }
     L.push("", "## Format officiel", "");
     ep.faits.forEach(f => L.push("- " + f.t));
