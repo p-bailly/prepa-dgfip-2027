@@ -8,6 +8,6 @@ Outils de révision pour les concours d'inspecteur et de contrôleur des finance
 | `06 Atelier QRC` | **Atelier QRC compta** : exercices chiffrés de comptabilité et d'analyse financière, corrigés et journal. `node build.js` assemble `Atelier QRC compta.html` à partir de `src/`. |
 | `07 Charte DA` | **Charte « Copie double »** commune aux deux applis : `charte.html`, maquettes (`maquettes/index.html`), `tokens.css`, logos. |
 
-Les annales, guides et rapports de jury (PDF) ne sont pas versionnés.
+Les PDF publiés sur le site (fiches, sujets, guides ENFiP, programmes, rapports de jury) sont dans `site/docs/` ; les autres PDF ne sont pas versionnés.
 
 Ces outils sont des projets personnels de préparation : ils ne sont ni produits ni validés par la DGFiP.
