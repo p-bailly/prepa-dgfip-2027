@@ -1,0 +1,98 @@
+/* =====================================================================
+   Charte « Pastille » · Prépa DGFiP 2027 · déclinaison Sage
+   Concept : la sobriété d'un outil de travail, la gaieté en touches.
+   Fond blanc, encre presque noire, un pastel par appli réservé aux
+   pictogrammes et aux étiquettes, traits de 1,5 px. Seuls l'élément
+   courant et la carte principale portent l'ombre décalée pleine.
+   Mise en page « Colonne » : menu latéral (≥ 860 px), onglets en bas
+   sur téléphone, tableau de bord du jour au centre (site/index.html).
+   Polices (à charger dans le <head>) :
+   https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap
+   ===================================================================== */
+
+:root {
+  /* Fonds, surfaces, encre */
+  --bg: #FFFFFF;
+  --side: #F7F5FF;      /* menu latéral, survols */
+  --surface: #FFFFFF;
+  --line: #ECEAF4;      /* séparateurs */
+  --line-2: #D9D6E8;    /* contours de champs et de listes */
+  --ink: #1B1B2F;
+  --muted: #5B5874;
+  --edge: #1B1B2F;      /* contour de l'élément mis en avant */
+  --drop: #1B1B2F;      /* ombre décalée */
+  --on-tile: #1B1B2F;   /* texte posé sur un pastel, dans les deux thèmes */
+
+  /* Action : vert menthe, toujours avec du texte --on-tile */
+  --go: #7CE0A3;
+
+  /* Un pastel par appli, et sa teinte claire pour les fonds */
+  --qcm: #C9C2FF; --qcm-t: #EDEAFB;   /* lilas */
+  --qrc: #B8E6C9; --qrc-t: #E3F5EA;   /* menthe */
+  --ate: #FFD2C2; --ate-t: #FFEDE6;   /* corail */
+  --doc: #FFE07A; --doc-t: #FFF6D1;   /* soleil */
+
+  --err: #B8322A;
+
+  /* Relief : un seul niveau, réservé à ce qui est courant ou principal */
+  --bw: 1.5px;
+  --lift: 4px 4px 0 var(--drop);
+  --lift-sm: 3px 3px 0 var(--drop);
+
+  /* Typographie : Nunito seule, la graisse fait la hiérarchie */
+  --f: "Nunito", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+
+  /* Rayons */
+  --r-sm: 12px; --r-md: 14px; --r-lg: 22px; --r-pill: 999px;
+  --tap: 44px;
+  --side-w: 260px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15141D; --side: #1A1926; --surface: #1E1C2A; --line: #2A2838; --line-2: #3A3850; --ink: #F2F0FA; --muted: #A9A5BF;
+    --edge: #3A3850; --drop: #000000; --go: #6FD497; --err: #FF8A7D;
+    --qcm: #B3A9FF; --qrc: #9ED9B5; --ate: #F7B9A5; --doc: #F2D06B;
+    --qcm-t: #2D2948; --qrc-t: #1D3328; --ate-t: #3A2620; --doc-t: #352E17;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15141D; --side: #1A1926; --surface: #1E1C2A; --line: #2A2838; --line-2: #3A3850; --ink: #F2F0FA; --muted: #A9A5BF;
+  --edge: #3A3850; --drop: #000000; --go: #6FD497; --err: #FF8A7D;
+  --qcm: #B3A9FF; --qrc: #9ED9B5; --ate: #F7B9A5; --doc: #F2D06B;
+  --qcm-t: #2D2948; --qrc-t: #1D3328; --ate-t: #3A2620; --doc-t: #352E17;
+  color-scheme: dark;
+}
+
+/* ---------- Base ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html { background: var(--bg); -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f); font-size: 1rem; font-weight: 600; line-height: 1.5; }
+h1, h2, h3 { margin: 0; font-weight: 800; letter-spacing: -.02em; text-wrap: balance; }
+p { margin: 0; }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+[hidden] { display: none !important; }
+
+/* ---------- Cartes ---------- */
+.card { display: flex; flex-direction: column; gap: 10px; padding: 22px; border: var(--bw) solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
+.card.main-card { border-color: var(--edge); box-shadow: var(--lift); }
+.tag { align-self: flex-start; padding: 3px 10px; border-radius: var(--r-pill); background: var(--qcm); color: var(--on-tile); font-size: .8125rem; font-weight: 800; }
+.tag.qrc { background: var(--qrc); } .tag.ate { background: var(--ate); } .tag.doc { background: var(--doc); }
+
+/* ---------- Boutons ---------- */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: var(--tap); padding: 0 16px; border: var(--bw) solid var(--edge); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); font-weight: 800; cursor: pointer; white-space: nowrap; }
+.btn.go { background: var(--go); color: var(--on-tile); }
+.btn.ghost { background: none; border-color: transparent; color: var(--muted); }
+.btn:disabled { opacity: .55; cursor: default; }
+
+/* ---------- Menu : l'élément courant porte le relief ---------- */
+.nav a { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 10px; border: var(--bw) solid transparent; border-radius: var(--r-md); font-weight: 800; }
+.nav a[aria-current="page"] { background: var(--surface); border-color: var(--edge); box-shadow: var(--lift-sm); font-weight: 900; }
+
+/* ---------- Champs ---------- */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > span { font-size: .875rem; font-weight: 800; }
+.input { min-height: var(--tap); width: 100%; min-width: 0; padding: 0 14px; border: var(--bw) solid var(--line-2); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); }
+.input:focus { outline: none; border-color: var(--edge); box-shadow: var(--lift-sm); }

@@ -33,3 +33,19 @@ hors ligne, des polices système de repli prennent le relais.
 - **Chiffres** en IBM Plex Mono tabulaire ; titres en Newsreader ; interface en IBM Plex Sans.
 - **Surligneur** jaune, un passage par écran, jamais pour un état.
 - États juste / faux / à revoir toujours doublés d'un pictogramme ou d'un mot ; contrastes ≥ 4,5:1 en clair et en sombre.
+
+# Charte « Pastille » (en cours de déploiement)
+
+Nouvelle direction, déclinaison **Sage** avec la mise en page **Colonne** : `pastille/tokens.css`. Appliquée pour
+l'instant à l'accueil (`site/index.html`) et à la page Documents (`site/docs/index.html`) ; les trois applis restent
+en « Copie double » jusqu'à leur migration.
+
+- **Fond** blanc, encre `#1B1B2F`, menu latéral lilas très pâle `#F7F5FF` ; en sombre, fond `#15141D` et surfaces `#1E1C2A`.
+- **Un pastel par appli**, réservé aux pictogrammes et aux étiquettes : lilas `#C9C2FF` (QCM), menthe `#B8E6C9` (QRC),
+  corail `#FFD2C2` (écrit et oral), soleil `#FFE07A` (documents). Le texte posé dessus reste `#1B1B2F` dans les deux thèmes.
+- **Relief** discret : traits de 1,5 px ; seuls l'entrée de menu courante et la carte principale portent un contour
+  d'encre et une ombre décalée pleine (4 px, sans flou). Action principale en vert menthe `#7CE0A3`.
+- **Mise en page** : menu latéral de 260 px sur ordinateur, barre d'onglets en bas sur téléphone (< 860 px),
+  tableau de bord du jour au centre. L'accueil lit la progression que chaque appli garde dans le navigateur.
+- **Typographie** : Nunito seule, de 600 à 900 ; la graisse fait la hiérarchie.
+- États juste / faux toujours doublés d'un pictogramme ou d'un mot, comme dans « Copie double ».
