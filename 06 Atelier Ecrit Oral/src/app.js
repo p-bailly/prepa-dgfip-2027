@@ -5,9 +5,9 @@
   var KEY = 'atelier-ecrit-oral-v1', UIKEY = 'atelier-ecrit-oral-ui', TITLE = document.title || 'Atelier écrit et oral';
   var VIEWS = ['ecrit', 'oral', 'progres', 'reperes'];
   var S = C.blank();                                    // état synchronisable
-  var UI = { view: 'ecrit', cat: 'all', dur: 180, hist: '', sujet: {}, libre: '', oq: '', recent: [] }; // préférences de cet appareil
+  var UI = { view: 'ecrit', cat: 'all', dur: 180, hist: '', sujet: {}, libre: '', oq: '', recent: [], trans: true }; // préférences de cet appareil
   var T = { open: {}, confirm: null, saved: null, lastPhase: null, over: false, oral: null, att: null, rec: null, micErr: null,
-    oscores: {}, ocomment: '', oeval: false, osaved: null, olimitHit: false, pending: false, more: 0 };
+    oscores: {}, ocomment: '', oeval: false, osaved: null, olimitHit: false, pending: false, more: 0, trans: '', interim: '', tr: null, trErr: null, oclaude: '' };
   var QBY = {}; D.Q.forEach(function (q) { QBY[q.id] = q; });
   var CATBY = {}; D.CATS.forEach(function (c) { CATBY[c.id] = c; });
 
@@ -65,9 +65,10 @@
     var a = String(ref).split(':'), s = D.SRC[a[0]]; if (!s) return '';
     return '<a href="' + esc(s.pdf + (a[1] ? '#page=' + a[1] : '')) + '" target="_blank" rel="noopener">' + esc(s.t) + (a[1] ? ', p. ' + esc(a[1]) : '') + '</a>';
   }
+  // Sources repliées : un petit « Sources » à déplier, pour ne pas surcharger la lecture
   function srcs(list) {
     list = [].concat(list || []).filter(Boolean);
-    return list.length ? '<span class="src">' + ico('book') + list.map(srcLink).join('<span aria-hidden="true">·</span>') + '</span>' : '';
+    return list.length ? '<details class="src"><summary>' + ico('book') + '<span>Source' + (list.length > 1 ? 's' : '') + '</span></summary><span class="srcl">' + list.map(srcLink).join('<span aria-hidden="true">·</span>') + '</span></details>' : '';
   }
   function pdfBtn(href, label, cls) { return '<a class="btn sm' + (cls ? ' ' + cls : '') + '" href="' + esc(href) + '" target="_blank" rel="noopener">' + ico('file') + tx(label) + '</a>'; }
   function confirmBox(msg, yes, yesLabel) { return '<div class="confirm" role="alert"><span>' + tx(msg) + '</span><button type="button" class="btn sm danger" data-act="' + yes + '">' + tx(yesLabel) + '</button><button type="button" class="btn sm" data-act="cancel">Annuler</button></div>'; }
@@ -289,6 +290,7 @@
   function go(v) {
     if (VIEWS.indexOf(v) < 0) v = 'ecrit';
     if (v !== 'oral' && T.rec) Rec.stop();
+    if (v !== 'oral') Trans.stop();
     UI.view = v; T.confirm = null; Store.saveUI();
     try { history.replaceState(null, '', '#' + v); } catch (e) { }
     render(); window.scrollTo(0, 0);
@@ -307,38 +309,36 @@
     if (T.saved && S.ecrits[T.saved] && !S.ecrits[T.saved].deleted) return viewSaved(S.ecrits[T.saved]);
     return viewEcritHome();
   }
+  // Répartition du temps : une frise proportionnelle, puis les étapes en grille compacte
   function phasesList(ep) {
-    var h = '', last = -1;
+    var tot = ep.phases.reduce(function (a, ph) { return a + ph.min; }, 0), last = -1;
+    var bar = '<div class="tline" role="img" aria-label="' + esc('Répartition conseillée de ' + C.hm(tot)) + '">' + ep.phases.map(function (ph) { return '<i class="' + (ph.p ? 'p2' : '') + '" style="flex:' + ph.min + '" title="' + esc(ty(ph.t) + ' · ' + C.hm(ph.min)) + '"></i>'; }).join('') + '</div>';
+    var li = '';
     ep.phases.forEach(function (ph) {
-      if (ep.parts && ph.p !== last) { last = ph.p; h += (h ? '</ol>' : '') + '<h3 class="gpart">' + tx(ep.parts[ph.p]) + '</h3><ol class="steps">'; }
-      else if (!h) h = '<ol class="steps">';
-      h += '<li><span><b>' + tx(ph.t) + '</b> · <span class="mono">' + tx(C.hm(ph.min)) + '</span></span></li>';
+      if (ep.parts && ph.p !== last) { last = ph.p; li += '<li class="tp">' + tx(ep.parts[ph.p]) + '</li>'; }
+      li += '<li><span>' + tx(ph.t) + '</span><span class="mono">' + tx(C.hm(ph.min)) + '</span></li>';
     });
-    return h + '</ol>';
+    return bar + '<ol class="tsteps">' + li + '</ol>';
   }
   function viewEcritHome() {
     var p = profil(), ep = epOf(p), list = sujetsOf(ep), sel = selSujet(ep), last = entries(ep.id).slice(-1)[0];
-    var h = '<section class="hero"><span class="eyebrow">Écrit n° 1 · concours ' + tx(ep.concours) + '</span><h1 class="h-page">' + tx(ep.nom) + '</h1>';
-    h += '<p class="lede">' + tx(C.hm(ep.min) + ', coefficient ' + ep.coef + ', dossier de ' + ep.dossier + '. Choisis un sujet, lance le chrono, puis note ta copie avec la grille du jury.') + '</p></section>';
+    var h = '<section class="hero"><span class="eyebrow">Écrit n° 1 · concours ' + tx(ep.concours) + '</span><h1 class="h-page">' + tx(ep.nom) + '</h1></section>';
     h += profSeg();
     h += '<div class="stats"><div class="stat"><span>Durée</span><b>' + tx(C.hm(ep.min)) + '</b></div><div class="stat"><span>Coefficient</span><b>' + ep.coef + '</b></div><div class="stat"><span>Note éliminatoire</span><b>&lt; 5 <small>/ 20</small></b></div>';
     h += '<div class="stat"><span>Ta dernière note</span><b>' + (last ? note20(last.note) + ' <small>/ 20</small>' : '—') + '</b>' + (last ? '<span>' + tx(fdate(last.date)) + '</span>' : '') + '</div></div>';
     h += '<article class="sheet"><h2 class="h-sec">Choisis ton sujet</h2><div class="choices">';
     list.forEach(function (s) {
       var on = s.id === sel.id;
-      h += '<div class="choice' + (on ? ' on' : '') + '"><button type="button" class="pick" data-sujet="' + s.id + '" aria-pressed="' + on + '"><span class="radio" aria-hidden="true"></span><span class="ct"><span><span class="badge out">' + tx(s.kind) + '</span></span><b>' + tx(s.titre) + '</b><span class="small muted">' + tx(ep.id === 'nds' && s.infoNds ? s.infoNds : s.info) + '</span></span></button>';
+      h += '<div class="choice' + (on ? ' on' : '') + '"><button type="button" class="pick" data-sujet="' + s.id + '" aria-pressed="' + on + '"><span class="radio" aria-hidden="true"></span><span class="ct"><span><span class="badge out">' + tx(s.kind) + '</span></span><b>' + tx(s.titre) + '</b>' + (on ? '<span class="small muted">' + tx(ep.id === 'nds' && s.infoNds ? s.infoNds : s.info) + '</span>' : '') + '</span></button>';
       h += '<div class="links">' + (s.pdf ? pdfBtn(s.pdf, 'Sujet') : '') + '</div>';
       if (on && s.libre) h += '<label class="field extra"><span>Titre du sujet</span><input class="input" id="libre-t" type="text" maxlength="120" autocomplete="off" value="' + esc(UI.libre) + '" placeholder="Par exemple : sujet 2025, économie des JO"></label>';
       h += '</div>';
     });
     h += '</div>';
-    if (sel.consigne) {
-      h += '<div class="consigne"><span class="eyebrow">Ce qu’on te demande</span><ol>' + sel.consigne.map(function (c) { return '<li>' + tx(c) + '</li>'; }).join('') + '</ol></div>';
-      if (sel.corrige) h += '<p class="small muted">' + tx(sel.corrige.t) + ' À lire après l’épreuve.</p>';
-    }
-    h += '<div class="startrow"><button type="button" class="btn pri" data-act="start">' + ico('clock') + 'Commencer l’épreuve · ' + tx(C.hm(ep.min)) + '</button><span class="small muted">Le chrono continue si tu recharges la page ; tu peux le mettre en pause.</span></div></article>';
-    h += '<article class="sheet"><div class="row between"><h2 class="h-sec">Répartition conseillée du temps</h2></div>' + phasesList(ep) + srcs(ep.phasesSrc) + '</article>';
-    h += '<article class="sheet flat"><h2 class="h-sec">Le format officiel</h2><ul class="facts">' + ep.faits.map(function (f) { return '<li><span>' + tx(f.t) + '</span>' + srcs(f.src) + '</li>'; }).join('') + '</ul></article>';
+    if (sel.consigne) h += '<div class="consigne"><span class="eyebrow">Ce qu’on te demande</span><ol>' + sel.consigne.map(function (c) { return '<li>' + tx(c) + '</li>'; }).join('') + '</ol></div>';
+    h += '<div class="startrow"><button type="button" class="btn pri" data-act="start">' + ico('clock') + 'Commencer l’épreuve · ' + tx(C.hm(ep.min)) + '</button>' + (sel.corrige ? '<span class="badge out">Corrigé disponible après l’épreuve</span>' : '') + '</div></article>';
+    h += '<article class="sheet"><div class="row between"><h2 class="h-sec">Répartition conseillée du temps</h2>' + srcs(ep.phasesSrc) + '</div>' + phasesList(ep) + '</article>';
+    h += '<p class="small"><button type="button" class="btn sm ghost" data-v="reperes">' + ico('book') + 'Format officiel, critères et défauts relevés par le jury</button></p>';
     return h;
   }
 
@@ -385,10 +385,11 @@
   function viewGrade(run) {
     var ep = D.EP[run.ep], s = sujetBy(run.sujet), g = C.gridNote(ep.grille, run.scores), used = run.used || C.elapsed(run, Date.now());
     var h = '<section class="hero"><span class="eyebrow">' + tx('Copie rendue · ' + C.dur(used) + ' sur ' + C.hm(ep.min)) + '</span><h1 class="h-page">Note ta copie avec la grille du jury</h1>';
-    h += '<p class="lede">Pour chaque critère, situe ta copie de 0 à 4. La note se calcule seule. La pondération est indicative : le barème officiel n’est pas publié.</p></section>';
+    h += '</section>';
     h += '<div class="score" aria-live="polite"><span class="big" id="gnote">' + gradeVal(g) + '<small>/20</small></span><div class="stack" style="gap:4px"><b id="grated">' + gradedTxt(g) + '</b><span class="small muted">' + tx('Moyenne des candidats en 2026 : ' + num(ep.moyenne.v) + '/20.') + '</span>' + srcs(ep.moyenne.src) + '</div></div>';
     h += '<article class="sheet tight"><div class="row between"><b>' + tx(titreOf(run)) + '</b><div class="row">' + (s && s.pdf ? pdfBtn(s.pdf, 'Sujet') : '') + (s && s.corrige ? pdfBtn(s.corrige.pdf, 'Corrigé', 'ghost') : '') + '</div></div>' + (s && s.corrige ? '<p class="small muted">' + tx(s.corrige.t) + '</p>' : '') + '</article>';
-    h += '<article class="sheet"><div class="row between"><h2 class="h-sec">Grille</h2><span class="scale">0 absent · 1 insuffisant · 2 moyen · 3 bien · 4 très bien</span></div>';
+    h += claudeEcrit(run, s);
+    h += '<article class="sheet"><div class="row between"><h2 class="h-sec">Grille</h2><span class="scale">0 absent · 1 insuffisant · 2 moyen · 3 bien · 4 très bien</span></div><p class="small muted">Pondération indicative : le barème officiel n’est pas publié.</p>';
     var parts = [];
     ep.grille.forEach(function (c) { if (parts.indexOf(c.part) < 0) parts.push(c.part); });
     parts.forEach(function (pt) {
@@ -437,6 +438,118 @@
     return h;
   }
 
+  /* ===== Correction par Claude =====
+     L'atelier rédige la demande de correction (sujet, grille, barème, format de réponse) ; tu la colles dans claude.ai
+     avec ta copie (photos ou texte) ou la transcription de ton oral. La dernière ligne de la réponse (« GRILLE: … »)
+     se colle ensuite ici pour remplir la grille. */
+  var CLAUDE_URL = 'https://claude.ai/new';
+  function deConcours(c) { return /^[aeiouyéè]/i.test(c) ? 'd’' + c : 'de ' + c; }
+  function absUrl(u) { try { return new URL(u, location.href).href; } catch (e) { return u; } }
+  function ecritPrompt(run) {
+    var ep = D.EP[run.ep], s = sujetBy(run.sujet), L = [];
+    L.push('Tu es membre du jury du concours externe ' + deConcours(ep.concours) + ' des finances publiques (DGFiP), session 2027. Corrige ma copie de l’épreuve écrite n° 1 : « ' + ep.nom + ' » (' + C.hm(ep.min) + ', coefficient ' + ep.coef + ').');
+    L.push('', 'FORMAT OFFICIEL');
+    ep.faits.forEach(function (f) { L.push('- ' + ty(f.t)); });
+    L.push('', 'SUJET : ' + titreOf(run) + (s ? ' (' + s.kind + ')' : ''));
+    if (s && s.pdf) L.push('PDF du sujet (je le joins aussi) : ' + absUrl(s.pdf));
+    if (s && s.consigne) { L.push('Consignes :'); s.consigne.forEach(function (c, i) { L.push((i + 1) + '. ' + ty(c)); }); }
+    L.push('Temps que j’ai utilisé : ' + C.dur(run.used || 0) + ' sur ' + C.hm(ep.min) + '.');
+    L.push('', 'GRILLE DE CORRECTION (niveau 0 à 4 : ' + D.NIVEAUX.map(function (n, i) { return i + ' ' + n.toLowerCase(); }).join(', ') + ')');
+    ep.grille.forEach(function (c) { L.push('- ' + c.id + ' [' + c.part + ', ' + c.w + ' point' + (c.w > 1 ? 's' : '') + '] ' + ty(c.t) + ' : ' + ty(c.d)); });
+    L.push('Note sur 20 = somme des points × niveau / 4.');
+    L.push('', 'DÉFAUTS RELEVÉS PAR LE JURY 2026 (indique ceux présents dans ma copie)');
+    ep.defauts.forEach(function (d) { L.push('- ' + d.id + ' : ' + ty(d.t)); });
+    L.push('', 'Sois aussi exigeant que le jury : la moyenne des candidats en 2026 était de ' + num(ep.moyenne.v) + '/20. Lis toute la copie ; si un passage est illisible, signale-le.');
+    L.push('', 'RÉPONDS EN FRANÇAIS, DANS CET ORDRE');
+    L.push('1. Pour chaque critère : son niveau (0 à 4) et une phrase de justification qui cite ma copie.');
+    L.push('2. La note sur 20.');
+    L.push('3. Trois points forts, trois axes de progrès concrets, et une reformulation d’exemple pour le passage le plus faible.');
+    L.push('4. Sur la toute dernière ligne, exactement ce format, sans rien d’autre :');
+    L.push('GRILLE: ' + ep.grille.map(function (c) { return c.id + '=N'; }).join('; ') + ' | DEFAUTS: id, id');
+    L.push('', 'MA COPIE : jointe en photos ci-dessous (ou collée à la suite si je l’ai tapée).');
+    return L.join('\n');
+  }
+  function oralPrompt(q) {
+    var O = D.ORAL[profil()], cat = CATBY[q.c], o = T.oral, used = o && o.start ? Math.round(C.elapsed(o, Date.now())) : 0, L = [];
+    L.push('Tu es membre du jury de l’oral d’admission du concours externe ' + deConcours(O.concours) + ' des finances publiques (DGFiP), session 2027 : ' + O.min + ' minutes, coefficient ' + O.coef + ', une présentation de 5 minutes au plus, des échanges sur le parcours et les motivations, puis des mises en situation.');
+    L.push('', 'QUESTION POSÉE (' + cat.t + (q.s ? ', ' + D.SUBS[q.s] : '') + ') : ' + ty(q.q));
+    L.push('Points attendus (repères de préparation, pas un corrigé officiel) :');
+    q.p.forEach(function (x) { L.push('- ' + ty(x)); });
+    L.push('Temps de parole : ' + C.clock(used) + ' pour ' + C.clock(o ? o.limit : UI.dur) + ' prévues.');
+    L.push('', 'MA RÉPONSE (transcription automatique, qui peut contenir des erreurs de reconnaissance vocale) :');
+    L.push(T.trans ? '« ' + T.trans.trim() + ' »' : '(je la colle ci-dessous)');
+    L.push('', 'CRITÈRES (niveau 1 à 4 : ' + D.ORAL.niveaux.map(function (n, i) { return (i + 1) + ' ' + n.toLowerCase(); }).join(', ') + ')');
+    D.ORAL.criteres.forEach(function (c) { L.push('- ' + c.id + ' : ' + ty(c.t)); });
+    L.push('', 'RÉPONDS EN FRANÇAIS, DANS CET ORDRE');
+    L.push('1. Pour chaque critère : son niveau (1 à 4) et une phrase de justification.');
+    L.push('2. Une note indicative sur 20.');
+    L.push('3. Ce qui manquait, une trame de réponse modèle en quelques lignes, et deux relances probables du jury avec la façon d’y répondre.');
+    L.push('4. Sur la toute dernière ligne, exactement ce format, sans rien d’autre :');
+    L.push('GRILLE: ' + D.ORAL.criteres.map(function (c) { return c.id + '=N'; }).join('; '));
+    return L.join('\n');
+  }
+  // Lit la ligne « GRILLE: id=n; … | DEFAUTS: … » de la réponse de Claude
+  function parseReply(txt, crit, min, max, defs) {
+    var g = /GRILLE\s*:\s*([^\n|]*)/i.exec(txt || ''); if (!g) return null;
+    var ids = crit.map(function (c) { return c.id; }), sc = {}, n = 0;
+    g[1].split(/[;,]/).forEach(function (p) { var k = /([a-z_]+)\s*=\s*(\d)/i.exec(p); if (k && ids.indexOf(k[1]) >= 0) { var v = Number(k[2]); if (v >= min && v <= max) { sc[k[1]] = v; n++; } } });
+    var df = null, d = /DEFAUTS\s*:\s*([^\n]*)/i.exec(txt);
+    if (defs && d) { var dids = defs.map(function (x) { return x.id; }); df = d[1].split(/[\s,;]+/).filter(function (x) { return dids.indexOf(x) >= 0; }); }
+    return n ? { scores: sc, defauts: df, n: n } : null;
+  }
+  function claudeBox(kind, info) {
+    var h = '<div class="claude" id="claudebox"><div class="row between"><h3 class="h-card">Faire corriger par Claude</h3><span class="badge out">avec ton compte Claude</span></div>';
+    h += '<ol class="how"><li>Copie la demande de correction, puis ouvre Claude et colle-la.</li><li>' + (kind === 'ecrit' ? 'Joins les photos de ta copie (ou colle-la si tu l’as tapée) et le PDF du sujet.' : (T.trans ? 'Ta transcription est déjà dans la demande : relis-la avant de copier.' : 'Colle ta réponse à la suite de la demande (ou dicte-la).')) + '</li><li>Colle ici la réponse de Claude : ' + (kind === 'ecrit' ? 'la grille' : 'l’évaluation') + ' se remplit toute seule.</li></ol>';
+    h += '<div class="row"><button type="button" class="btn pri" data-act="ccopy" data-k="' + kind + '">' + ico('file') + 'Copier la demande</button><a class="btn" href="' + CLAUDE_URL + '" target="_blank" rel="noopener">' + ico('arrow') + 'Ouvrir Claude</a>' + (info || '') + '</div>';
+    h += '<details class="pistes"><summary>Voir la demande</summary><div class="body"><textarea class="input" id="cprompt" readonly rows="8" aria-label="Demande de correction"></textarea></div></details>';
+    h += '<label class="field"><span>Réponse de Claude</span><textarea class="input" id="creply" placeholder="Colle ici toute la réponse de Claude"></textarea></label>';
+    h += '<div class="row"><button type="button" class="btn" data-act="capply" data-k="' + kind + '">' + ico('check') + 'Remplir avec la réponse</button><span class="small" id="cmsg" role="status"></span></div></div>';
+    return h;
+  }
+  function claudeEcrit(run, s) { return '<article class="sheet">' + claudeBox('ecrit', s && s.pdf ? pdfBtn(s.pdf, 'PDF du sujet', 'ghost') : '') + '</article>'; }
+  function copyText(txt, done) {
+    var box = $('#cprompt'); if (box) box.value = txt;
+    var fallback = function () { var b = $('#cprompt'); if (b) { b.closest('details').open = true; b.focus(); b.select(); } done(false); };
+    try { navigator.clipboard.writeText(txt).then(function () { done(true); }, fallback); } catch (e) { fallback(); }
+  }
+  // Transcription de l'oral par la reconnaissance vocale du navigateur (Chrome, Edge, Safari)
+  var Trans = {
+    ok: function () { return !!(window.SpeechRecognition || window.webkitSpeechRecognition); },
+    start: function () {
+      if (T.tr || !Trans.ok() || !UI.trans) return;
+      var R = window.SpeechRecognition || window.webkitSpeechRecognition, r;
+      try { r = new R(); } catch (e) { return; }
+      r.lang = 'fr-FR'; r.continuous = true; r.interimResults = true;
+      var me = T.tr = { r: r, on: true }; T.trErr = null;
+      r.onresult = function (e) {
+        var fin = '', inter = '';
+        for (var i = e.resultIndex; i < e.results.length; i++) { var t = e.results[i][0].transcript; if (e.results[i].isFinal) fin += t; else inter += t; }
+        if (fin.trim()) T.trans = (T.trans ? T.trans.replace(/\s*$/, ' ') : '') + fin.trim();
+        T.interim = inter; updTrans();
+      };
+      r.onerror = function (e) {
+        var c = e && e.error;
+        if (c === 'not-allowed' || c === 'service-not-allowed') { me.on = false; T.trErr = 'denied'; }
+        else if (c === 'audio-capture') { me.on = false; T.trErr = 'busy'; }
+        updTrans();
+      };
+      r.onend = function () { if (T.tr === me && me.on) { try { r.start(); } catch (x) { T.tr = null; } } else if (T.tr === me) T.tr = null; };
+      try { r.start(); } catch (e) { T.tr = null; }
+      updTrans();
+    },
+    stop: function () { var t = T.tr; if (!t) return; t.on = false; try { t.r.stop(); } catch (e) { } T.tr = null; T.interim = ''; updTrans(); }
+  };
+  var TR_ERR = { denied: 'Transcription refusée par le navigateur : tu peux taper ou coller ta réponse.', busy: 'Transcription impossible pendant l’enregistrement sur cet appareil : arrête l’enregistrement ou tape ta réponse.' };
+  function transBox(st) {
+    if (st === 'idle') return Trans.ok() ? '<label class="row small" style="gap:8px"><input type="checkbox" id="o-trans-on"' + (UI.trans ? ' checked' : '') + '> Transcrire ma réponse pendant que je parle</label>' : '';
+    var h = '<div class="trans" id="transbox">';
+    if (st === 'done') h += '<label class="field"><span>Transcription de ta réponse <span class="muted">(modifiable)</span></span><textarea class="input" id="o-trans" maxlength="10000" placeholder="' + (Trans.ok() ? 'Rien n’a été transcrit : tape ou colle ta réponse.' : 'Ce navigateur ne transcrit pas : tape ou colle ta réponse.') + '">' + esc(T.trans || '') + '</textarea></label>';
+    else h += '<span class="eyebrow">Transcription' + (T.tr ? ' en cours' : '') + '</span><p class="small" id="o-live">' + esc(T.trans || '') + ' <span class="live">' + esc(T.interim || '') + '</span></p>';
+    if (T.trErr) h += '<p class="small muted">' + tx(TR_ERR[T.trErr]) + '</p>';
+    return h + '</div>';
+  }
+  function updTrans() { var l = $('#o-live'); if (l) l.innerHTML = esc(T.trans || '') + ' <span class="live">' + esc(T.interim || '') + '</span>'; }
+
   /* ===== Oral ===== */
   function curQ() { return UI.oq && QBY[UI.oq] ? QBY[UI.oq] : null; }
   function counts() { var c = {}; C.live(S.oraux).forEach(function (e) { c[e.qid] = (c[e.qid] || 0) + 1; }); return c; }
@@ -445,7 +558,8 @@
     if (T.rec) Rec.stop();
     UI.oq = q.id; UI.recent = [q.id].concat(UI.recent.filter(function (x) { return x !== q.id; })).slice(0, 12);
     T.oral = { limit: limit, start: null, pausedAt: null, pausedMs: 0, endedAt: null };
-    T.att = { aid: C.uid('o') }; T.oscores = {}; T.ocomment = ''; T.oeval = false; T.osaved = null; T.olimitHit = false; T.micErr = null;
+    Trans.stop();
+    T.att = { aid: C.uid('o') }; T.oscores = {}; T.ocomment = ''; T.oeval = false; T.osaved = null; T.olimitHit = false; T.micErr = null; T.trans = ''; T.interim = ''; T.trErr = null; T.oclaude = '';
     Store.saveUI();
   }
   function drawQ() {
@@ -461,22 +575,21 @@
   function viewOral() {
     var p = profil(), O = D.ORAL[p], q = curQ(), cnt = counts();
     if (q && !T.oral) { T.oral = { limit: q.pres ? 300 : UI.dur, start: null, pausedAt: null, pausedMs: 0, endedAt: null }; T.att = { aid: C.uid('o') }; }
-    var h = '<section class="hero"><span class="eyebrow">Oral d’admission · concours ' + tx(O.concours) + '</span><h1 class="h-page"><mark class="hl">' + O.min + ' minutes</mark> face au jury</h1>';
-    h += '<p class="lede">' + tx('Coefficient ' + O.coef + ', note éliminatoire sous 5/20. Une présentation de 5 minutes au plus, des échanges sur ton parcours et tes motivations, puis des mises en situation. Entraîne-toi à voix haute, chrono en main.') + '</p></section>';
+    var h = '<section class="hero"><span class="eyebrow">Oral d’admission · concours ' + tx(O.concours) + '</span><h1 class="h-page"><mark class="hl">' + O.min + ' minutes</mark> face au jury</h1></section>';
     h += profSeg();
+    h += '<div class="stats"><div class="stat"><span>Durée</span><b>' + O.min + ' <small>min</small></b></div><div class="stat"><span>Coefficient</span><b>' + O.coef + '</b></div><div class="stat"><span>Présentation</span><b>5 <small>min max</small></b></div><div class="stat"><span>Note éliminatoire</span><b>&lt; 5 <small>/ 20</small></b></div></div>';
     // Tirage
     h += '<article class="sheet" id="trainer"><div class="row between"><h2 class="h-sec">Tirage au sort</h2><span class="small muted">' + tx(D.Q.length + ' questions, présentation comprise') + '</span></div>';
     h += '<div class="chips" role="group" aria-label="Catégorie"><button type="button" data-cat="all" aria-pressed="' + (UI.cat === 'all') + '">Toutes <span class="mono small">' + poolOf('all').length + '</span></button>';
     D.CATS.forEach(function (c) { h += '<button type="button" data-cat="' + c.id + '" aria-pressed="' + (UI.cat === c.id) + '">' + tx(c.t) + ' <span class="mono small">' + poolOf(c.id).length + '</span></button>'; });
     h += '</div><div class="row"><button type="button" class="btn pri" data-act="draw">' + ico('shuffle') + 'Tirer une question</button><button type="button" class="btn" data-act="pres">' + ico('mic') + 'Présentation · 5 min</button></div>';
-    h += '<div class="durrow"><span class="small">Temps de réponse</span><div class="row" style="gap:6px"><button type="button" class="btn sm" data-act="dminus" aria-label="30 secondes de moins">' + ico('minus') + '</button><span class="val" id="odur">' + C.clock(UI.dur) + '</span><button type="button" class="btn sm" data-act="dplus" aria-label="30 secondes de plus">' + ico('plus') + '</button><button type="button" class="btn sm ghost" data-act="d3">3 min</button><button type="button" class="btn sm ghost" data-act="d5">5 min, durée de la présentation</button></div></div>';
+    h += '<div class="durrow"><span class="small">Temps de réponse</span><div class="row" style="gap:6px"><button type="button" class="btn sm" data-act="dminus" aria-label="30 secondes de moins">' + ico('minus') + '</button><span class="val" id="odur">' + C.clock(UI.dur) + '</span><button type="button" class="btn sm" data-act="dplus" aria-label="30 secondes de plus">' + ico('plus') + '</button><button type="button" class="btn sm ghost" data-act="d3">3 min</button><button type="button" class="btn sm ghost" data-act="d5">5 min</button></div></div>';
     if (q) h += qBox(q, cnt);
-    else h += '<p class="empty">Choisis une catégorie et tire une question. Commence par ta présentation : c’est la partie que tu peux préparer le plus.</p>';
+    else h += '<p class="empty">Tire une question, ou commence par ta présentation.</p>';
     h += '</article>';
-    // Déroulé
-    h += '<article class="sheet"><h2 class="h-sec">Déroulé de l’épreuve</h2><ol class="steps">' + D.ORAL.etapes.map(function (e) { return '<li><div class="stack" style="gap:4px"><b>' + tx(e.t) + '</b><span class="small">' + tx(e.d) + '</span>' + srcs(e.src) + '</div></li>'; }).join('') + '</ol>';
-    h += '<p class="small muted">' + tx(D.ORAL.nonPrecise) + '</p><ul class="facts">' + O.faits.map(function (f) { return '<li><span>' + tx(f.t) + '</span>' + srcs(f.src) + '</li>'; }).join('') + '</ul></article>';
-    h += '<article class="sheet flat"><h2 class="h-sec">Ce que le jury 2026 a relevé</h2><ul class="facts">' + O.attentes.map(function (f) { return '<li><span>' + tx(f.t) + '</span>' + srcs(f.src) + '</li>'; }).join('') + '</ul></article>';
+    // Déroulé : trois étapes, le détail se déplie
+    h += '<article class="sheet"><h2 class="h-sec">Déroulé de l’épreuve</h2><div class="stack" style="gap:6px">' + D.ORAL.etapes.map(function (e, i) { return '<details class="pistes"><summary><span class="badge acc mono">' + (i + 1) + '</span>' + tx(e.t) + '</summary><div class="body"><p class="small">' + tx(e.d) + '</p>' + srcs(e.src) + '</div></details>'; }).join('') + '</div>';
+    h += '<details class="pistes"><summary>Ce que le jury 2026 a relevé</summary><div class="body"><ul class="plain small">' + O.attentes.map(function (f) { return '<li>' + tx(f.t) + '</li>'; }).join('') + '</ul>' + srcs([].concat.apply([], O.attentes.map(function (f) { return [].concat(f.src); })).filter(function (v, i, a) { return a.indexOf(v) === i; })) + '</div></details></article>';
     return h;
   }
   function qBox(q, cnt) {
@@ -495,7 +608,7 @@
     } else {
       h += '<button type="button" class="btn" data-act="oreset">' + ico('redo') + 'Recommencer</button><button type="button" class="btn pri" data-act="draw">' + ico('shuffle') + 'Question suivante</button>';
     }
-    h += '</div><div class="recst" id="recst" aria-live="polite"></div>';
+    h += '</div><div class="recst" id="recst" aria-live="polite"></div>' + transBox(st);
     var err = T.micErr || (sup !== 'ok' ? sup : null);
     if (err) h += '<div class="callout warn"><span class="ic">' + ico('alert') + '</span><div><p class="small">' + tx(MIC[err] || MIC.error) + '</p></div></div>';
     h += '<details class="pistes"' + (st === 'done' ? ' open' : '') + '><summary>Pistes et points attendus</summary><div class="body"><ul class="plain">' + q.p.map(function (x) { return '<li>' + tx(x) + '</li>'; }).join('') + '</ul>';
@@ -508,7 +621,7 @@
   }
   function evalBox() {
     var on = C.oralNote(D.ORAL.criteres, T.oscores), saved = T.osaved && S.oraux[T.osaved];
-    var h = '<div class="eval" id="evalbox"><div class="row between"><h3 class="h-card">Ton auto-évaluation</h3><span class="scale">1 à retravailler · 2 passable · 3 bien · 4 très bien</span></div>';
+    var h = '<div class="eval" id="evalbox">' + claudeBox('oral') + '<div class="row between"><h3 class="h-card">Ton auto-évaluation</h3><span class="scale">1 à retravailler · 2 passable · 3 bien · 4 très bien</span></div>';
     D.ORAL.criteres.forEach(function (c) {
       var v = T.oscores[c.id];
       h += '<div class="ocrit"><div class="ct"><span>' + tx(c.t) + '</span>' + srcs(c.src) + '</div><div class="lv" role="group" aria-label="' + esc(c.t) + '">';
@@ -571,7 +684,7 @@
     var hp = UI.hist === 'ad' || UI.hist === 'nds' ? UI.hist : epOf(profil()).id, ep = D.EP[hp], list = entries(hp), O = D.ORAL[profil()];
     var last = list[list.length - 1], best = list.reduce(function (m, e) { return Math.max(m, e.note); }, 0), avg = list.length ? list.reduce(function (a, e) { return a + e.note; }, 0) / list.length : null;
     var h = '<section class="hero"><span class="eyebrow">Progrès · ' + tx(ep.court) + '</span><h1 class="h-page">' + (last ? 'Dernière note : <mark class="hl">' + note20(last.note) + '/20</mark>' : 'Aucun entraînement noté pour l’instant') + '</h1>';
-    h += '<p class="lede">' + tx(last ? 'Comparée à la moyenne des candidats en 2026 : ' + num(ep.moyenne.v) + '/20.' : 'Fais un entraînement chronométré dans l’onglet Écrit, puis note ta copie : la courbe apparaîtra ici.') + '</p></section>';
+    h += (last ? '' : '<p class="lede">' + tx('Fais un entraînement dans l’onglet Écrit et note ta copie : la courbe apparaîtra ici.') + '</p>') + '</section>';
     h += '<div class="seg-row"><span class="small muted">Épreuve</span><div class="seg wide" role="group" aria-label="Épreuve"><button type="button" data-hist="nds" aria-pressed="' + (hp === 'nds') + '">Note de synthèse</button><button type="button" data-hist="ad" aria-pressed="' + (hp === 'ad') + '">Analyse de dossier</button></div></div>';
     if (list.length) {
       h += '<div class="stats"><div class="stat"><span>Entraînements notés</span><b>' + list.length + '</b></div><div class="stat"><span>Moyenne</span><b>' + C.dec(avg, 1) + ' <small>/ 20</small></b></div><div class="stat"><span>Meilleure note</span><b>' + note20(best) + ' <small>/ 20</small></b></div>';
@@ -622,6 +735,7 @@
       h += '<div><span class="eyebrow">Ton rythme</span><div class="kvl">' + e.marks.map(function (m, i) { var dm = Math.round((m - ends[i]) / 60); return '<span class="k">' + tx(ep.phases[i].t) + '</span><span class="v">' + (dm > 0 ? '+' + dm : dm < 0 ? '−' + (-dm) : '0') + ' min</span>'; }).join('') + '</div></div>';
     }
     if (e.comment) h += '<p class="small" style="white-space:pre-wrap">' + esc(e.comment) + '</p>';
+    if (e.claude) h += '<details class="pistes"><summary>Correction de Claude</summary><div class="body"><p class="small" style="white-space:pre-wrap">' + esc(e.claude) + '</p></div></details>';
     h += '<div class="row">' + (T.confirm === 'del:' + e.id ? confirmBox('Supprimer cet entraînement ?', 'del', 'Supprimer') : '<button type="button" class="btn sm danger" data-act="delask" data-id="' + esc(e.id) + '">' + ico('trash') + 'Supprimer</button>') + '</div></div>';
     return h;
   }
@@ -631,6 +745,8 @@
     if (!op) return h;
     h += '<div class="hdet"><div class="kvl">' + D.ORAL.criteres.map(function (k) { var v = e.scores ? e.scores[k.id] : null; return '<span class="k">' + tx(k.t) + '</span><span class="v">' + (v ? v + ' · ' + tx(D.ORAL.niveaux[v - 1]) : '—') + '</span>'; }).join('') + '</div>';
     if (e.comment) h += '<p class="small" style="white-space:pre-wrap">' + esc(e.comment) + '</p>';
+    if (e.trans) h += '<details class="pistes"><summary>Ta réponse transcrite</summary><div class="body"><p class="small" style="white-space:pre-wrap">' + esc(e.trans) + '</p></div></details>';
+    if (e.claude) h += '<details class="pistes"><summary>Correction de Claude</summary><div class="body"><p class="small" style="white-space:pre-wrap">' + esc(e.claude) + '</p></div></details>';
     h += '<div class="recs" data-recs-aid="' + esc(e.id) + '"></div>';
     h += '<div class="row">' + (q ? '<button type="button" class="btn sm" data-act="retry" data-q="' + esc(q.id) + '">' + ico('redo') + 'Retravailler cette question</button>' : '') + (T.confirm === 'odel:' + e.id ? confirmBox('Supprimer cette réponse et ses enregistrements ?', 'odel', 'Supprimer') : '<button type="button" class="btn sm danger" data-act="odelask" data-id="' + esc(e.id) + '">' + ico('trash') + 'Supprimer</button>') + '</div></div>';
     return h;
@@ -668,21 +784,21 @@
 
   /* ===== Repères ===== */
   function viewReperes() {
-    var h = '<section class="hero"><span class="eyebrow">Repères officiels</span><h1 class="h-page">Ce que disent les guides et les jurys</h1><p class="lede">Chaque information renvoie à sa page dans le PDF. Les fiches sont tes fiches de révision, pas des documents officiels.</p></section>';
+    var h = '<section class="hero"><span class="eyebrow">Repères officiels</span><h1 class="h-page">Ce que disent les guides et les jurys</h1></section>';
     ['nds', 'ad'].forEach(function (k) {
       var ep = D.EP[k];
-      h += '<article class="sheet"><span class="eyebrow">Écrit n° 1 · concours ' + tx(ep.concours) + '</span><h2 class="h-sec">' + tx(ep.nom) + '</h2><ul class="facts">' + ep.faits.map(function (f) { return '<li class="acc"><span>' + tx(f.t) + '</span>' + srcs(f.src) + '</li>'; }).join('') + '</ul>';
+      h += '<details class="sheet fold"' + (k === epOf(profil()).id ? ' open' : '') + '><summary><span class="eyebrow">Écrit n° 1 · concours ' + tx(ep.concours) + '</span><h2 class="h-sec">' + tx(ep.nom) + '</h2></summary><ul class="facts">' + ep.faits.map(function (f) { return '<li class="acc"><span>' + tx(f.t) + '</span>' + srcs(f.src) + '</li>'; }).join('') + '</ul>';
       h += '<h3 class="h-card">Répartition conseillée du temps</h3>' + phasesList(ep) + srcs(ep.phasesSrc);
       h += '<h3 class="h-card">Défauts relevés</h3><ul class="facts">' + ep.defauts.map(function (d) { return '<li><span>' + tx(d.t) + '</span>' + srcs(d.src) + '</li>'; }).join('') + '</ul>';
-      h += '<div class="callout ok"><span class="ic">' + ico('check') + '</span><div><h4>Les meilleures copies</h4><p class="small">' + tx(ep.meilleurs.t) + '</p>' + srcs(ep.meilleurs.src) + '</div></div></article>';
+      h += '<div class="callout ok"><span class="ic">' + ico('check') + '</span><div><h4>Les meilleures copies</h4><p class="small">' + tx(ep.meilleurs.t) + '</p>' + srcs(ep.meilleurs.src) + '</div></div></details>';
     });
-    h += '<article class="sheet"><span class="eyebrow">Oral d’admission</span><h2 class="h-sec">Inspecteur et contrôleur</h2><ol class="steps">' + D.ORAL.etapes.map(function (e) { return '<li><div class="stack" style="gap:4px"><b>' + tx(e.t) + '</b><span class="small">' + tx(e.d) + '</span>' + srcs(e.src) + '</div></li>'; }).join('') + '</ol>';
+    h += '<details class="sheet fold"><summary><span class="eyebrow">Oral d’admission</span><h2 class="h-sec">Inspecteur et contrôleur</h2></summary><ol class="steps">' + D.ORAL.etapes.map(function (e) { return '<li><div class="stack" style="gap:4px"><b>' + tx(e.t) + '</b><span class="small">' + tx(e.d) + '</span>' + srcs(e.src) + '</div></li>'; }).join('') + '</ol>';
     ['I', 'C'].forEach(function (p) {
       var O = D.ORAL[p];
       h += '<h3 class="h-card">Concours ' + tx(O.concours) + '</h3><ul class="facts">' + O.faits.concat(O.attentes).map(function (f) { return '<li><span>' + tx(f.t) + '</span>' + srcs(f.src) + '</li>'; }).join('') + '</ul>';
     });
-    h += '</article>';
-    h += '<article class="sheet flat"><h2 class="h-sec">Ce qui n’est pas publié</h2><ul class="facts">' + D.NON_PUBLIE.map(function (f) { return '<li><span>' + tx(f.t) + '</span>' + srcs(f.src) + '</li>'; }).join('') + '</ul></article>';
+    h += '</details>';
+    h += '<details class="sheet flat fold"><summary><h2 class="h-sec">Ce qui n’est pas publié</h2></summary><ul class="facts">' + D.NON_PUBLIE.map(function (f) { return '<li><span>' + tx(f.t) + '</span>' + srcs(f.src) + '</li>'; }).join('') + '</ul></details>';
     h += '<article class="sheet"><h2 class="h-sec">Documents</h2><ul class="doclist">' + Object.keys(D.SRC).map(function (k) { var s = D.SRC[k]; return '<li><a href="' + esc(s.pdf) + '" target="_blank" rel="noopener">' + ico('file') + '<span>' + tx(s.t) + (s.o ? '' : ' (fiche)') + '</span></a></li>'; }).join('') + '</ul></article>';
     h += '<p class="foot"><span>Outil personnel de préparation, ni produit ni validé par la DGFiP.</span></p>';
     return h;
@@ -748,8 +864,30 @@
       case 'gsave': {
         if (!run || !run.endedAt) return;
         var e = D.EP[run.ep], g = C.gridNote(e.grille, run.scores); if (g.rated < g.total) return;
-        S.ecrits[run.id] = { id: run.id, ep: run.ep, sujet: run.sujet, titre: run.titre || null, date: run.start, used: run.used || Math.round(C.elapsed(run, now)), pausedMs: C.num(run.pausedMs), marks: (run.marks || []).slice(), scores: C.clone(run.scores), note: g.note, comment: run.comment || '', defauts: (run.defauts || []).slice(), createdAt: now, updatedAt: now };
+        S.ecrits[run.id] = { id: run.id, ep: run.ep, sujet: run.sujet, titre: run.titre || null, date: run.start, used: run.used || Math.round(C.elapsed(run, now)), pausedMs: C.num(run.pausedMs), marks: (run.marks || []).slice(), scores: C.clone(run.scores), note: g.note, comment: run.comment || '', defauts: (run.defauts || []).slice(), claude: run.claude || '', createdAt: now, updatedAt: now };
         T.saved = run.id; S.cur = { run: null, updatedAt: now }; Store.save(); render(); return window.scrollTo(0, 0);
+      }
+      case 'ccopy': {
+        var txt = b.dataset.k === 'ecrit' ? (run && run.endedAt ? ecritPrompt(run) : '') : (q ? oralPrompt(q) : '');
+        if (!txt) return;
+        return copyText(txt, function (ok) { toast(ok ? 'Demande copiée : ouvre Claude et colle-la (Ctrl+V ou appui long).' : 'Copie automatique impossible : le texte est sélectionné, copie-le.'); });
+      }
+      case 'capply': {
+        var rp = $('#creply'), msgEl = $('#cmsg'), val = rp ? rp.value : '';
+        var say = function (m) { if (msgEl) msgEl.textContent = m; };
+        if (b.dataset.k === 'ecrit') {
+          if (!run || !run.endedAt) return;
+          var E = D.EP[run.ep], r = parseReply(val, E.grille, 0, 4, E.defauts);
+          if (!r) return say('Ligne « GRILLE: … » introuvable : colle toute la réponse de Claude.');
+          run.scores = Object.assign(run.scores || {}, r.scores); if (r.defauts) run.defauts = r.defauts;
+          run.claude = val.slice(0, 20000); touchRun(); Store.save(); render();
+          var sc = $('.score'); if (sc) sc.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          return toast(r.n + ' critère' + (r.n > 1 ? 's' : '') + ' rempli' + (r.n > 1 ? 's' : '') + ' avec la correction de Claude.');
+        }
+        var ro = parseReply(val, D.ORAL.criteres, 1, 4);
+        if (!ro) return say('Ligne « GRILLE: … » introuvable : colle toute la réponse de Claude.');
+        Object.keys(ro.scores).forEach(function (k) { T.oscores[k] = ro.scores[k]; }); T.oclaude = val;
+        updOEval(); return say(ro.n + ' critère' + (ro.n > 1 ? 's' : '') + ' rempli' + (ro.n > 1 ? 's' : '') + ' : vérifie, puis enregistre.');
       }
       case 'newrun': T.saved = null; render(); return window.scrollTo(0, 0);
       // Oral
@@ -763,17 +901,18 @@
       case 'ostart': case 'ostartrec':
         if (!T.oral) return; if (!T.oral.start) { T.oral.start = now; T.oral.pausedMs = 0; } else C.resume(T.oral, now);
         if (a === 'ostartrec') Rec.start();
+        Trans.start();
         return render();
-      case 'opause': if (!T.oral || !T.oral.start) return; if (T.oral.pausedAt) C.resume(T.oral, now); else C.pause(T.oral, now); return render();
+      case 'opause': if (!T.oral || !T.oral.start) return; if (T.oral.pausedAt) { C.resume(T.oral, now); Trans.start(); } else { C.pause(T.oral, now); Trans.stop(); } return render();
       case 'orec': if (T.rec) Rec.stop(); else Rec.start(); return;
-      case 'ofinish': if (!T.oral) return; C.finish(T.oral, now); Rec.stop(); T.oeval = true; render(); var ev = $('#evalbox'); if (ev) ev.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); return;
+      case 'ofinish': if (!T.oral) return; C.finish(T.oral, now); Rec.stop(); Trans.stop(); T.oeval = true; render(); var ev = $('#evalbox'); if (ev) ev.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); return;
       case 'oreset': if (q) { newAttempt(q, q.pres ? 300 : UI.dur); render(); } return;
       case 'oeval': T.oeval = true; return render();
       case 'osave': {
         if (!q || !T.att) return;
         var on = C.oralNote(D.ORAL.criteres, T.oscores); if (on.rated < on.total) return;
         var o = T.oral, used = o && o.start ? Math.round(C.elapsed(o, now)) : 0, prev = S.oraux[T.att.aid];
-        S.oraux[T.att.aid] = { id: T.att.aid, qid: q.id, cat: q.c, prof: profil(), date: prev ? prev.date : now, used: used, limit: o ? o.limit : UI.dur, scores: C.clone(T.oscores), note: on.note, comment: T.ocomment, createdAt: prev ? prev.createdAt : now, updatedAt: now };
+        S.oraux[T.att.aid] = { id: T.att.aid, qid: q.id, cat: q.c, prof: profil(), date: prev ? prev.date : now, used: used, limit: o ? o.limit : UI.dur, scores: C.clone(T.oscores), note: on.note, comment: T.ocomment, trans: String(T.trans || '').slice(0, 10000), claude: String(T.oclaude || '').slice(0, 20000), createdAt: prev ? prev.createdAt : now, updatedAt: now };
         T.osaved = T.att.aid; Store.save(); return render();
       }
       case 'retry': if (QBY[b.dataset.q]) { newAttempt(QBY[b.dataset.q], QBY[b.dataset.q].pres ? 300 : UI.dur); go('oral'); } return;
@@ -833,6 +972,8 @@
     var t = ev.target, run = S.cur.run;
     if (t.id === 'libre-t') { UI.libre = t.value; Store.saveUI(); return; }
     if (t.id === 'o-comment') { T.ocomment = t.value; return; }
+    if (t.id === 'o-trans') { T.trans = t.value; return; }
+    if (t.id === 'o-trans-on') { UI.trans = t.checked; Store.saveUI(); return; }
     if (!run || !run.endedAt) return;
     if (t.id === 'g-comment') { run.comment = t.value; touchRun(); clearTimeout(tSave); tSave = setTimeout(function () { Store.save(); }, 600); return; }
     if (t.dataset && t.dataset.defaut && ev.type === 'change') {
