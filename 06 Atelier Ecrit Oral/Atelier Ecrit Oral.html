@@ -673,6 +673,9 @@ details.fold:not([open]) { gap: 0; }
 .rcard > summary { padding-right: 24px; }
 .rcard:not([open]) { padding-block: 12px; }
 
+/* Titre lu par les lecteurs d’écran, invisible à l’écran */
+.sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
 </style>
 </head>
 <body>
@@ -1815,8 +1818,7 @@ if (typeof module !== 'undefined') module.exports = CORE;
 
   function viewGrade(run) {
     var ep = D.EP[run.ep], s = sujetBy(run.sujet), g = C.gridNote(ep.grille, run.scores), used = run.used || C.elapsed(run, Date.now());
-    var h = '<section class="hero"><span class="eyebrow">' + tx('Copie rendue · ' + C.dur(used) + ' sur ' + C.hm(ep.min)) + '</span><h1 class="h-page">Note ta copie</h1></section>';
-    h += '<div class="score" aria-live="polite"><span class="big" id="gnote">' + gradeVal(g) + '<small>/20</small></span><div class="stack" style="gap:4px"><b id="grated">' + gradedTxt(g) + '</b><span class="small muted">' + tx('Moyenne des candidats en 2026 : ' + num(ep.moyenne.v) + '/20') + '</span></div>';
+    var h = '<h1 class="sr">Note ta copie</h1><div class="score" aria-live="polite"><span class="big" id="gnote">' + gradeVal(g) + '<small>/20</small></span><div class="stack" style="gap:4px"><b id="grated">' + gradedTxt(g) + '</b><span class="small muted">' + tx('Moyenne des candidats en 2026 : ' + num(ep.moyenne.v) + '/20') + '</span></div>';
     h += '<div class="row" style="margin-left:auto">' + (s && s.pdf ? pdfBtn(s.pdf, 'Sujet') : '') + (s && s.corrige ? pdfBtn(s.corrige.pdf, 'Corrigé', 'ghost') : '') + '</div></div>';
     h += '<details class="sheet fold"><summary><h2 class="h-sec">Faire corriger ta copie par Claude</h2></summary>' + depotCard({ kind: 'ecrit', ep: run.ep, sujet: run.sujet, runId: run.id, titre: titreOf(run), used: run.used }) + '</details>';
     h += '<article class="sheet"><div class="row between"><h2 class="h-sec">Grille du jury</h2><span class="scale">0 absent · 1 insuffisant · 2 moyen · 3 bien · 4 très bien</span></div>';
@@ -2069,9 +2071,7 @@ if (typeof module !== 'undefined') module.exports = CORE;
   function viewOral() {
     var p = profil(), O = D.ORAL[p], q = curQ(), cnt = counts();
     if (q && !T.oral) { T.oral = { limit: q.pres ? 300 : UI.dur, start: null, pausedAt: null, pausedMs: 0, endedAt: null }; T.att = { aid: C.uid('o') }; }
-    var h = '<section class="hero"><span class="eyebrow">Oral · concours ' + tx(O.concours) + '</span><h1 class="h-page">Entraîne-toi à voix haute</h1></section>';
-    h += profSeg();
-    h += '<article class="sheet" id="trainer">';
+    var h = '<h1 class="sr">Oral · concours ' + tx(O.concours) + '</h1><article class="sheet" id="trainer">';
     h += '<div class="chips" role="group" aria-label="Catégorie"><button type="button" data-cat="all" aria-pressed="' + (UI.cat === 'all') + '">Toutes <span class="mono small">' + poolOf('all').length + '</span></button>';
     D.CATS.forEach(function (c) { h += '<button type="button" data-cat="' + c.id + '" aria-pressed="' + (UI.cat === c.id) + '">' + tx(c.t) + ' <span class="mono small">' + poolOf(c.id).length + '</span></button>'; });
     h += '</div><div class="row between"><div class="row"><button type="button" class="btn pri" data-act="draw">' + ico('shuffle') + 'Tirer une question</button><button type="button" class="btn" data-act="pres">' + ico('mic') + 'Ma présentation · 5 min</button></div>';

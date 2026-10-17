@@ -228,3 +228,6 @@ details.fold:not([open]) { gap: 0; }
 @media (max-width: 519px) { .rtabs button { flex: 1 1 45%; } .rgrid { grid-template-columns: minmax(0, 1fr); } }
 .rcard > summary { padding-right: 24px; }
 .rcard:not([open]) { padding-block: 12px; }
+
+/* Titre lu par les lecteurs d’écran, invisible à l’écran */
+.sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
