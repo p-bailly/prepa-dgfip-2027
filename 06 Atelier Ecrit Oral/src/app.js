@@ -3,7 +3,7 @@
   'use strict';
   var C = CORE, D = DATA;
   var KEY = 'atelier-ecrit-oral-v1', UIKEY = 'atelier-ecrit-oral-ui', TITLE = document.title || 'Atelier écrit et oral';
-  var VIEWS = ['ecrit', 'oral', 'progres', 'reperes'];
+  var VIEWS = ['ecrit', 'oral', 'progres', 'reperes', 'reglages'];
   var S = C.blank();                                    // état synchronisable
   var UI = { view: 'ecrit', cat: 'all', dur: 180, hist: '', sujet: {}, libre: '', oq: '', recent: [], trans: true, rep: '', park: '' }; // préférences de cet appareil
   var T = { open: {}, confirm: null, saved: null, lastPhase: null, over: false, oral: null, att: null, rec: null, micErr: null,
@@ -280,10 +280,11 @@
     st.title = 'Écrit ' + ex.label + ' · ' + d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
     document.querySelectorAll('#profil [data-p]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.p === profil())); });
     var v = $('#view');
-    v.innerHTML = UI.view === 'oral' ? viewOral() : UI.view === 'progres' ? viewProgres() : UI.view === 'reperes' ? viewReperes() : viewEcrit();
+    v.innerHTML = UI.view === 'oral' ? viewOral() : UI.view === 'progres' ? viewProgres() : UI.view === 'reperes' ? viewReperes() : UI.view === 'reglages' ? viewReglages() : viewEcrit();
     measure();
     if (UI.view === 'oral') { refreshRecs(); updRec(); }
-    if (UI.view === 'progres') { drawChart(); fillAnswerRecs(); fillAudioInfo(); }
+    if (UI.view === 'progres') { drawChart(); fillAnswerRecs(); }
+    if (UI.view === 'reglages') fillAudioInfo();
     tick(true);
   }
   function measure() { var t = $('.appbar'); if (t) document.documentElement.style.setProperty('--hh', t.offsetHeight + 'px'); }
@@ -804,9 +805,14 @@
     // Dépôts pour correction
     depInit();
     if (DEP.list.length) h += '<article class="sheet"><div class="row between"><h2 class="h-sec">Copies et réponses déposées</h2><span class="small muted">' + DEP.list.filter(function (d) { return !d.correction; }).length + ' en attente de correction</span></div><div class="hlist">' + DEP.list.map(function (d) { return depRow(d, true); }).join('') + '</div></article>';
-    // Données
+    return h;
+  }
+
+  /* ===== Réglages ===== */
+  function viewReglages() {
+    var h = '<section class="hero"><h1 class="h-page">Réglages</h1></section>';
     var lab = ''; try { if (Sync.on && typeof window.PrepaSync.label === 'function') lab = window.PrepaSync.label(); } catch (e) { }
-    h += '<article class="sheet flat"><h2 class="h-sec">Tes données</h2><p class="small">' + tx(lab ? 'Progression ' + lab + '.' : 'Historique enregistré dans ce navigateur.') + ' <span id="audioinfo"></span></p>';
+    h += '<article class="sheet"><h2 class="h-sec">Tes données</h2><p class="small">' + tx(lab ? 'Progression ' + lab + '.' : 'Historique enregistré dans ce navigateur.') + ' <span id="audioinfo"></span></p>';
     h += '<div class="row"><button type="button" class="btn sm danger" data-act="wipeask" data-what="ecrits">Effacer l’historique écrit</button><button type="button" class="btn sm danger" data-act="wipeask" data-what="oraux">Effacer l’historique oral</button><button type="button" class="btn sm danger" data-act="wipeask" data-what="audio">Supprimer les enregistrements</button></div>';
     if (T.confirm && T.confirm.indexOf('wipe:') === 0) {
       var w = T.confirm.slice(5);
