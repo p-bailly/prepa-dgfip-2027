@@ -215,3 +215,16 @@ details.fold:not([open]) { gap: 0; }
 .deplist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .deplist li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 4px 8px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); }
 .deplist li > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Repères : onglets et cartes en grille, pour lire sans défiler */
+.rtabs { display: flex; width: 100%; }
+.rtabs button { flex: 1 1 auto; }
+.rgrid { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); align-items: start; }
+.rgrid .sheet .h-card { margin: 0; }
+.okcard { background: var(--ok-soft); border-color: transparent; }
+.rsteps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+.rsteps li { display: flex; flex-direction: column; gap: 2px; }
+.consigne-l { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: var(--t-sm); }
+.score { flex-wrap: wrap; }
+@media (max-width: 519px) { .rtabs button { flex: 1 1 45%; } .rgrid { grid-template-columns: minmax(0, 1fr); } }
+.rcard > summary { padding-right: 24px; }
+.rcard:not([open]) { padding-block: 12px; }

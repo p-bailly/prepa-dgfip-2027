@@ -659,6 +659,19 @@ details.fold:not([open]) { gap: 0; }
 .deplist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .deplist li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 4px 8px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); }
 .deplist li > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Repères : onglets et cartes en grille, pour lire sans défiler */
+.rtabs { display: flex; width: 100%; }
+.rtabs button { flex: 1 1 auto; }
+.rgrid { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); align-items: start; }
+.rgrid .sheet .h-card { margin: 0; }
+.okcard { background: var(--ok-soft); border-color: transparent; }
+.rsteps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+.rsteps li { display: flex; flex-direction: column; gap: 2px; }
+.consigne-l { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: var(--t-sm); }
+.score { flex-wrap: wrap; }
+@media (max-width: 519px) { .rtabs button { flex: 1 1 45%; } .rgrid { grid-template-columns: minmax(0, 1fr); } }
+.rcard > summary { padding-right: 24px; }
+.rcard:not([open]) { padding-block: 12px; }
 
 </style>
 </head>
@@ -1424,7 +1437,7 @@ if (typeof module !== 'undefined') module.exports = CORE;
   var KEY = 'atelier-ecrit-oral-v1', UIKEY = 'atelier-ecrit-oral-ui', TITLE = document.title || 'Atelier écrit et oral';
   var VIEWS = ['ecrit', 'oral', 'progres', 'reperes'];
   var S = C.blank();                                    // état synchronisable
-  var UI = { view: 'ecrit', cat: 'all', dur: 180, hist: '', sujet: {}, libre: '', oq: '', recent: [], trans: true }; // préférences de cet appareil
+  var UI = { view: 'ecrit', cat: 'all', dur: 180, hist: '', sujet: {}, libre: '', oq: '', recent: [], trans: true, rep: '' }; // préférences de cet appareil
   var T = { open: {}, confirm: null, saved: null, lastPhase: null, over: false, oral: null, att: null, rec: null, micErr: null,
     oscores: {}, ocomment: '', oeval: false, osaved: null, olimitHit: false, pending: false, more: 0, trans: '', interim: '', tr: null, trErr: null };
   var QBY = {}; D.Q.forEach(function (q) { QBY[q.id] = q; });
@@ -1739,26 +1752,23 @@ if (typeof module !== 'undefined') module.exports = CORE;
     });
     return bar + '<ol class="tsteps">' + li + '</ol>';
   }
+  // Écrit : seulement de quoi s'entraîner (concours, sujet, consignes, départ du chrono, dépôt). Le reste est dans Repères.
   function viewEcritHome() {
-    var p = profil(), ep = epOf(p), list = sujetsOf(ep), sel = selSujet(ep), last = entries(ep.id).slice(-1)[0];
-    var h = '<section class="hero"><span class="eyebrow">Écrit n° 1 · concours ' + tx(ep.concours) + '</span><h1 class="h-page">' + tx(ep.nom) + '</h1></section>';
+    var p = profil(), ep = epOf(p), list = sujetsOf(ep), sel = selSujet(ep);
+    var h = '<section class="hero"><span class="eyebrow">Écrit · concours ' + tx(ep.concours) + '</span><h1 class="h-page">' + tx(ep.nom) + '</h1></section>';
     h += profSeg();
-    h += '<div class="stats"><div class="stat"><span>Durée</span><b>' + tx(C.hm(ep.min)) + '</b></div><div class="stat"><span>Coefficient</span><b>' + ep.coef + '</b></div><div class="stat"><span>Note éliminatoire</span><b>&lt; 5 <small>/ 20</small></b></div>';
-    h += '<div class="stat"><span>Ta dernière note</span><b>' + (last ? note20(last.note) + ' <small>/ 20</small>' : '—') + '</b>' + (last ? '<span>' + tx(fdate(last.date)) + '</span>' : '') + '</div></div>';
     h += '<article class="sheet"><h2 class="h-sec">Choisis ton sujet</h2><div class="choices">';
     list.forEach(function (s) {
       var on = s.id === sel.id;
-      h += '<div class="choice' + (on ? ' on' : '') + '"><button type="button" class="pick" data-sujet="' + s.id + '" aria-pressed="' + on + '"><span class="radio" aria-hidden="true"></span><span class="ct"><span><span class="badge out">' + tx(s.kind) + '</span></span><b>' + tx(s.titre) + '</b>' + (on ? '<span class="small muted">' + tx(ep.id === 'nds' && s.infoNds ? s.infoNds : s.info) + '</span>' : '') + '</span></button>';
+      h += '<div class="choice' + (on ? ' on' : '') + '"><button type="button" class="pick" data-sujet="' + s.id + '" aria-pressed="' + on + '"><span class="radio" aria-hidden="true"></span><span class="ct"><span><span class="badge out">' + tx(s.kind) + '</span></span><b>' + tx(s.titre) + '</b></span></button>';
       h += '<div class="links">' + (s.pdf ? pdfBtn(s.pdf, 'Sujet') : '') + '</div>';
       if (on && s.libre) h += '<label class="field extra"><span>Titre du sujet</span><input class="input" id="libre-t" type="text" maxlength="120" autocomplete="off" value="' + esc(UI.libre) + '" placeholder="Par exemple : sujet 2025, économie des JO"></label>';
       h += '</div>';
     });
     h += '</div>';
-    if (sel.consigne) h += '<div class="consigne"><span class="eyebrow">Ce qu’on te demande</span><ol>' + sel.consigne.map(function (c) { return '<li>' + tx(c) + '</li>'; }).join('') + '</ol></div>';
-    h += '<div class="startrow"><button type="button" class="btn pri" data-act="start">' + ico('clock') + 'Commencer l’épreuve · ' + tx(C.hm(ep.min)) + '</button>' + (sel.corrige ? '<span class="badge out">Corrigé disponible après l’épreuve</span>' : '') + '</div></article>';
-    h += '<article class="sheet"><div class="row between"><h2 class="h-sec">Répartition conseillée du temps</h2>' + srcs(ep.phasesSrc) + '</div>' + phasesList(ep) + '</article>';
+    if (sel.consigne) h += '<details class="pistes"><summary>Consignes du sujet</summary><div class="body"><ol class="consigne-l">' + sel.consigne.map(function (c) { return '<li>' + tx(c) + '</li>'; }).join('') + '</ol></div></details>';
+    h += '<div class="startrow"><button type="button" class="btn pri" data-act="start">' + ico('clock') + 'Commencer · ' + tx(C.hm(ep.min)) + '</button></div></article>';
     h += '<details class="sheet fold"><summary><h2 class="h-sec">Copie faite sur papier ? Dépose-la</h2></summary>' + depotCard({ kind: 'ecrit', ep: ep.id, sujet: sel.id, titre: sel.libre ? (UI.libre || 'Sujet libre') : sel.titre }) + '</details>';
-    h += '<p class="small"><button type="button" class="btn sm ghost" data-v="reperes">' + ico('book') + 'Format officiel, critères et défauts relevés par le jury</button></p>';
     return h;
   }
 
@@ -1780,36 +1790,36 @@ if (typeof module !== 'undefined') module.exports = CORE;
     h += '<div class="meter" aria-hidden="true"><i id="rmeter" style="width:' + Math.min(100, k.el / k.tot * 100).toFixed(2) + '%"></i></div>';
     if (T.confirm === 'end') h += confirmBox('Rendre la copie maintenant ? Le chrono s’arrête et la grille s’ouvre.', 'end', 'Oui, rendre');
     h += '</div>';
-    h += '<article class="sheet"><div class="row between"><div class="stack" style="gap:4px"><span class="eyebrow">' + tx(ep.court + ' · ' + (s ? s.kind : '')) + '</span><h2 class="h-sec">' + tx(titreOf(run)) + '</h2></div>' + (s && s.pdf ? pdfBtn(s.pdf, 'Ouvrir le sujet') : '') + '</div>';
-    if (s && s.consigne) h += '<div class="consigne"><ol>' + s.consigne.map(function (c) { return '<li>' + tx(c) + '</li>'; }).join('') + '</ol></div>';
-    h += '<p class="small muted">Commencé à ' + tx(fhour(run.start)) + (run.pausedMs ? ' · ' + tx(C.dur(run.pausedMs / 1000)) + ' de pause' : '') + '. Note les heures de passage sur ton brouillon.</p></article>';
-    h += '<article class="sheet"><div class="row between"><h2 class="h-sec">Étapes</h2><span class="small muted">« Étape terminée » mesure ton propre rythme.</span></div>';
-    h += '<div class="tw"><table class="t ph"><thead><tr><th>Étape</th><th class="num hide-sm">Durée</th><th class="num">Fin prévue</th><th class="num">Ton écart</th></tr></thead><tbody>';
+    h += '<article class="sheet"><div class="row between"><div class="stack" style="gap:4px"><span class="eyebrow">' + tx(ep.court + (s ? ' · ' + s.kind : '') + ' · commencé à ' + fhour(run.start)) + '</span><h2 class="h-sec">' + tx(titreOf(run)) + '</h2></div>' + (s && s.pdf ? pdfBtn(s.pdf, 'Ouvrir le sujet') : '') + '</div>';
+    if (s && s.consigne) h += '<ol class="consigne-l">' + s.consigne.map(function (c) { return '<li>' + tx(c) + '</li>'; }).join('') + '</ol>';
+    h += '</article>';
+    h += '<details class="sheet fold"><summary><h2 class="h-sec">Ton rythme par étape</h2></summary>';
+    h += '<div class="tw"><table class="t ph"><thead><tr><th>Étape</th><th class="num hide-sm">Durée</th><th class="num">Fin prévue</th><th class="num">Écart</th></tr></thead><tbody>';
     var last = -1;
     ep.phases.forEach(function (ph, i) {
       if (ep.parts && ph.p !== last) { last = ph.p; h += '<tr class="part"><td colspan="4">' + tx(ep.parts[ph.p]) + '</td></tr>'; }
       var cls = (i === k.ph ? 'now' : '') + (i < marks.length ? ' done' : ''), gap = '';
-      if (i < marks.length) { var dm = Math.round((marks[i] - ends[i]) / 60); gap = '<span class="badge ' + (dm > 2 ? 'warn' : 'ok') + '">' + (dm > 0 ? '+' + dm : dm < 0 ? '−' + (-dm) : '0') + ' min</span>'; }
+      if (i < marks.length) { var dm = Math.round((marks[i] - ends[i]) / 60); gap = '<span class="badge ' + (dm > 2 ? 'warn' : 'ok') + '">' + (dm > 0 ? '+' + dm : dm < 0 ? '−' + (-dm) : '0') + ' min</span>'; }
       else if (i === marks.length) gap = '<span class="badge acc">en cours</span>';
       h += '<tr class="' + cls + '"' + (i === k.ph ? ' aria-current="step"' : '') + '><td>' + (i < marks.length ? '<span class="ic-ok">' + ico('check') + '</span>' : '') + tx(ph.t) + '</td><td class="num hide-sm">' + tx(C.hm(ph.min)) + '</td><td class="num" data-pend="' + i + '">' + tx(fhour(plannedAt(run, i, now))) + '</td><td class="num">' + gap + '</td></tr>';
     });
-    h += '</tbody></table></div><div class="row">' + (marks.length ? '<button type="button" class="btn sm ghost" data-act="unmark">Annuler la dernière étape</button>' : '') + '<button type="button" class="btn sm danger" data-act="abandonask">Abandonner</button></div>';
+    h += '</tbody></table></div>' + (marks.length ? '<div class="row"><button type="button" class="btn sm ghost" data-act="unmark">Annuler la dernière étape</button></div>' : '') + '</details>';
+    h += '<div class="row"><button type="button" class="btn sm danger" data-act="abandonask">Abandonner</button></div>';
     if (T.confirm === 'abandon') h += confirmBox('Abandonner cet entraînement ? Il ne sera pas noté.', 'abandon', 'Abandonner');
-    h += srcs(ep.phasesSrc) + '</article>';
     return h;
   }
+
   function clockTxt(rem) { return rem >= 0 ? C.clock(rem) : '+' + C.clock(-rem); }
   function phaseName(ep, i) { return i < ep.phases.length ? ep.phases[i].t : 'Temps écoulé : rends ta copie'; }
   function nextTxt(run, k, now) { return k.ph < k.ep.phases.length ? 'jusqu’à ' + fhour(plannedAt(run, k.ph, now)) : 'Fin prévue à ' + fhour(plannedAt(run, k.ep.phases.length - 1, now)); }
 
   function viewGrade(run) {
     var ep = D.EP[run.ep], s = sujetBy(run.sujet), g = C.gridNote(ep.grille, run.scores), used = run.used || C.elapsed(run, Date.now());
-    var h = '<section class="hero"><span class="eyebrow">' + tx('Copie rendue · ' + C.dur(used) + ' sur ' + C.hm(ep.min)) + '</span><h1 class="h-page">Note ta copie avec la grille du jury</h1>';
-    h += '</section>';
-    h += '<div class="score" aria-live="polite"><span class="big" id="gnote">' + gradeVal(g) + '<small>/20</small></span><div class="stack" style="gap:4px"><b id="grated">' + gradedTxt(g) + '</b><span class="small muted">' + tx('Moyenne des candidats en 2026 : ' + num(ep.moyenne.v) + '/20.') + '</span>' + srcs(ep.moyenne.src) + '</div></div>';
-    h += '<article class="sheet tight"><div class="row between"><b>' + tx(titreOf(run)) + '</b><div class="row">' + (s && s.pdf ? pdfBtn(s.pdf, 'Sujet') : '') + (s && s.corrige ? pdfBtn(s.corrige.pdf, 'Corrigé', 'ghost') : '') + '</div></div>' + (s && s.corrige ? '<p class="small muted">' + tx(s.corrige.t) + '</p>' : '') + '</article>';
-    h += '<article class="sheet">' + depotCard({ kind: 'ecrit', ep: run.ep, sujet: run.sujet, runId: run.id, titre: titreOf(run), used: run.used }) + '</article>';
-    h += '<article class="sheet"><div class="row between"><h2 class="h-sec">Grille</h2><span class="scale">0 absent · 1 insuffisant · 2 moyen · 3 bien · 4 très bien</span></div><p class="small muted">Pondération indicative : le barème officiel n’est pas publié.</p>';
+    var h = '<section class="hero"><span class="eyebrow">' + tx('Copie rendue · ' + C.dur(used) + ' sur ' + C.hm(ep.min)) + '</span><h1 class="h-page">Note ta copie</h1></section>';
+    h += '<div class="score" aria-live="polite"><span class="big" id="gnote">' + gradeVal(g) + '<small>/20</small></span><div class="stack" style="gap:4px"><b id="grated">' + gradedTxt(g) + '</b><span class="small muted">' + tx('Moyenne des candidats en 2026 : ' + num(ep.moyenne.v) + '/20') + '</span></div>';
+    h += '<div class="row" style="margin-left:auto">' + (s && s.pdf ? pdfBtn(s.pdf, 'Sujet') : '') + (s && s.corrige ? pdfBtn(s.corrige.pdf, 'Corrigé', 'ghost') : '') + '</div></div>';
+    h += '<details class="sheet fold"><summary><h2 class="h-sec">Faire corriger ta copie par Claude</h2></summary>' + depotCard({ kind: 'ecrit', ep: run.ep, sujet: run.sujet, runId: run.id, titre: titreOf(run), used: run.used }) + '</details>';
+    h += '<article class="sheet"><div class="row between"><h2 class="h-sec">Grille du jury</h2><span class="scale">0 absent · 1 insuffisant · 2 moyen · 3 bien · 4 très bien</span></div>';
     var parts = [];
     ep.grille.forEach(function (c) { if (parts.indexOf(c.part) < 0) parts.push(c.part); });
     parts.forEach(function (pt) {
@@ -1817,21 +1827,22 @@ if (typeof module !== 'undefined') module.exports = CORE;
       h += '<h3 class="gpart"><span>' + tx(pt) + '</span><span>' + w + ' points</span></h3>';
       cs.forEach(function (c, i) {
         var v = run.scores ? run.scores[c.id] : undefined;
-        h += '<div class="crit' + (i === cs.length - 1 ? ' last' : '') + '"><div class="ct"><b>' + tx(c.t) + '</b><span class="small muted">' + tx(c.d) + '</span>' + srcs(c.src) + '</div><div class="side"><div class="lv" role="group" aria-label="' + esc(c.t) + '">';
+        h += '<div class="crit' + (i === cs.length - 1 ? ' last' : '') + '"><div class="ct"><b>' + tx(c.t) + '</b><span class="small muted">' + tx(c.d) + '</span></div><div class="side"><div class="lv" role="group" aria-label="' + esc(c.t) + '">';
         for (var n = 0; n <= 4; n++) h += '<button type="button" data-crit="' + c.id + '" data-lv="' + n + '" aria-pressed="' + (v === n) + '" title="' + esc(D.NIVEAUX[n]) + '">' + n + '</button>';
         h += '</div><span class="pts" id="pts-' + c.id + '">' + ptsTxt(c, v) + '</span></div></div>';
       });
     });
     h += '</article>';
-    h += '<article class="sheet"><h2 class="h-sec">Défauts relevés par le jury</h2><p class="small muted">Coche ceux que tu retrouves dans ta copie : l’onglet Progrès compte les plus fréquents.</p><ul class="checks">';
-    ep.defauts.forEach(function (d) { var on = (run.defauts || []).indexOf(d.id) >= 0; h += '<li><label><input type="checkbox" data-defaut="' + d.id + '"' + (on ? ' checked' : '') + '><span>' + tx(d.t) + '</span>' + srcs(d.src) + '</label></li>'; });
-    h += '</ul><div class="callout ok"><span class="ic">' + ico('check') + '</span><div><h4>Ce que font les meilleures copies</h4><p class="small">' + tx(ep.meilleurs.t) + '</p>' + srcs(ep.meilleurs.src) + '</div></div></article>';
+    h += '<article class="sheet"><h2 class="h-sec">Défauts que tu retrouves</h2><ul class="checks">';
+    ep.defauts.forEach(function (d) { var on = (run.defauts || []).indexOf(d.id) >= 0; h += '<li><label><input type="checkbox" data-defaut="' + d.id + '"' + (on ? ' checked' : '') + '><span>' + tx(d.t) + '</span></label></li>'; });
+    h += '</ul></article>';
     h += '<article class="sheet"><label class="field"><span>Commentaire</span><textarea class="input" id="g-comment" maxlength="4000" placeholder="Ce qui a marché, ce que tu changes la prochaine fois">' + esc(run.comment || '') + '</textarea></label>';
-    h += '<div class="row"><button type="button" class="btn pri" data-act="gsave" id="gsave"' + (g.rated < g.total ? ' disabled' : '') + '>' + ico('check') + 'Enregistrer la note</button><button type="button" class="btn" data-act="reopen">' + ico('redo') + 'Je n’avais pas fini : reprendre</button><button type="button" class="btn sm danger" data-act="abandonask">Ne pas noter</button></div>';
+    h += '<div class="row"><button type="button" class="btn pri" data-act="gsave" id="gsave"' + (g.rated < g.total ? ' disabled' : '') + '>' + ico('check') + 'Enregistrer la note</button><button type="button" class="btn" data-act="reopen">' + ico('redo') + 'Reprendre l’épreuve</button><button type="button" class="btn sm danger" data-act="abandonask">Ne pas noter</button></div>';
     if (T.confirm === 'abandon') h += confirmBox('Supprimer cet entraînement sans le noter ?', 'abandon', 'Supprimer');
     h += '</article>';
     return h;
   }
+
   function gradedTxt(g) { return !g.rated ? 'Aucun critère noté sur ' + g.total : g.rated < g.total ? g.rated + ' critère' + (g.rated > 1 ? 's' : '') + ' noté' + (g.rated > 1 ? 's' : '') + ' sur ' + g.total : 'Tous les critères sont notés'; }
   function gradeVal(g) { return g.rated ? note20(g.note) : '—'; }
   function ptsTxt(c, v) { return (typeof v === 'number' ? C.dec(c.w * v / 4) : '—') + ' / ' + c.w + ' pt' + (c.w > 1 ? 's' : ''); }
@@ -2054,26 +2065,22 @@ if (typeof module !== 'undefined') module.exports = CORE;
     var o = T.oral; if (!o || !o.start) return 'idle';
     if (o.endedAt) return 'done'; if (o.pausedAt) return 'paused'; return 'run';
   }
+  // Oral : tirage, question, chrono, pistes, auto-évaluation. Le déroulé et les attentes du jury sont dans Repères.
   function viewOral() {
     var p = profil(), O = D.ORAL[p], q = curQ(), cnt = counts();
     if (q && !T.oral) { T.oral = { limit: q.pres ? 300 : UI.dur, start: null, pausedAt: null, pausedMs: 0, endedAt: null }; T.att = { aid: C.uid('o') }; }
-    var h = '<section class="hero"><span class="eyebrow">Oral d’admission · concours ' + tx(O.concours) + '</span><h1 class="h-page"><mark class="hl">' + O.min + ' minutes</mark> face au jury</h1></section>';
+    var h = '<section class="hero"><span class="eyebrow">Oral · concours ' + tx(O.concours) + '</span><h1 class="h-page">Entraîne-toi à voix haute</h1></section>';
     h += profSeg();
-    h += '<div class="stats"><div class="stat"><span>Durée</span><b>' + O.min + ' <small>min</small></b></div><div class="stat"><span>Coefficient</span><b>' + O.coef + '</b></div><div class="stat"><span>Présentation</span><b>5 <small>min max</small></b></div><div class="stat"><span>Note éliminatoire</span><b>&lt; 5 <small>/ 20</small></b></div></div>';
-    // Tirage
-    h += '<article class="sheet" id="trainer"><div class="row between"><h2 class="h-sec">Tirage au sort</h2><span class="small muted">' + tx(D.Q.length + ' questions, présentation comprise') + '</span></div>';
+    h += '<article class="sheet" id="trainer">';
     h += '<div class="chips" role="group" aria-label="Catégorie"><button type="button" data-cat="all" aria-pressed="' + (UI.cat === 'all') + '">Toutes <span class="mono small">' + poolOf('all').length + '</span></button>';
     D.CATS.forEach(function (c) { h += '<button type="button" data-cat="' + c.id + '" aria-pressed="' + (UI.cat === c.id) + '">' + tx(c.t) + ' <span class="mono small">' + poolOf(c.id).length + '</span></button>'; });
-    h += '</div><div class="row"><button type="button" class="btn pri" data-act="draw">' + ico('shuffle') + 'Tirer une question</button><button type="button" class="btn" data-act="pres">' + ico('mic') + 'Présentation · 5 min</button></div>';
-    h += '<div class="durrow"><span class="small">Temps de réponse</span><div class="row" style="gap:6px"><button type="button" class="btn sm" data-act="dminus" aria-label="30 secondes de moins">' + ico('minus') + '</button><span class="val" id="odur">' + C.clock(UI.dur) + '</span><button type="button" class="btn sm" data-act="dplus" aria-label="30 secondes de plus">' + ico('plus') + '</button><button type="button" class="btn sm ghost" data-act="d3">3 min</button><button type="button" class="btn sm ghost" data-act="d5">5 min</button></div></div>';
+    h += '</div><div class="row between"><div class="row"><button type="button" class="btn pri" data-act="draw">' + ico('shuffle') + 'Tirer une question</button><button type="button" class="btn" data-act="pres">' + ico('mic') + 'Ma présentation · 5 min</button></div>';
+    h += '<div class="row durrow" style="gap:6px"><span class="small muted">Temps</span><button type="button" class="btn sm" data-act="dminus" aria-label="30 secondes de moins">' + ico('minus') + '</button><span class="val" id="odur">' + C.clock(UI.dur) + '</span><button type="button" class="btn sm" data-act="dplus" aria-label="30 secondes de plus">' + ico('plus') + '</button></div></div>';
     if (q) h += qBox(q, cnt);
-    else h += '<p class="empty">Tire une question, ou commence par ta présentation.</p>';
     h += '</article>';
-    // Déroulé : trois étapes, le détail se déplie
-    h += '<article class="sheet"><h2 class="h-sec">Déroulé de l’épreuve</h2><div class="stack" style="gap:6px">' + D.ORAL.etapes.map(function (e, i) { return '<details class="pistes"><summary><span class="badge acc mono">' + (i + 1) + '</span>' + tx(e.t) + '</summary><div class="body"><p class="small">' + tx(e.d) + '</p>' + srcs(e.src) + '</div></details>'; }).join('') + '</div>';
-    h += '<details class="pistes"><summary>Ce que le jury 2026 a relevé</summary><div class="body"><ul class="plain small">' + O.attentes.map(function (f) { return '<li>' + tx(f.t) + '</li>'; }).join('') + '</ul>' + srcs([].concat.apply([], O.attentes.map(function (f) { return [].concat(f.src); })).filter(function (v, i, a) { return a.indexOf(v) === i; })) + '</div></details></article>';
     return h;
   }
+
   function qBox(q, cnt) {
     var o = T.oral, st = oralState(), cat = CATBY[q.c], sup = Rec.support(), n = cnt[q.id] || 0;
     var h = '<div class="qbox" id="qbox"><div class="row"><span class="badge acc">' + tx(cat.t) + '</span>' + (q.s ? '<span class="badge out">' + tx(D.SUBS[q.s]) + '</span>' : '') + (n ? '<span class="badge">' + n + ' réponse' + (n > 1 ? 's' : '') + ' évaluée' + (n > 1 ? 's' : '') + '</span>' : '') + '</div>';
@@ -2094,8 +2101,7 @@ if (typeof module !== 'undefined') module.exports = CORE;
     var err = T.micErr || (sup !== 'ok' ? sup : null);
     if (err) h += '<div class="callout warn"><span class="ic">' + ico('alert') + '</span><div><p class="small">' + tx(MIC[err] || MIC.error) + '</p></div></div>';
     h += '<details class="pistes"' + (st === 'done' ? ' open' : '') + '><summary>Pistes et points attendus</summary><div class="body"><ul class="plain">' + q.p.map(function (x) { return '<li>' + tx(x) + '</li>'; }).join('') + '</ul>';
-    if (q.c === 'situ') h += '<p class="small muted">' + tx(D.ORAL.methodeSituation) + '</p>';
-    h += '<p class="small muted">Repères de préparation rédigés pour cette appli, pas un corrigé officiel. Vérifie les chiffres d’actualité avant l’oral.</p></div></details>';
+    h += '</div></details>';
     h += '<div id="reclist" class="recs"></div>';
     if (st === 'done' || T.oeval) h += evalBox();
     else h += '<div class="row"><button type="button" class="btn sm ghost" data-act="oeval">Évaluer sans chrono</button></div>';
@@ -2106,13 +2112,13 @@ if (typeof module !== 'undefined') module.exports = CORE;
     var h = '<div class="eval" id="evalbox"><div class="row between"><h3 class="h-card">Ton auto-évaluation</h3><span class="scale">1 à retravailler · 2 passable · 3 bien · 4 très bien</span></div>';
     D.ORAL.criteres.forEach(function (c) {
       var v = T.oscores[c.id];
-      h += '<div class="ocrit"><div class="ct"><span>' + tx(c.t) + '</span>' + srcs(c.src) + '</div><div class="lv" role="group" aria-label="' + esc(c.t) + '">';
+      h += '<div class="ocrit"><div class="ct"><span>' + tx(c.t) + '</span></div><div class="lv" role="group" aria-label="' + esc(c.t) + '">';
       for (var n = 1; n <= 4; n++) h += '<button type="button" data-ocrit="' + c.id + '" data-lv="' + n + '" aria-pressed="' + (v === n) + '" title="' + esc(D.ORAL.niveaux[n - 1]) + '">' + n + '</button>';
       h += '</div></div>';
     });
     h += '<label class="field"><span>Commentaire</span><textarea class="input" id="o-comment" maxlength="2000" placeholder="Ce que tu as oublié, ce que tu dirais autrement">' + esc(T.ocomment) + '</textarea></label>';
     h += '<div class="row between"><span class="small">Note indicative : <b class="mono" id="onote">' + (on.note === null ? '—' : C.dec(on.note)) + '/20</b></span><button type="button" class="btn pri" data-act="osave" id="osave"' + (on.rated < on.total ? ' disabled' : '') + '>' + ico('check') + (saved ? 'Mettre à jour' : 'Enregistrer l’évaluation') + '</button></div>';
-    h += depotCard({ kind: 'oral', aid: T.att ? T.att.aid : '', qid: curQ() ? curQ().id : '' });
+    h += '<details class="pistes"><summary>Faire corriger ta réponse par Claude</summary><div class="body">' + depotCard({ kind: 'oral', aid: T.att ? T.att.aid : '', qid: curQ() ? curQ().id : '' }) + '</div></details>';
     if (saved) h += '<div class="callout ok"><span class="ic">' + ico('check') + '</span><div><h4>Évaluation enregistrée : ' + C.dec(saved.note) + '/20</h4><p class="small">Elle rejoint ton historique dans l’onglet Progrès.</p><div class="row" style="margin-top:8px"><button type="button" class="btn sm pri" data-act="draw">Question suivante</button></div></div></div>';
     return h + '</div>';
   }
@@ -2267,24 +2273,50 @@ if (typeof module !== 'undefined') module.exports = CORE;
   }
 
   /* ===== Repères ===== */
+  // Repères : tout ce qui n'est pas nécessaire pendant l'entraînement, en quatre panneaux pour éviter de défiler.
+  function srcsAll(items) {
+    var all = [];
+    items.forEach(function (x) { [].concat(x && x.src !== undefined ? x.src : x).forEach(function (r) { if (r && all.indexOf(r) < 0) all.push(r); }); });
+    return srcs(all);
+  }
+  function tiles(list) { return '<div class="stats">' + list.map(function (t) { return '<div class="stat"><span>' + tx(t[0]) + '</span><b>' + t[1] + '</b>' + (t[2] ? '<span>' + tx(t[2]) + '</span>' : '') + '</div>'; }).join('') + '</div>'; }
+  // Cartes repliables : ouvertes sur grand écran, fermées sur téléphone (on voit d'abord tous les titres)
+  function card(title, body, cls) { return '<details class="sheet tight fold rcard' + (cls ? ' ' + cls : '') + '"' + (window.innerWidth >= 880 ? ' open' : '') + '><summary><h2 class="h-card">' + tx(title) + '</h2></summary>' + body + '</details>'; }
   function viewReperes() {
+    var cur = UI.rep && (UI.rep === 'oral' || UI.rep === 'docs' || D.EP[UI.rep]) ? UI.rep : epOf(profil()).id;
+    var tabs = [['nds', 'Écrit · inspecteur'], ['ad', 'Écrit · contrôleur'], ['oral', 'Oral'], ['docs', 'Documents']];
     var h = '<section class="hero"><span class="eyebrow">Repères officiels</span><h1 class="h-page">Ce que disent les guides et les jurys</h1></section>';
-    ['nds', 'ad'].forEach(function (k) {
-      var ep = D.EP[k];
-      h += '<details class="sheet fold"' + (k === epOf(profil()).id ? ' open' : '') + '><summary><span class="eyebrow">Écrit n° 1 · concours ' + tx(ep.concours) + '</span><h2 class="h-sec">' + tx(ep.nom) + '</h2></summary><ul class="facts">' + ep.faits.map(function (f) { return '<li class="acc"><span>' + tx(f.t) + '</span>' + srcs(f.src) + '</li>'; }).join('') + '</ul>';
-      h += '<h3 class="h-card">Répartition conseillée du temps</h3>' + phasesList(ep) + srcs(ep.phasesSrc);
-      h += '<h3 class="h-card">Défauts relevés</h3><ul class="facts">' + ep.defauts.map(function (d) { return '<li><span>' + tx(d.t) + '</span>' + srcs(d.src) + '</li>'; }).join('') + '</ul>';
-      h += '<div class="callout ok"><span class="ic">' + ico('check') + '</span><div><h4>Les meilleures copies</h4><p class="small">' + tx(ep.meilleurs.t) + '</p>' + srcs(ep.meilleurs.src) + '</div></div></details>';
-    });
-    h += '<details class="sheet fold"><summary><span class="eyebrow">Oral d’admission</span><h2 class="h-sec">Inspecteur et contrôleur</h2></summary><ol class="steps">' + D.ORAL.etapes.map(function (e) { return '<li><div class="stack" style="gap:4px"><b>' + tx(e.t) + '</b><span class="small">' + tx(e.d) + '</span>' + srcs(e.src) + '</div></li>'; }).join('') + '</ol>';
-    ['I', 'C'].forEach(function (p) {
-      var O = D.ORAL[p];
-      h += '<h3 class="h-card">Concours ' + tx(O.concours) + '</h3><ul class="facts">' + O.faits.concat(O.attentes).map(function (f) { return '<li><span>' + tx(f.t) + '</span>' + srcs(f.src) + '</li>'; }).join('') + '</ul>';
-    });
-    h += '</details>';
-    h += '<details class="sheet flat fold"><summary><h2 class="h-sec">Ce qui n’est pas publié</h2></summary><ul class="facts">' + D.NON_PUBLIE.map(function (f) { return '<li><span>' + tx(f.t) + '</span>' + srcs(f.src) + '</li>'; }).join('') + '</ul></details>';
-    h += '<article class="sheet"><h2 class="h-sec">Documents</h2><ul class="doclist">' + Object.keys(D.SRC).map(function (k) { var s = D.SRC[k]; return '<li><a href="' + esc(s.pdf) + '" target="_blank" rel="noopener">' + ico('file') + '<span>' + tx(s.t) + (s.o ? '' : ' (fiche)') + '</span></a></li>'; }).join('') + '</ul></article>';
-    h += '<p class="foot"><span>Outil personnel de préparation, ni produit ni validé par la DGFiP.</span></p>';
+    h += '<div class="seg wide rtabs" role="tablist" aria-label="Repères">' + tabs.map(function (t) { return '<button type="button" role="tab" data-rep="' + t[0] + '" aria-selected="' + (cur === t[0]) + '" aria-pressed="' + (cur === t[0]) + '">' + tx(t[1]) + '</button>'; }).join('') + '</div>';
+    if (D.EP[cur]) {
+      var ep = D.EP[cur], parts = [];
+      ep.grille.forEach(function (c) { if (parts.indexOf(c.part) < 0) parts.push(c.part); });
+      h += '<h2 class="h-sec">' + tx(ep.nom) + '</h2>';
+      h += tiles([['Durée', tx(C.hm(ep.min))], ['Coefficient', String(ep.coef)], ['Éliminatoire', '&lt; 5 <small>/ 20</small>'], ['Dossier', (String(ep.dossier).match(/\d+/) || [''])[0] + ' <small>pages max</small>'], ['Moyenne 2026', num(ep.moyenne.v) + ' <small>/ 20</small>']]);
+      h += '<div class="rgrid">';
+      h += card('Format de l’épreuve', '<ul class="plain small">' + ep.faits.map(function (f) { return '<li>' + tx(f.t) + '</li>'; }).join('') + '</ul>' + srcsAll(ep.faits));
+      h += card('Répartition conseillée du temps', phasesList(ep) + srcs(ep.phasesSrc));
+      h += card('Grille d’évaluation', parts.map(function (pt) {
+        var cs = ep.grille.filter(function (c) { return c.part === pt; });
+        return '<h3 class="gpart"><span>' + tx(pt) + '</span><span>' + cs.reduce(function (a, c) { return a + c.w; }, 0) + ' pts</span></h3><ul class="plain small">' + cs.map(function (c) { return '<li><b>' + tx(c.t) + '</b> · ' + c.w + ' pt' + (c.w > 1 ? 's' : '') + '</li>'; }).join('') + '</ul>';
+      }).join('') + '<p class="small muted">Pondération indicative : le barème officiel n’est pas publié.</p>' + srcsAll(ep.grille));
+      h += card('Défauts relevés par le jury 2026', '<ul class="plain small">' + ep.defauts.map(function (d) { return '<li>' + tx(d.t) + '</li>'; }).join('') + '</ul>' + srcsAll(ep.defauts));
+      h += card('Ce que font les meilleures copies', '<p class="small">' + tx(ep.meilleurs.t) + '</p>' + srcs(ep.meilleurs.src), 'okcard');
+      h += '</div>';
+    } else if (cur === 'oral') {
+      var I = D.ORAL.I, Cc = D.ORAL.C;
+      h += tiles([['Inspecteur', I.min + ' <small>min</small>', 'coefficient ' + I.coef], ['Contrôleur', Cc.min + ' <small>min</small>', 'coefficient ' + Cc.coef], ['Présentation', '5 <small>min max</small>'], ['Éliminatoire', '&lt; 5 <small>/ 20</small>'], ['Moyennes 2026', num(I.moyenne.v) + ' · ' + num(Cc.moyenne.v), 'inspecteur · contrôleur']]);
+      h += '<div class="rgrid">';
+      h += card('Déroulé de l’épreuve', '<ol class="rsteps">' + D.ORAL.etapes.map(function (e) { return '<li><b>' + tx(e.t) + '</b><span class="small">' + tx(e.d) + '</span></li>'; }).join('') + '</ol><p class="small muted">' + tx(D.ORAL.nonPrecise) + '</p>' + srcsAll(D.ORAL.etapes));
+      [['I', I], ['C', Cc]].forEach(function (x) { h += card('Attentes du jury · ' + x[1].concours, '<ul class="plain small">' + x[1].faits.concat(x[1].attentes).map(function (f) { return '<li>' + tx(f.t) + '</li>'; }).join('') + '</ul>' + srcsAll(x[1].faits.concat(x[1].attentes))); });
+      h += card('Mises en situation : la méthode', '<p class="small">' + tx(D.ORAL.methodeSituation) + '</p>');
+      h += card('Ton auto-évaluation', '<ul class="plain small">' + D.ORAL.criteres.map(function (c) { return '<li>' + tx(c.t) + '</li>'; }).join('') + '</ul><p class="small muted">' + tx('Niveaux : ' + D.ORAL.niveaux.map(function (n, i) { return (i + 1) + ' ' + n.toLowerCase(); }).join(', ') + '. Les pistes des questions sont rédigées pour cet atelier, pas un corrigé officiel : vérifie les chiffres d’actualité avant l’oral.') + '</p>' + srcsAll(D.ORAL.criteres));
+      h += '</div>';
+    } else {
+      h += '<div class="rgrid">';
+      h += card('Guides, rapports et fiches', '<ul class="doclist">' + Object.keys(D.SRC).map(function (k) { var s = D.SRC[k]; return '<li><a href="' + esc(s.pdf) + '" target="_blank" rel="noopener">' + ico('file') + '<span>' + tx(s.t) + (s.o ? '' : ' (fiche)') + '</span></a></li>'; }).join('') + '</ul>');
+      h += card('Ce qui n’est pas publié', '<ul class="plain small">' + D.NON_PUBLIE.map(function (f) { return '<li>' + tx(f.t) + '</li>'; }).join('') + '</ul>' + srcsAll(D.NON_PUBLIE));
+      h += '</div><p class="foot"><span>Outil personnel de préparation, ni produit ni validé par la DGFiP.</span></p>';
+    }
     return h;
   }
 
@@ -2416,7 +2448,7 @@ if (typeof module !== 'undefined') module.exports = CORE;
   }
 
   document.addEventListener('click', function (ev) {
-    var b = ev.target.closest('[data-v], [data-act], [data-p], [data-sujet], [data-crit], [data-ocrit], [data-cat], [data-open], [data-play], [data-rdel], [data-rdelyes], [data-rdelno], [data-hist], [data-dopen]');
+    var b = ev.target.closest('[data-v], [data-act], [data-p], [data-sujet], [data-crit], [data-ocrit], [data-cat], [data-open], [data-play], [data-rdel], [data-rdelyes], [data-rdelno], [data-hist], [data-dopen], [data-rep]');
     if (!b) return;
     var ds = b.dataset;
     if (ds.v) { ev.preventDefault(); return go(ds.v); }
@@ -2432,6 +2464,7 @@ if (typeof module !== 'undefined') module.exports = CORE;
     if (ds.cat) { UI.cat = ds.cat; Store.saveUI(); document.querySelectorAll('[data-cat]').forEach(function (x) { x.setAttribute('aria-pressed', String(x.dataset.cat === UI.cat)); }); return; }
     if (ds.hist) { UI.hist = ds.hist; Store.saveUI(); return render(); }
     if (ds.open) { T.open[ds.open] = !T.open[ds.open]; T.confirm = null; return render(); }
+    if (ds.rep) { UI.rep = ds.rep; Store.saveUI(); return render(); }
     if (ds.dopen) { DEP.open[ds.dopen] = !DEP.open[ds.dopen]; T.confirm = null; return render(); }
     if (ds.play) return play(ds.play, b);
     if (ds.rdel) { var sp = b.parentNode; sp.innerHTML = '<span class="small">Supprimer ?</span><button type="button" class="btn sm danger" data-rdelyes="' + esc(ds.rdel) + '">Oui</button><button type="button" class="btn sm" data-rdelno="' + esc(ds.rdel) + '">Non</button>'; return; }
