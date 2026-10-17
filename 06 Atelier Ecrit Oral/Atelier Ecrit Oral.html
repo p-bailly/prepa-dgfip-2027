@@ -2244,8 +2244,9 @@ if (typeof module !== 'undefined') module.exports = CORE;
     h += '</div><div class="recst" id="recst" aria-live="polite"></div>' + transBox(st);
     var err = T.micErr || (sup !== 'ok' ? sup : null);
     if (err) h += '<div class="callout warn"><span class="ic">' + ico('alert') + '</span><div><p class="small">' + tx(MIC[err] || MIC.error) + '</p></div></div>';
-    h += '<details class="pistes"' + (st === 'done' ? ' open' : '') + '><summary>Pistes et points attendus</summary><div class="body"><ul class="plain">' + q.p.map(function (x) { return '<li>' + tx(x) + '</li>'; }).join('') + '</ul>';
-    h += '</div></details>';
+    // Pistes cachées tant que la réponse n'est pas terminée, pour ne pas s'en inspirer pendant l'enregistrement.
+    if (st === 'done' || (T.oeval && st === 'idle')) h += '<details class="pistes" open><summary>Pistes et points attendus</summary><div class="body"><ul class="plain">' + q.p.map(function (x) { return '<li>' + tx(x) + '</li>'; }).join('') + '</ul></div></details>';
+    else h += '<p class="small muted">' + tx('Les pistes et points attendus s’affichent quand tu as terminé.') + '</p>';
     h += '<div id="reclist" class="recs"></div>';
     if (st === 'done' || T.oeval) h += evalBox();
     else h += '<div class="row"><button type="button" class="btn sm ghost" data-act="oeval">Évaluer sans chrono</button></div>';
