@@ -3,6 +3,7 @@
 //   node outils/depots.js liste                     tous les dépôts, avec leur statut
 //   node outils/depots.js recuperer [id …]          télécharge les dépôts à corriger (ou ceux indiqués) dans « 08 Depots/ »
 //   node outils/depots.js noter <id> <fichier.json> enregistre la correction : elle s'affiche dans l'atelier
+//   (un oral déposé avec son enregistrement est analysé au passage : analyse-audio.md, débit, pauses, tics, intonation)
 //
 // Le fichier de correction : { "scores": { "critere": niveau, … }, "defauts": ["id", …], "commentaire": "…" }
 // (niveaux 0 à 4 à l'écrit, 1 à 4 à l'oral ; la note sur 20 est calculée comme dans l'atelier).
@@ -10,13 +11,15 @@
 // Accès : clé de compte de service Firebase (projet prepa-dgfip-2027), jamais versionnée :
 //   %USERPROFILE%\.prepa-dgfip\cle-service.json, ou le chemin donné par la variable PREPA_CLE.
 "use strict";
-const fs = require("fs"), path = require("path"), os = require("os"), crypto = require("crypto");
+const fs = require("fs"), path = require("path"), os = require("os"), crypto = require("crypto"), { spawnSync } = require("child_process");
 const ROOT = path.join(__dirname, "..");
 const D = require(path.join(ROOT, "06 Atelier Ecrit Oral", "src", "data.js"));
 const C = require(path.join(ROOT, "06 Atelier Ecrit Oral", "src", "core.js"));
 const OUT = path.join(ROOT, "08 Depots");
 const KEY = process.env.PREPA_CLE || path.join(os.homedir(), ".prepa-dgfip", "cle-service.json");
 const DOMAIN = "prepa.pbailly.fr";
+// Analyse de fluidité des oraux (outils/analyse_oral.py, faster-whisper sur cet ordinateur)
+const PY = process.env.PREPA_PY || path.join(os.homedir(), ".prepa-dgfip", "venv", "Scripts", "python.exe");
 
 function die(m) { console.error(m); process.exit(1); }
 function loadKey() {
@@ -127,12 +130,12 @@ function fiche(d) {
     L.push("Dépôt " + d.id + " du " + fdate(d.createdAt) + " · compte " + d._compte + (d.used != null ? " · temps de parole : " + C.clock(d.used) + " pour " + C.clock(d.limit || 180) : ""), "");
     L.push("## Question", "", "**" + (q ? q.q : d.question) + "**");
     if (q) { L.push("", "Points attendus (repères de préparation, non officiels) :"); q.p.forEach(x => L.push("- " + x)); }
-    L.push("", "## Réponse (transcription automatique, avec de possibles erreurs de reconnaissance vocale)", "", d.trans ? d.trans : "(pas de transcription : voir les fichiers)");
+    L.push("", "## Réponse (transcription automatique, avec de possibles erreurs de reconnaissance vocale)", "", d.trans ? d.trans : "(pas de transcription du navigateur : voir celle de analyse-audio.md si un enregistrement a été déposé)");
     if ((d.files || []).length) L.push("", "Fichiers : " + d.files.map(f => "`" + f.name + "`").join(", "));
     L.push("", "## Critères (niveau 1 à 4 : " + D.ORAL.niveaux.map((n, i) => (i + 1) + " " + n.toLowerCase()).join(", ") + ")", "");
     D.ORAL.criteres.forEach(c => L.push("- `" + c.id + "` " + c.t));
     L.push("", "## Correction à enregistrer", "", "Écris `correction.json` dans ce dossier puis : `node outils/depots.js noter " + d.id + " \"<dossier>/correction.json\"`", "");
-    L.push("```json", JSON.stringify({ scores: Object.fromEntries(D.ORAL.criteres.map(c => [c.id, 1])), commentaire: "Ce qui manquait : …\nTrame de réponse : …\nRelances probables : …" }, null, 2), "```");
+    L.push("```json", JSON.stringify({ scores: Object.fromEntries(D.ORAL.criteres.map(c => [c.id, 1])), commentaire: "Fluidité : …\nCe qui manquait : …\nTrame de réponse : …\nRelances probables : …" }, null, 2), "```");
   }
   return L.join("\n") + "\n";
 }
@@ -162,8 +165,19 @@ async function cmdRecuperer(ids) {
     }
     const meta = { ...d }; delete meta._name;
     fs.writeFileSync(path.join(dir, "depot.json"), JSON.stringify(meta, null, 2));
-    fs.writeFileSync(path.join(dir, "fiche-correction.md"), fiche(d));
+    const fpath = path.join(dir, "fiche-correction.md");
+    fs.writeFileSync(fpath, fiche(d));
     console.log("→ " + path.relative(ROOT, dir));
+    const audio = (d.files || []).filter(f => /^audio\//.test(f.type || "") || /\.(webm|m4a|mp4|ogg|opus|wav|mp3|aac)$/i.test(f.name));
+    if (d.kind === "oral" && audio.length) {
+      if (!fs.existsSync(PY)) { console.log("  analyse audio non installée (" + PY + ")"); continue; }
+      console.log("  analyse audio de " + audio.length + " enregistrement(s), sur cet ordinateur…");
+      const r = spawnSync(PY, ["-I", path.join(__dirname, "analyse_oral.py"), dir], { encoding: "utf8", env: { ...process.env, PYTHONIOENCODING: "utf-8" } });
+      if (r.status === 0 && fs.existsSync(path.join(dir, "analyse-audio.md"))) {
+        fs.appendFileSync(fpath, "\n## Analyse audio (fluidité)\n\nVoir `analyse-audio.md` : débit, pauses, tics de langage, répétitions, longueur des phrases, volume et intonation, avec la transcription annotée. Intègre-la aux critères « clarté », « structure » et « respect du temps », et à la ligne « Fluidité » du commentaire.\n");
+        console.log("  → analyse-audio.md");
+      } else console.log("  analyse audio impossible : " + String(r.stderr || r.error || "").trim().split("\n").slice(-2).join(" "));
+    }
   }
 }
 async function cmdNoter(id, file) {
