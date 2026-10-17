@@ -124,6 +124,9 @@
       if (user) watch(key); else if (hasFlag()) start();
     },
     changed: function (key) { if (apps[key] && apps[key].ref) push(key); },
+    // Reprend la session enregistrée sur l'appareil sans appli attachée (page d'accueil).
+    resume: function () { if (hasFlag()) start().catch(function () { }); },
+    connected: hasFlag,
     onStatus: function (f) { listeners.push(f); f(api.status()); },
     status: function () { return { state: state, error: err, user: user ? (user.displayName || (user.email || "").split("@")[0]) : "" }; },
     label: function () {
@@ -150,6 +153,7 @@
       function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
       function draw(msgText) {
         var s = api.status();
+        if (!s.user && state === "connexion" && hasFlag()) { el.innerHTML = '<p class="small muted">Connexion à ton compte…</p>'; return; }
         if (s.user) {
           el.innerHTML = '<div class="sync-box"><p>Connecté en tant que <b>' + esc(s.user) + '</b>. Ta progression est ' + esc(api.label()) + '.</p>' +
             '<p class="small muted">Connecte-toi avec le même identifiant sur tes autres appareils : tout se synchronise en direct, et hors connexion les changements partent dès le retour du réseau.</p>' +

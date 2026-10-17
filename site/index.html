@@ -61,13 +61,52 @@ body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(
 .theme-btn:hover { border-color: var(--qcm); color: var(--qcm); }
 .theme-btn:focus-visible { outline: 2px solid var(--qcm); outline-offset: 2px; }
 .theme-btn svg { width: 18px; height: 18px; }
+[hidden] { display: none !important; }
+/* Entrée : connexion au compte (synchro entre appareils) avant les applis */
+.gate { margin-block: auto; display: flex; flex-direction: column; gap: 18px; }
+.gate h2 { margin: 0; font-family: var(--f-display); font-size: 2rem; line-height: 1.15; font-weight: 700; }
+.gate .lede { margin: 6px 0 0; color: var(--muted); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field span { font-size: .875rem; font-weight: 600; }
+.input { min-height: 44px; width: 100%; min-width: 0; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font: inherit; }
+.input:focus { outline: none; border-color: var(--qcm); box-shadow: 0 0 0 3px var(--qcm-soft); }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn { min-height: 44px; padding: 0 18px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; }
+.btn:hover { border-color: var(--qcm); }
+.btn.pri { background: var(--qcm); border-color: var(--qcm); color: var(--surface); }
+.btn:disabled { opacity: .55; cursor: default; }
+.btn:focus-visible, .link:focus-visible { outline: 2px solid var(--qcm); outline-offset: 2px; }
+.small { font-size: .875rem; } .muted { color: var(--muted); }
+.err { color: #B8322A; font-weight: 600; }
+:root[data-theme="dark"] .err { color: #FF8A7D; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .err { color: #FF8A7D; } }
+.link { align-self: flex-start; border: 0; background: none; padding: 4px 0; color: var(--muted); font: inherit; font-size: .9375rem; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.link:hover { color: var(--ink); }
+.acct { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); font-size: .9375rem; }
+.acct .btn { min-height: 36px; padding: 0 12px; font-size: .875rem; }
 </style>
 </head>
 <body>
 <main class="wrap">
   <div class="top"><button type="button" class="theme-btn" id="theme" aria-label="Changer de thème"></button></div>
   <h1 class="sr">Prépa DGFiP 2027</h1>
-  <div class="apps">
+  <section class="gate" id="gate" hidden aria-labelledby="gate-t">
+    <div>
+      <h2 id="gate-t">Prépa DGFiP 2027</h2>
+      <p class="lede">Connecte-toi pour retrouver ta progression sur tous tes appareils : QCM, atelier QRC, écrit et oral.</p>
+    </div>
+    <form class="card" id="login" novalidate>
+      <label class="field"><span>Identifiant</span><input class="input" name="u" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
+      <label class="field"><span>Mot de passe</span><input class="input" name="p" type="password" autocomplete="current-password" required minlength="6"></label>
+      <p class="small err" id="login-err" role="alert" hidden></p>
+      <div class="btns"><button type="submit" class="btn pri" data-k="in">Se connecter</button><button type="button" class="btn" data-k="up">Créer le compte</button></div>
+      <p class="small muted">Première visite : choisis un identifiant et un mot de passe (6 caractères minimum), puis « Créer le compte ». Pas de récupération par e-mail : note bien ton mot de passe.</p>
+    </form>
+    <button type="button" class="link" id="skip">Continuer sans compte (progression sur cet appareil seulement)</button>
+  </section>
+  <div class="acct" id="acct" hidden></div>
+  <div class="apps" id="apps">
     <a class="app" href="qcm/">
       <img src="qcm.svg" alt="">
       <h2>QCM DGFiP 2027</h2>
@@ -104,6 +143,45 @@ body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(
   show();
   b.addEventListener("click", function () { var v = cur() === "dark" ? "light" : "dark"; root.setAttribute("data-theme", v); try { localStorage.setItem(K, v); } catch (e) {} show(); });
   if (mq && mq.addEventListener) mq.addEventListener("change", show);
+})();
+</script>
+<script src="sync.js"></script>
+<script>
+// Entrée du site : formulaire de connexion tant qu'aucun compte n'est connecté (sauf choix « sans compte »),
+// puis les applis avec un bandeau de compte. La connexion vaut pour toutes les applis du site.
+(function () {
+  var SKIP = "prepa-sans-compte", gate = document.getElementById("gate"), apps = document.getElementById("apps"), acct = document.getElementById("acct");
+  var form = document.getElementById("login"), err = document.getElementById("login-err"), mode = "";
+  function skipped() { try { return localStorage.getItem(SKIP) === "1"; } catch (e) { return false; } }
+  function setSkip(v) { try { if (v) localStorage.setItem(SKIP, "1"); else localStorage.removeItem(SKIP); } catch (e) {} }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function draw() {
+    var S = window.PrepaSync, s = S ? S.status() : { state: "local", user: "" };
+    var m = s.user ? "in" : (S && s.state === "connexion" && S.connected()) ? "wait" : (skipped() || !S) ? "local" : "gate";
+    if (m === mode) return; mode = m;
+    gate.hidden = m !== "gate"; apps.hidden = m === "gate" || m === "wait"; acct.hidden = m === "gate";
+    if (m === "in") acct.innerHTML = '<span>Connecté : <b>' + esc(s.user) + '</b> · progression synchronisée</span><button type="button" class="btn" id="out">Se déconnecter</button>';
+    else if (m === "wait") acct.innerHTML = '<span class="muted">Connexion à ton compte…</span>';
+    else if (m === "local") acct.innerHTML = '<span class="muted">Progression sur cet appareil seulement</span>' + (S ? '<button type="button" class="btn" id="relog">Se connecter</button>' : '');
+    else { err.hidden = true; setTimeout(function () { form.elements.u.focus(); }, 0); }
+  }
+  function busy(v) { form.querySelectorAll("button").forEach(function (b) { b.disabled = v; }); }
+  function go(kind) {
+    var S = window.PrepaSync; if (!S) return;
+    busy(true); err.hidden = true;
+    (kind === "up" ? S.signUp : S.signIn)(form.elements.u.value, form.elements.p.value)
+      .then(function () { setSkip(false); form.elements.p.value = ""; busy(false); draw(); },
+            function (m) { busy(false); err.textContent = m; err.hidden = false; });
+  }
+  form.addEventListener("submit", function (e) { e.preventDefault(); go("in"); });
+  form.querySelector('[data-k="up"]').addEventListener("click", function () { go("up"); });
+  document.getElementById("skip").addEventListener("click", function () { setSkip(true); draw(); });
+  acct.addEventListener("click", function (e) {
+    if (e.target.id === "out") { e.target.disabled = true; window.PrepaSync.signOut().then(function () { setSkip(false); draw(); }); }
+    if (e.target.id === "relog") { setSkip(false); draw(); }
+  });
+  if (window.PrepaSync) { PrepaSync.onStatus(draw); PrepaSync.resume(); }
+  draw();
 })();
 </script>
 <script>if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(function () {});</script>

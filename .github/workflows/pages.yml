@@ -42,6 +42,7 @@ jobs:
         run: |
           mkdir -p _site/qcm _site/qrc _site/atelier
           cp site/index.html site/manifest.webmanifest site/sw.js _site/
+          cp commun/sync.js _site/sync.js
           cp -r site/icones _site/icones
           cp -r site/docs _site/docs
           cp "07 Charte DA/logos/qcm.svg" "07 Charte DA/logos/qrc.svg" _site/
