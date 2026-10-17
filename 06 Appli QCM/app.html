@@ -477,6 +477,66 @@ html { background: var(--paper); }
 .exambar b { font-family: var(--f-display); font-size: 1.1rem; font-weight: 600; }
 .exambar .clock:has(.low) { background: var(--bad); border-color: var(--bad); color: var(--paper); }
 .exambar .confirm { color: var(--ink); }
+/* Courbe des notes : trait 2 px, points 8 px cerclés de la surface, grille discrète, infobulle au survol ou au toucher */
+.chart { position: relative; }
+.chart svg { display: block; max-width: 100%; height: auto; overflow: visible; }
+.chart .g { stroke: var(--rule); stroke-width: 1; }
+.chart .g.mid { stroke: var(--line); stroke-dasharray: 3 3; }
+.chart .ax { fill: var(--muted); font-family: var(--f-num); font-size: 11px; }
+.chart .ln { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .pt { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+.chart .last { fill: var(--ink); font-family: var(--f-num); font-size: 12px; font-weight: 600; }
+.chart .hit { fill: transparent; cursor: pointer; outline: none; }
+.chart .hit:focus-visible { stroke: var(--accent); stroke-width: 2; }
+.chart .cross { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 3; }
+.chart .tip { position: absolute; transform: translate(-50%, calc(-100% - 12px)); pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--line); box-shadow: var(--shadow-lift); border-radius: var(--r-sm); padding: 6px 10px; font-size: var(--t-xs); line-height: 1.45; white-space: nowrap; z-index: 2; }
+.chips button:disabled { opacity: .45; cursor: default; }
+.item .head .badge svg { width: 12px; height: 12px; }
+/* Compte (commun/sync.js) */
+.sync-box { display: flex; flex-direction: column; gap: var(--s3); }
+.sync-err { color: var(--bad); font-weight: 600; }
+/* Examen en cours : tient dans l'écran, cocher une case passe à la question suivante */
+.page.fit .exambar { position: static; padding: 6px 8px 6px 14px; }
+.xgrid { display: grid; gap: var(--s4); grid-template-columns: minmax(0, 1fr) 300px; align-items: start; }
+.xgrid > .xq { gap: var(--s3); padding: var(--s4) var(--s5); }
+.xq .opt { min-height: 44px; padding-block: 5px; }
+.xq .opts { gap: 6px; }
+.xomr .omr { grid-template-columns: repeat(auto-fill, minmax(32px, 1fr)); gap: 5px; }
+.xomr .omr button { height: 32px; }
+.xsheet-btn, .xback { display: none !important; }
+.xflag svg { width: 16px; height: 16px; }
+.xflag.on { background: var(--hl); color: var(--hl-ink); border-color: var(--warn); }
+@media (max-width: 400px) { .hide-xs { display: none; } }
+@media (max-width: 879px) {
+  .xgrid { grid-template-columns: minmax(0, 1fr); }
+  .xgrid > .xomr { display: none; }
+  .xgrid.show-sheet > .xomr { display: flex; }
+  .xgrid.show-sheet > .xq { display: none; }
+  .xsheet-btn, .xback { display: inline-flex !important; }
+  .xq .question { font-size: var(--t-base); }
+  .exambar small { display: none; }
+  .xgrid > .xq { padding: var(--s3) var(--s4); }
+}
+/* Texte resserré pour rester sans défilement : énoncés très longs (dense) sur mobile, toutes les questions sur un écran peu haut */
+@media (max-width: 879px), (max-height: 740px) {
+  .xq.dense .question, .xq.dense .opt { font-size: var(--t-sm); line-height: 1.35; }
+  .xq.dense .opt { min-height: 40px; padding-block: 4px; }
+  .xq.dense .opts { gap: 4px; }
+}
+@media (max-height: 740px) {
+  .xq .question, .xq .opt { font-size: var(--t-sm); line-height: 1.35; }
+  .xq .opt { min-height: 40px; padding-block: 4px; }
+  .xq .opts { gap: 4px; }
+}
+/* Mobile : pendant l'examen, la barre du bas disparaît (le logo ramène à l'accueil, l'examen reste en cours) */
+@media (max-width: 719px) {
+  body.xrun .bottomnav { display: none; }
+  body.xrun { padding-bottom: env(safe-area-inset-bottom, 0px); }
+}
+@media (max-width: 519px) {
+  .page.fit .exambar > .stack { display: none; }
+  .page.fit .exambar > .row { width: 100%; justify-content: space-between; }
+}
 
 /* Formulaires */
 label.f { display: flex; flex-direction: column; gap: 6px; font-size: var(--t-sm); font-weight: 600; }
@@ -537,7 +597,7 @@ input[type=checkbox] { width: 18px; height: 18px; }
 <div id="toast" class="toast" hidden></div>
 <script>
 // Retour à l'accueil : seulement sur le site publié
-(function () { var h = document.getElementById("home"); if (h && /github\.io$/.test(location.hostname)) h.hidden = false; })();
+(function () { var h = document.getElementById("home"); if (h && /^https?:$/.test(location.protocol) && /\/(qcm|qrc|atelier)\/(index\.html)?$/.test(location.pathname)) h.hidden = false; })();
 // Bascule clair / sombre, mémorisée (clé commune au QCM, à l'atelier QRC et à l'accueil)
 (function () {
   var K = "prepa-theme", root = document.documentElement, b = document.getElementById("theme");
@@ -554,6 +614,7 @@ input[type=checkbox] { width: 18px; height: 18px; }
 })();
 </script>
 
+<script>/*__SYNC__*/</script>
 <script>
 const BANK = [];
 /*__BANK__*/
@@ -590,6 +651,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">"
 const pct = (a,b) => b ? Math.round(a*1000/b)/10 : null;
 const fmtPct = v => v==null ? "—" : (Math.round(v)) + " %";
 const fmtNum = (v,d=2) => (Math.round(v*Math.pow(10,d))/Math.pow(10,d)).toLocaleString("fr-FR");
+const fmtDur = ms => { const s = Math.round((ms||0)/1000); return s < 60 ? s+" s" : Math.floor(s/60)+" min "+String(s%60).padStart(2,"0"); };
 function dayNum(d=new Date()){ return Math.floor((d.getTime() - d.getTimezoneOffset()*60000)/86400000); }
 function hash(str){ let h=2166136261; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619);} return h>>>0; }
 function rng(seed){ let s=seed>>>0||1; return ()=>{ s^=s<<13; s>>>=0; s^=s>>17; s^=s<<5; s>>>=0; return s/4294967296; }; }
@@ -618,6 +680,7 @@ const ICO = {
   arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
   link:'<path d="M9.5 14.5 14.5 9.5M10 6.5 11.5 5a4 4 0 0 1 5.5 5.5L15.5 12M14 17.5 12.5 19A4 4 0 0 1 7 13.5L8.5 12"/>',
   clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  flag:'<path d="M5.5 21V4.5M5.5 4.5h11.5l-2.2 4 2.2 4H5.5"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
   info:'<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.8v.2"/>',
   sliders:'<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>'
@@ -657,17 +720,16 @@ function normalize(s){
 function serialize(){
   const cards = {}; for(const [id,r] of Object.entries(S.cards)) cards[id] = packRec(r);
   let out = JSON.stringify({...S, cards});
-  if(out.length > 230000){ // garde-fou de taille du document du compte
+  if(out.length > 800000){ // garde-fou de taille du document du compte (Firestore : 1 Mo)
     S.exams = S.exams.slice(0,20); S.exams.forEach((x,i)=>{ if(i>=2){ delete x.ids; delete x.ans; } });
     out = JSON.stringify({...S, cards});
   }
   return out;
 }
-let saveTimer=null;
 function save(remoteToo=true){
   S.u = Date.now();
   try { localStorage.setItem(KEY, serialize()); } catch(e){}
-  if(remoteToo){ clearTimeout(saveTimer); saveTimer=setTimeout(pushRemote, 1500); }
+  if(remoteToo && window.PrepaSync) PrepaSync.changed("qcm");
 }
 // Fusion appareil / compte : carte par carte (révision la plus récente), examens et cartes perso par identifiant.
 function merge(a, b){
@@ -686,37 +748,22 @@ function merge(a, b){
   return out;
 }
 
-// ---------- Stockage du compte (capacité db) ----------
-const remote = {db:null, uid:null, busy:false, again:false, status:"local"};
-async function initRemote(){
-  try{
-    if(!window.claude || !window.claude.use) return;
-    const [db,user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
-    if(!db || !user) return;
-    const uid = await user.id();
-    if(!uid) return;
-    remote.db = db; remote.uid = uid;
-    const snap = await db.doc("data/users/"+uid+"/state").get();
-    if(snap.exists){
-      const r = snap.data();
-      const body = r && r.json ? JSON.parse(r.json) : null;
-      if(body){ S = merge(S, normalize(body)); try{ localStorage.setItem(KEY, serialize()); }catch(e){} session=null; }
+// ---------- Synchro du compte (commun/sync.js) ----------
+// L'examen en cours reste propre à l'appareil : il n'est ni envoyé ni remplacé par la synchro.
+function initSync(){
+  if(!window.PrepaSync) return;
+  PrepaSync.attach("qcm", {
+    get: () => { const o = JSON.parse(serialize()); delete o.run; return o; },
+    merge: o => {
+      const run = S.run;
+      S = merge(S, normalize(o)); S.run = run;
+      try { localStorage.setItem(KEY, serialize()); } catch(e){}
+      invalidate();
+      const a = document.activeElement;
+      if(a && a.closest && a.closest("input,textarea,select")) renderPills(); else render();
     }
-    remote.status = "compte";
-    await pushRemote();
-    render();
-  }catch(e){ remote.status = "local"; renderPills(); }
-}
-async function pushRemote(){
-  if(!remote.db) return;
-  if(remote.busy){ remote.again = true; return; }
-  remote.busy = true;
-  try{
-    await remote.db.doc("data/users/"+remote.uid+"/state").set({json: serialize(), u: S.u});
-    remote.status = "compte";
-  }catch(e){ remote.status = (e && e.code==="quota_exceeded") ? "plein" : "local"; }
-  remote.busy = false; renderPills();
-  if(remote.again){ remote.again=false; pushRemote(); }
+  });
+  PrepaSync.onStatus(() => renderPills());
 }
 
 // ---------- Cartes ----------
@@ -819,7 +866,7 @@ function renderTabs(){
 function segHtml(){
   return [["insp","Insp.","Inspecteur"],["ctrl","Contr.","Contrôleur"]].map(([k,s,l]) => `<button type="button" data-mod="${k}" aria-pressed="${S.set.mod===k}" title="Module ${l.toLowerCase()}">${s}</button>`).join("");
 }
-function saveStatus(){ return remote.status==="compte" ? "sur ton compte" : remote.status==="plein" ? "stockage du compte plein, cet appareil seulement" : "sur cet appareil"; }
+function saveStatus(){ return window.PrepaSync ? PrepaSync.label() : "sur cet appareil"; }
 function renderPills(){
   const e = EXAMS[S.set.mod==="ctrl"?"ctrl":"insp"];
   const d = daysTo(e.date);
@@ -831,7 +878,8 @@ function renderPills(){
 function render(){
   invalidate(); renderTabs();
   const m = $("#main");
-  m.classList.toggle("fit", tab==="jour");
+  m.classList.toggle("fit", tab==="jour" || (tab==="examen" && !!S.run));
+  document.body.classList.toggle("xrun", tab==="examen" && !!S.run);
   ({jour:viewJour, examen:viewExam, progres:viewProgres, banque:viewBanque, plus:viewPlus, ajout:viewAjout, reglages:viewReglages})[tab](m);
   renderPills();
 }
@@ -928,6 +976,18 @@ function persistSession(){
 // ----- Examen blanc -----
 let tick = null;
 let lastResult = null;
+let xsheet = false; // mobile : feuille de réponse affichée à la place de la question
+// Cocher une case passe à la question suivante ; recliquer la case cochée la décoche et reste sur place.
+function xAnswer(v){
+  const R = S.run; if(!R) return;
+  const id = R.ids[R.pos];
+  if(R.ans[id]===v){ delete R.ans[id]; save(); render(); return; }
+  const full = () => R.ids.every(i=>R.ans[i]!=null), was = full();
+  R.ans[id] = v; save(); render();
+  if(!was && full()) toast("Toutes les questions ont une réponse : tu peux rendre la copie.");
+  const pos = R.pos, rid = R.id;
+  if(pos < R.ids.length-1) setTimeout(()=>{ if(S.run && S.run.id===rid && S.run.pos===pos && tab==="examen"){ S.run.pos++; save(); render(); } }, 250);
+}
 function buildExam(kind){
   const E = EXAMS[kind];
   const usable = allCards().filter(c=>!c.d && !c.mine && (S.set.act || !c.act));
@@ -943,12 +1003,25 @@ function buildExam(kind){
 }
 function startExam(kind){
   const E = EXAMS[kind];
-  lastResult = null;
-  S.run = {id:"x"+Date.now().toString(36), kind, ids:buildExam(kind), ans:{}, start:Date.now(), dur:E.min*60000, pos:0, pen:S.set.pen};
+  lastResult = null; xsheet = false;
+  S.run = {id:"x"+Date.now().toString(36), kind, ids:buildExam(kind), ans:{}, flag:{}, t:{}, start:Date.now(), dur:E.min*60000, pos:0, pen:S.set.pen};
   markSeen(S.run.ids);
   save(); render();
 }
 function examLeft(){ return S.run ? S.run.start + S.run.dur - Date.now() : 0; }
+// Temps par question : le temps écoulé entre deux affichages revient à la question qui était à l'écran (10 min au plus d'affilée).
+function xTime(){
+  const R = S.run; if(!R) return;
+  const now = Date.now(); R.t = R.t || {};
+  if(R.sid && R.since) R.t[R.sid] = (R.t[R.sid]||0) + Math.min(now - R.since, 600000);
+  R.since = now; R.sid = R.ids[R.pos];
+}
+function xFlag(){
+  const R = S.run; if(!R) return;
+  const id = R.ids[R.pos]; R.flag = R.flag || {};
+  if(R.flag[id]) delete R.flag[id]; else R.flag[id] = 1;
+  save(); render();
+}
 function fmtClock(ms){ ms=Math.max(0,ms); const s=Math.floor(ms/1000); const h=Math.floor(s/3600), mi=Math.floor((s%3600)/60), se=s%60; return (h?h+" h ":"")+String(mi).padStart(2,"0")+" min "+String(se).padStart(2,"0"); }
 function viewExam(m){
   clearInterval(tick);
@@ -977,16 +1050,19 @@ function viewExam(m){
     </div>
   </article>
   ${last.length?`<article class="sheet"><h2 class="h-sec">Derniers examens</h2><div class="tw"><table class="t">
-    <thead><tr><th>Date</th><th>Module</th><th class="num">Justes</th><th class="num">Fausses</th><th class="num">Ann</th><th class="num">Note / 20</th></tr></thead>
-    <tbody>${last.map(x=>`<tr><td>${new Date(x.at).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</td><td>${EXAMS[x.kind].l}</td><td class="num">${x.ok}</td><td class="num">${x.ko}</td><td class="num">${x.ab}</td><td class="num"><b>${fmtNum(x.note,1)}</b></td></tr>`).join("")}</tbody></table></div></article>`:""}`;
+    <thead><tr><th>Date</th><th>Module</th><th class="num">Justes</th><th class="num">Fausses</th><th class="num">Ann</th><th class="num hide-sm">Temps / q.</th><th class="num">Note / 20</th></tr></thead>
+    <tbody>${last.map(x=>`<tr${x.ids?` class="click" data-xrev="${x.id}" tabindex="0" title="Revoir la copie"`:""}><td>${new Date(x.at).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</td><td>${EXAMS[x.kind].l}</td><td class="num">${x.ok}</td><td class="num">${x.ko}</td><td class="num">${x.ab}</td><td class="num hide-sm">${x.tq?fmtDur(x.tq):"—"}</td><td class="num"><b>${fmtNum(x.note,1)}</b></td></tr>`).join("")}</tbody></table></div>
+    ${last.some(x=>x.ids)?`<p class="small muted">Clique sur un des 5 derniers examens pour revoir la copie.</p>`:""}</article>`:""}`;
 }
 function viewExamRun(m){
   const R = S.run; const E = EXAMS[R.kind];
   if(examLeft()<=0) return finishExam(true);
   const id = R.ids[R.pos]; const c = cardMap().get(id);
   if(!c){ R.ids.splice(R.pos,1); R.pos=Math.min(R.pos,R.ids.length-1); save(); return viewExamRun(m); }
+  xTime();
   const perm = permFor(id, R.id);
   const a = R.ans[id];
+  const fl = !!(R.flag && R.flag[id]);
   const nAns = R.ids.filter(i=>R.ans[i]!=null && R.ans[i]>=0).length;
   const nAb = R.ids.filter(i=>R.ans[i]===-1).length;
   m.innerHTML = `
@@ -1000,23 +1076,27 @@ function viewExamRun(m){
       <span id="endbox"><button class="btn sm" data-act="endask">Rendre la copie</button></span>
     </div>
   </div>
-  <div class="split">
-    <article class="sheet">
-      <div class="row" style="gap:6px"><span class="badge mono out">Q${R.pos+1}</span><span class="badge acc">${esc(THEMES[c.t].l)}</span></div>
+  <div class="xgrid${xsheet?" show-sheet":""}">
+    <article class="sheet xq${c.q.length + c.o.join("").length > 300 ? " dense" : ""}">
+      <div class="row between">
+        <div class="row" style="gap:6px"><span class="badge mono out">Q${R.pos+1} / ${R.ids.length}</span><span class="badge acc">${esc(THEMES[c.t].l)}</span></div>
+        <div class="row" style="gap:6px">
+          <button class="btn sm xflag${fl?" on":""}" data-act="xflag" aria-pressed="${fl}" title="Signaler la question pour la revoir (touche R)">${ico("flag")}<span class="hide-xs">À revoir</span></button>
+          <button class="btn sm xsheet-btn" data-act="xsheet">Feuille <span class="mono">${nAns+nAb}/${R.ids.length}</span></button>
+          <button class="btn sm" data-xnav="-1" ${R.pos===0?"disabled":""}>Précédente</button>
+          <button class="btn sm" data-xnav="1" ${R.pos===R.ids.length-1?"disabled":""}>Suivante</button>
+        </div>
+      </div>
       <p class="question">${esc(c.q)}</p>
       <div class="opts">
         ${perm.map((oi,k)=>`<button class="opt ${a===k?"chosen":""}" data-xpick="${k}" aria-pressed="${a===k}"><span class="box">${k+1}</span><span class="t">${esc(c.o[oi])}</span><span class="lab">${a===k?"Cochée":""}</span></button>`).join("")}
         <button class="opt ann ${a===-1?"chosen":""}" data-xpick="-1" aria-pressed="${a===-1}"><span class="box">Ann</span><span class="t">Je m'abstiens</span><span class="lab">${a===-1?"Cochée":""}</span></button>
       </div>
-      <div class="row between">
-        <button class="btn" data-xnav="-1" ${R.pos===0?"disabled":""}>Précédente</button>
-        <button class="btn pri" data-xnav="1" ${R.pos===R.ids.length-1?"disabled":""}>Suivante ${ico("arrow")}</button>
-      </div>
     </article>
-    <aside class="sheet tight">
-      <div class="row between"><h2 class="h-card">Feuille de réponse</h2><span class="small muted mono">${nAns+nAb} / ${R.ids.length}</span></div>
-      <div class="omr">${R.ids.map((i,k)=>`<button class="${R.ans[i]>=0?"done":R.ans[i]===-1?"abst":""} ${k===R.pos?"cur":""}" data-xgo="${k}" aria-label="Question ${k+1}">${k+1}</button>`).join("")}</div>
-      <div class="legend"><span><i class="done"></i>cochée</span><span><i class="abst"></i>abstention</span><span><i></i>vide</span></div>
+    <aside class="sheet tight xomr">
+      <div class="row between"><h2 class="h-card">Feuille de réponse</h2><span class="row" style="gap:8px"><span class="small muted mono">${nAns+nAb} / ${R.ids.length}</span><button class="btn sm xback" data-act="xsheet">Retour</button></span></div>
+      <div class="omr">${R.ids.map((i,k)=>`<button class="${R.ans[i]>=0?"done":R.ans[i]===-1?"abst":""} ${k===R.pos?"cur":""} ${R.flag&&R.flag[i]?"flag":""}" data-xgo="${k}" aria-label="Question ${k+1}${R.flag&&R.flag[i]?", à revoir":""}">${k+1}</button>`).join("")}</div>
+      <div class="legend"><span><i class="done"></i>cochée</span><span><i class="abst"></i>abstention</span><span><i></i>vide</span><span><i class="flag"></i>à revoir</span></div>
     </aside>
   </div>`;
   tick = setInterval(()=>{ const t=$("#timer"); if(!t || !S.run){ clearInterval(tick); return; } const left=examLeft(); t.textContent=fmtClock(left); t.classList.toggle("low", left<5*60000); if(left<=0){ clearInterval(tick); finishExam(true); } }, 1000);
@@ -1024,6 +1104,7 @@ function viewExamRun(m){
 function finishExam(timeout){
   const R = S.run; if(!R) return;
   clearInterval(tick);
+  xTime();
   let ok=0, ko=0, ab=0; const by={}; const wrong=[];
   for(const id of R.ids){
     const c = cardMap().get(id); if(!c) continue;
@@ -1036,11 +1117,13 @@ function finishExam(timeout){
   }
   const raw = ok - R.pen*ko;
   const note = Math.max(0, raw) / R.ids.length * 20;
-  const res = {id:R.id, kind:R.kind, at:Date.now(), n:R.ids.length, ok, ko, ab, pen:R.pen, raw, note, by, wrong, timeout:!!timeout, ids:R.ids, ans:R.ans};
+  const tt = R.ids.reduce((s,id)=>s+((R.t||{})[id]||0), 0);
+  const res = {id:R.id, kind:R.kind, at:Date.now(), n:R.ids.length, ok, ko, ab, pen:R.pen, raw, note, by, wrong, timeout:!!timeout,
+    dur: Math.min(Date.now(), R.start+R.dur) - R.start, tq: Math.round(tt / R.ids.length), ids:R.ids, ans:R.ans, t:R.t||{}, flag:Object.keys(R.flag||{})};
   S.exams.unshift(res); S.exams = S.exams.slice(0,40);
-  S.exams.forEach((x,i)=>{ if(i>=5){ delete x.ids; delete x.ans; } });
+  S.exams.forEach((x,i)=>{ if(i>=5){ delete x.ids; delete x.ans; delete x.t; delete x.flag; } });
   S.run = null; save();
-  lastResult = res; tab="examen"; render();
+  lastResult = res; revF = res.ko ? "ko" : "all"; tab="examen"; render();
 }
 function viewExamResult(m, x){
   const E = EXAMS[x.kind];
@@ -1056,6 +1139,7 @@ function viewExamResult(m, x){
     <div class="stat"><span>Points bruts</span><b>${fmtNum(x.raw,2)} <small>/ ${x.n}</small></b><span>pénalité −${fmtNum(x.pen)}</span></div>
     <div class="stat"><span>Justes</span><b>${x.ok}</b><span>${fmtPct(pct(x.ok,x.n))} des questions</span></div>
     <div class="stat"><span>Fausses · Ann</span><b>${x.ko} <small>· ${x.ab}</small></b><span>${x.ko?"à revoir en priorité":"aucune erreur"}</span></div>
+    ${x.tq?`<div class="stat"><span>Temps moyen</span><b>${fmtDur(x.tq)}</b><span>par question · ${fmtDur(x.dur)} au total</span></div>`:""}
   </div>
   <article class="sheet">
     <h2 class="h-sec">Par thème</h2>
@@ -1064,8 +1148,27 @@ function viewExamResult(m, x){
       <tbody>${rows}</tbody></table></div>
     <div class="row"><button class="btn" data-act="examhome">Retour</button></div>
   </article>
-  ${x.ids?`<article class="sheet"><h2 class="h-sec">Correction</h2><div class="stack" style="gap:var(--s2)">${x.ids.map((id,k)=>{ const c=cardMap().get(id); if(!c) return ""; const a=x.ans[id]; const perm=permFor(id,x.id); const st = a==null||a===-1 ? "abst" : perm[a]===c.a ? "ok" : "ko";
-    return `<div class="item"><button class="head" data-toggle><span class="badge ${st==="ok"?"ok":st==="ko"?"bad":"warn"}">${ico(st==="ok"?"check":st==="ko"?"cross":"info")}Q${k+1} · ${st==="ok"?"juste":st==="ko"?"fausse":"abstention"}</span> ${esc(c.q)}</button><div class="body" hidden><ol>${perm.map((oi,j)=>`<li class="${oi===c.a?"good":""}">${esc(c.o[oi])}${oi===c.a?' <span class="badge ok">Bonne réponse</span>':""}${a===j&&oi!==c.a?' <span class="badge bad">Ta réponse</span>':""}</li>`).join("")}</ol>${explHtml(c)}</div></div>`; }).join("")}</div></article>`:""}`;
+  ${x.ids?reviewHtml(x):`<article class="sheet tight"><p class="small muted">Le détail question par question n'est conservé que pour les 5 derniers examens.</p></article>`}`;
+}
+// Revue de la copie : question par question, filtrable, avec le temps passé et les questions signalées.
+let revF = "all";
+function reviewHtml(x){
+  const flags = new Set(x.flag||[]);
+  const items = x.ids.map((id,k)=>{ const c=cardMap().get(id); if(!c) return null; const a=x.ans[id]; const perm=permFor(id,x.id);
+    return {id,k,c,a,perm,st: a==null||a===-1 ? "abst" : perm[a]===c.a ? "ok" : "ko", fl: flags.has(id), t:(x.t||{})[id]||0}; }).filter(Boolean);
+  const F = [["all","Toutes",items.length],["ko","Fausses",items.filter(i=>i.st==="ko").length],["abst","Abstentions",items.filter(i=>i.st==="abst").length],["flag","À revoir",items.filter(i=>i.fl).length],["ok","Justes",items.filter(i=>i.st==="ok").length]];
+  const shown = items.filter(i=> revF==="all" || (revF==="flag" ? i.fl : i.st===revF));
+  const open = revF!=="all" && revF!=="ok";
+  const slow = items.filter(i=>i.t).sort((p,q)=>q.t-p.t)[0];
+  return `<article class="sheet">
+    <div class="row between"><h2 class="h-sec">Revoir la copie</h2>${slow?`<span class="small muted">Plus long : Q${slow.k+1} (${fmtDur(slow.t)})</span>`:""}</div>
+    <div class="chips" role="group" aria-label="Filtrer les questions">${F.map(([k,l,n])=>`<button data-revf="${k}" aria-pressed="${revF===k}" ${n?"":"disabled"}>${l} <span class="mono">${n}</span></button>`).join("")}</div>
+    <div class="stack" style="gap:var(--s2)">${shown.length ? shown.map(i=>`<div class="item"><button class="head" data-toggle>
+      <span class="badge ${i.st==="ok"?"ok":i.st==="ko"?"bad":"warn"}">${ico(i.st==="ok"?"check":i.st==="ko"?"cross":"info")}Q${i.k+1} · ${i.st==="ok"?"juste":i.st==="ko"?"fausse":"abstention"}</span>
+      ${i.fl?`<span class="badge warn">${ico("flag")}à revoir</span>`:""}${i.t?`<span class="badge mono out">${fmtDur(i.t)}</span>`:""}
+      <span class="badge acc">${esc(THEMES[i.c.t].s)}</span> ${esc(i.c.q)}</button>
+      <div class="body"${open?"":" hidden"}><ol>${i.perm.map((oi,j)=>`<li class="${oi===i.c.a?"good":""}">${esc(i.c.o[oi])}${oi===i.c.a?' <span class="badge ok">Bonne réponse</span>':""}${i.a===j&&oi!==i.c.a?' <span class="badge bad">Ta réponse</span>':""}</li>`).join("")}</ol>${explHtml(i.c)}</div></div>`).join("") : `<p class="empty">Aucune question dans ce filtre.</p>`}</div>
+  </article>`;
 }
 
 // ----- Progrès -----
@@ -1102,7 +1205,9 @@ function viewProgres(m){
     <div class="stat"><span>Réussite en révision</span><b>${fmtPct(pct(totalOk,totalAns))}</b><span>${plural(totalAns,"réponse")}</span></div>
     <div class="stat"><span>Questions vues</span><b>${seen} <small>/ ${tot}</small></b><span>${acq} acquises</span></div>
     ${x0?`<div class="stat"><span>Dernier examen blanc</span><b>${fmtNum(x0.note,1)} <small>/ 20</small></b>${x1?`<span class="delta ${x0.note>=x1.note?"up":"down"}">${x0.note>=x1.note?"+":"−"}${fmtNum(Math.abs(x0.note-x1.note),1)} pt</span>`:`<span>${EXAMS[x0.kind].l.toLowerCase()}</span>`}</div>`:""}
+    ${x0&&x0.tq?`<div class="stat"><span>Temps moyen par question</span><b>${fmtDur(x0.tq)}</b><span>dernier examen · ${fmtDur(EXAMS[x0.kind].min*60000/EXAMS[x0.kind].n)} disponibles</span></div>`:""}
   </div>
+  ${notesHtml()}
   <article class="sheet">
     <div class="row between">
       <h2 class="h-sec">Par thème</h2>
@@ -1129,7 +1234,61 @@ function viewProgres(m){
       <tbody>${st.map(s=>`<tr><td>${THEMES[s.t].s}</td><td class="num">${s.total}</td><td class="num">${s.seen}</td><td class="num">${s.acq}</td><td class="num">${s.n}</td><td class="r"><button class="btn sm" data-theme-session="${s.t}">30 questions</button></td></tr>`).join("")}</tbody>
     </table></div>
   </article>`;
+  drawNotes();
 }
+
+// Évolution des notes d'examen blanc : une courbe par module (sélecteur si les deux existent), données en tableau.
+let notesK = null;
+function notesData(){
+  const kinds = Object.keys(EXAMS).filter(k=>S.exams.some(x=>x.kind===k));
+  if(!kinds.length) return {kinds, k:null, list:[]};
+  let k = notesK && kinds.includes(notesK) ? notesK : (S.set.mod==="ctrl" ? "ctrl" : "insp");
+  if(!kinds.includes(k)) k = kinds[0];
+  return {kinds, k, list: S.exams.filter(x=>x.kind===k).slice().sort((a,b)=>a.at-b.at)};
+}
+function notesHtml(){
+  const {kinds, k, list} = notesData();
+  if(!list.length) return "";
+  const day = t => new Date(t).toLocaleDateString("fr-FR",{day:"numeric",month:"short"});
+  return `<article class="sheet">
+    <div class="row between"><h2 class="h-sec">Évolution des notes · ${EXAMS[k].l.toLowerCase()}</h2>
+      ${kinds.length>1?`<div class="chips" role="group" aria-label="Module">${kinds.map(q=>`<button data-notesk="${q}" aria-pressed="${q===k}">${EXAMS[q].l}</button>`).join("")}</div>`:""}</div>
+    ${list.length>1 ? `<div class="chart" id="notes-chart" role="img" aria-label="Notes des ${list.length} derniers examens blancs ${EXAMS[k].l.toLowerCase()}, de ${fmtNum(list[0].note,1)} à ${fmtNum(list[list.length-1].note,1)} sur 20"></div>`
+      : `<p class="small muted">Une seule note pour l'instant (${fmtNum(list[0].note,1)} / 20) : la courbe apparaîtra au deuxième examen blanc.</p>`}
+    <details><summary class="small">Voir les données</summary><div class="tw"><table class="t">
+      <thead><tr><th>Date</th><th class="num">Note / 20</th><th class="num">Justes</th><th class="num">Fausses</th><th class="num">Ann</th><th class="num">Temps / q.</th></tr></thead>
+      <tbody>${list.slice().reverse().map(x=>`<tr><td>${day(x.at)}</td><td class="num"><b>${fmtNum(x.note,1)}</b></td><td class="num">${x.ok}</td><td class="num">${x.ko}</td><td class="num">${x.ab}</td><td class="num">${x.tq?fmtDur(x.tq):"—"}</td></tr>`).join("")}</tbody></table></div></details>
+  </article>`;
+}
+function drawNotes(){
+  const el = $("#notes-chart"); if(!el) return;
+  const {list} = notesData(); const n = list.length; if(n<2) return;
+  const W = Math.max(280, el.clientWidth), H = 210, pl = 30, pr = 44, pt = 14, pb = 28;
+  const X = i => pl + i*(W-pl-pr)/(n-1), Y = v => pt + (1 - v/20)*(H-pt-pb);
+  const day = t => new Date(t).toLocaleDateString("fr-FR",{day:"numeric",month:"short"});
+  const ticks = n>4 ? [0, Math.round((n-1)/2), n-1] : [...Array(n).keys()];
+  const pts = list.map((x,i)=>[X(i), Y(Math.max(0,Math.min(20,x.note)))]);
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true">
+    ${[0,5,10,15,20].map(v=>`<line x1="${pl}" x2="${W-pr+8}" y1="${Y(v)}" y2="${Y(v)}" class="g${v===10?" mid":""}"/><text x="${pl-8}" y="${Y(v)+4}" class="ax" text-anchor="end">${v}</text>`).join("")}
+    ${ticks.map(i=>`<text x="${X(i)}" y="${H-8}" class="ax" text-anchor="${i===0?"start":i===n-1?"end":"middle"}">${day(list[i].at)}</text>`).join("")}
+    <line class="cross" x1="0" x2="0" y1="${pt}" y2="${H-pb}" visibility="hidden"/>
+    <polyline points="${pts.map(p=>p.join(",")).join(" ")}" class="ln"/>
+    ${pts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="4" class="pt"/>`).join("")}
+    <text x="${pts[n-1][0]+8}" y="${pts[n-1][1]+4}" class="last">${fmtNum(list[n-1].note,1)}</text>
+    ${pts.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="16" class="hit" data-i="${i}" tabindex="0" aria-label="${day(list[i].at)} : ${fmtNum(list[i].note,1)} sur 20"/>`).join("")}
+  </svg><div class="tip" hidden></div>`;
+  const tip = el.querySelector(".tip"), cross = el.querySelector(".cross");
+  const show = i => { const x = list[i], p = pts[i];
+    tip.innerHTML = `<b>${fmtNum(x.note,1)} / 20</b> · ${day(x.at)}<br>${x.ok} justes · ${x.ko} fausses · ${x.ab} ann${x.tq?`<br>${fmtDur(x.tq)} par question`:""}`;
+    tip.hidden = false; tip.style.left = Math.min(Math.max(p[0], 80), W-80)+"px"; tip.style.top = p[1]+"px";
+    cross.setAttribute("x1",p[0]); cross.setAttribute("x2",p[0]); cross.setAttribute("visibility","visible"); };
+  const hide = () => { tip.hidden = true; cross.setAttribute("visibility","hidden"); };
+  el.querySelectorAll(".hit").forEach(h => { const i = Number(h.dataset.i);
+    h.addEventListener("pointerenter", ()=>show(i)); h.addEventListener("focus", ()=>show(i));
+    h.addEventListener("pointerleave", hide); h.addEventListener("blur", hide); h.addEventListener("click", ()=>show(i)); });
+}
+let notesTimer = null;
+window.addEventListener("resize", () => { clearTimeout(notesTimer); notesTimer = setTimeout(()=>{ if(tab==="progres") drawNotes(); }, 150); });
 
 // ----- Banque -----
 let bq = {t:"all", f:"", flag:"", lim:40};
@@ -1237,7 +1396,11 @@ function viewReglages(m){
       <div class="row"><button class="btn" data-act="newday">Recomposer la session du jour</button></div>
     </article>
     <article class="sheet">
-      <div class="row between"><h2 class="h-sec">Sauvegarde</h2><span class="badge out">Progression enregistrée <span id="save-st"></span></span></div>
+      <div class="row between"><h2 class="h-sec">Compte et synchronisation</h2></div>
+      <div id="acct"></div>
+    </article>
+    <article class="sheet">
+      <div class="row between"><h2 class="h-sec">Sauvegarde manuelle</h2><span class="badge out">Progression enregistrée <span id="save-st"></span></span></div>
       <textarea id="exp" readonly aria-label="Sauvegarde" style="min-height:90px;font-family:var(--f-num);font-size:var(--t-xs)">${esc(serialize())}</textarea>
       <div class="row"><button class="btn" data-act="copy">Copier</button></div>
       <label class="f">Importer une sauvegarde<textarea id="imp"></textarea></label>
@@ -1248,6 +1411,7 @@ function viewReglages(m){
       <div id="resetbox"><button class="btn danger" data-act="resetask">Effacer toute ma progression</button></div>
     </article>
   </section>`;
+  if(window.PrepaSync) PrepaSync.mount($("#acct")); else $("#acct").innerHTML = `<p class="small muted">Synchronisation indisponible : progression enregistrée sur cet appareil.</p>`;
 }
 
 // ----- Plus -----
@@ -1264,14 +1428,18 @@ function viewPlus(m){
   </article>
   <div class="grid" style="--min:240px">
     <button type="button" class="sheet tight plus-link" data-go="ajout"><span class="ic">${ico("plus")}</span><b>Ajouter une carte</b><span>${plural(S.custom.length,"carte")}</span></button>
-    <button type="button" class="sheet tight plus-link" data-go="reglages"><span class="ic">${ico("sliders")}</span><b>Réglages</b><span>Session, pénalité, sauvegarde</span></button>
+    <button type="button" class="sheet tight plus-link" data-go="reglages"><span class="ic">${ico("sliders")}</span><b>Réglages et compte</b><span>Session, pénalité, synchronisation</span></button>
   </div>`;
 }
 
 // ---------- Événements ----------
 document.addEventListener("click", e => {
+  const tr = e.target.closest("tr[data-xrev]");
+  if(tr){ const x = S.exams.find(z=>z.id===tr.dataset.xrev); if(x){ lastResult = x; revF = x.ko ? "ko" : "all"; render(); window.scrollTo({top:0}); } return; }
   const b = e.target.closest("button,a[data-tab]"); if(!b) return;
   const d = b.dataset;
+  if(d.revf){ revF = d.revf; render(); return; }
+  if(d.notesk){ notesK = d.notesk; render(); return; }
   if(d.tab){ e.preventDefault(); go(d.tab); return; }
   if(d.mod){ if(S.set.mod!==d.mod){ S.set.mod=d.mod; S.daily=null; session=null; save(); render(); toast("Module : "+MODULES[d.mod].l+"."); } return; }
   if(d.go){ go(d.go); return; }
@@ -1279,9 +1447,9 @@ document.addEventListener("click", e => {
   if(d.toggle!=null){ const body=b.nextElementSibling; if(body) body.hidden=!body.hidden; return; }
   if(d.exam){ startExam(d.exam); return; }
   if(d.pen!=null){ S.set.pen = Number(d.pen); save(); render(); return; }
-  if(d.xpick!=null && S.run){ const id=S.run.ids[S.run.pos]; const v=Number(d.xpick); if(S.run.ans[id]===v) delete S.run.ans[id]; else S.run.ans[id]=v; save(); render(); return; }
+  if(d.xpick!=null && S.run){ xAnswer(Number(d.xpick)); return; }
   if(d.xnav && S.run){ S.run.pos = Math.min(Math.max(0, S.run.pos + Number(d.xnav)), S.run.ids.length-1); save(); render(); return; }
-  if(d.xgo!=null && S.run){ S.run.pos = Number(d.xgo); save(); render(); return; }
+  if(d.xgo!=null && S.run){ S.run.pos = Number(d.xgo); xsheet = false; save(); render(); return; }
   if(d.bqt){ bq.t = d.bqt; bq.lim=40; render(); return; }
   if(d.themeSession){ const t=d.themeSession; startExtra(buildDaily(30, t), "Révision ciblée · "+THEMES[t].l); return; }
   if(d.delask){ const box=$("#del-"+CSS.escape(d.delask)); if(box) box.innerHTML = `<span class="confirm">Supprimer définitivement ? <button class="btn danger" data-del="${esc(d.delask)}">Oui, supprimer</button><button class="btn" data-act="rerender">Annuler</button></span>`; return; }
@@ -1292,6 +1460,8 @@ document.addEventListener("click", e => {
     case "more": startExtra(buildDaily(10), "10 questions de plus"); break;
     case "endask": $("#endbox").innerHTML = `<div class="confirm">Rendre la copie maintenant ? <button class="btn danger" data-act="end">Oui, rendre</button><button class="btn" data-act="rerender">Continuer</button></div>`; break;
     case "end": finishExam(false); break;
+    case "xsheet": xsheet = !xsheet; render(); break;
+    case "xflag": xFlag(); break;
     case "examhome": lastResult=null; render(); break;
     case "bqmore": bq.lim += 40; render(); break;
     case "rerender": render(); break;
@@ -1324,13 +1494,37 @@ document.addEventListener("keydown", e => {
     if(session.picked==null){ if(["1","2","3","4"].includes(e.key)) pick(Number(e.key)-1); }
     else if(e.key==="Enter"){ e.preventDefault(); next(); }
   } else if(tab==="examen" && S.run){
-    if(["1","2","3","4"].includes(e.key)){ const id=S.run.ids[S.run.pos]; S.run.ans[id]=Number(e.key)-1; save(); render(); }
+    if(["1","2","3","4"].includes(e.key)) xAnswer(Number(e.key)-1);
+    else if(e.key==="r" || e.key==="R") xFlag();
     else if(e.key==="ArrowRight"){ S.run.pos=Math.min(S.run.pos+1,S.run.ids.length-1); save(); render(); }
     else if(e.key==="ArrowLeft"){ S.run.pos=Math.max(S.run.pos-1,0); save(); render(); }
   }
 });
+document.addEventListener("keydown", e => {
+  const tr = e.target.closest && e.target.closest("tr[data-xrev]");
+  if(tr && (e.key==="Enter" || e.key===" ")){ e.preventDefault(); tr.click(); }
+});
+// Mobile : glisser vers la gauche pour la question suivante, vers la droite pour la précédente (examen) ;
+// en session du jour, glisser vers la gauche après avoir répondu passe à la suite.
+(function(){
+  let x0=null, y0=0, t0=0;
+  document.addEventListener("touchstart", e => {
+    const t = e.touches[0];
+    x0 = (e.touches.length===1 && !(e.target.closest && e.target.closest(".omr,.tw,input,textarea,select,.chips"))) ? t.clientX : null;
+    y0 = t.clientY; t0 = Date.now();
+  }, {passive:true});
+  document.addEventListener("touchend", e => {
+    if(x0==null) return;
+    const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; x0 = null;
+    if(Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx)*0.6 || Date.now()-t0 > 700) return;
+    if(tab==="examen" && S.run){
+      const p = Math.min(Math.max(0, S.run.pos + (dx<0?1:-1)), S.run.ids.length-1);
+      if(p!==S.run.pos){ S.run.pos = p; xsheet = false; save(); render(); }
+    } else if(tab==="jour" && session && session.picked!=null && dx<0) next();
+  }, {passive:true});
+})();
 window.addEventListener("storage", e => { if(e.key===KEY){ S = load(); invalidate(); session=null; render(); } });
 
 render();
-initRemote();
+initSync();
 </script>

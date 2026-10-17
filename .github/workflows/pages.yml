@@ -1,8 +1,11 @@
-# Publie les deux applis sur GitHub Pages à chaque mise à jour de main.
-#   /      page d'accueil (site/index.html)
-#   /qcm/  QCM DGFiP 2027
-#   /qrc/  Atelier QRC compta
-#   /docs/ fiches, sujets, guides et rapports de jury (PDF)
+# Publie les applis sur GitHub Pages à chaque mise à jour de main.
+#   /          page d'accueil (site/index.html)
+#   /qcm/      QCM DGFiP 2027
+#   /qrc/      Atelier QRC compta
+#   /atelier/  Atelier écrit et oral (note de synthèse, analyse de dossier, oral)
+#   /docs/     fiches, sujets, guides et rapports de jury (PDF)
+#   /manifest.webmanifest, /sw.js, /icones/ : appli installable et hors connexion
+# Domaine : prepa.pbailly.fr (réglé dans Settings › Pages, enregistrement CNAME chez OVH).
 name: Pages
 
 on:
@@ -34,14 +37,17 @@ jobs:
         run: |
           cd "06 Appli QCM" && node verifier_banque.js && node build.js && cd ..
           cd "06 Atelier QRC" && node build.js && node test/test.js && cd ..
+          cd "06 Atelier Ecrit Oral" && node build.js && node test/test.js && cd ..
       - name: Assembler le site
         run: |
-          mkdir -p _site/qcm _site/qrc
-          cp site/index.html _site/
+          mkdir -p _site/qcm _site/qrc _site/atelier
+          cp site/index.html site/manifest.webmanifest site/sw.js _site/
+          cp -r site/icones _site/icones
           cp -r site/docs _site/docs
           cp "07 Charte DA/logos/qcm.svg" "07 Charte DA/logos/qrc.svg" _site/
           cp "06 Appli QCM/QCM_DGFiP_2027.html" _site/qcm/index.html
           cp "06 Atelier QRC/Atelier QRC compta.html" _site/qrc/index.html
+          cp "06 Atelier Ecrit Oral/Atelier Ecrit Oral.html" _site/atelier/index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

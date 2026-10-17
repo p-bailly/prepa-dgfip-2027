@@ -1,4 +1,4 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>[hidden]{display:none!important}body{margin:0}</style></head><body>
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="manifest" href="../manifest.webmanifest"><meta name="theme-color" content="#2A44C7"><link rel="apple-touch-icon" href="../icones/icone-180.png"><style>[hidden]{display:none!important}body{margin:0}</style></head><body>
 <title>QCM DGFiP 2027</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -478,6 +478,66 @@ html { background: var(--paper); }
 .exambar b { font-family: var(--f-display); font-size: 1.1rem; font-weight: 600; }
 .exambar .clock:has(.low) { background: var(--bad); border-color: var(--bad); color: var(--paper); }
 .exambar .confirm { color: var(--ink); }
+/* Courbe des notes : trait 2 px, points 8 px cerclés de la surface, grille discrète, infobulle au survol ou au toucher */
+.chart { position: relative; }
+.chart svg { display: block; max-width: 100%; height: auto; overflow: visible; }
+.chart .g { stroke: var(--rule); stroke-width: 1; }
+.chart .g.mid { stroke: var(--line); stroke-dasharray: 3 3; }
+.chart .ax { fill: var(--muted); font-family: var(--f-num); font-size: 11px; }
+.chart .ln { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .pt { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+.chart .last { fill: var(--ink); font-family: var(--f-num); font-size: 12px; font-weight: 600; }
+.chart .hit { fill: transparent; cursor: pointer; outline: none; }
+.chart .hit:focus-visible { stroke: var(--accent); stroke-width: 2; }
+.chart .cross { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 3; }
+.chart .tip { position: absolute; transform: translate(-50%, calc(-100% - 12px)); pointer-events: none; background: var(--surface); color: var(--ink); border: 1px solid var(--line); box-shadow: var(--shadow-lift); border-radius: var(--r-sm); padding: 6px 10px; font-size: var(--t-xs); line-height: 1.45; white-space: nowrap; z-index: 2; }
+.chips button:disabled { opacity: .45; cursor: default; }
+.item .head .badge svg { width: 12px; height: 12px; }
+/* Compte (commun/sync.js) */
+.sync-box { display: flex; flex-direction: column; gap: var(--s3); }
+.sync-err { color: var(--bad); font-weight: 600; }
+/* Examen en cours : tient dans l'écran, cocher une case passe à la question suivante */
+.page.fit .exambar { position: static; padding: 6px 8px 6px 14px; }
+.xgrid { display: grid; gap: var(--s4); grid-template-columns: minmax(0, 1fr) 300px; align-items: start; }
+.xgrid > .xq { gap: var(--s3); padding: var(--s4) var(--s5); }
+.xq .opt { min-height: 44px; padding-block: 5px; }
+.xq .opts { gap: 6px; }
+.xomr .omr { grid-template-columns: repeat(auto-fill, minmax(32px, 1fr)); gap: 5px; }
+.xomr .omr button { height: 32px; }
+.xsheet-btn, .xback { display: none !important; }
+.xflag svg { width: 16px; height: 16px; }
+.xflag.on { background: var(--hl); color: var(--hl-ink); border-color: var(--warn); }
+@media (max-width: 400px) { .hide-xs { display: none; } }
+@media (max-width: 879px) {
+  .xgrid { grid-template-columns: minmax(0, 1fr); }
+  .xgrid > .xomr { display: none; }
+  .xgrid.show-sheet > .xomr { display: flex; }
+  .xgrid.show-sheet > .xq { display: none; }
+  .xsheet-btn, .xback { display: inline-flex !important; }
+  .xq .question { font-size: var(--t-base); }
+  .exambar small { display: none; }
+  .xgrid > .xq { padding: var(--s3) var(--s4); }
+}
+/* Texte resserré pour rester sans défilement : énoncés très longs (dense) sur mobile, toutes les questions sur un écran peu haut */
+@media (max-width: 879px), (max-height: 740px) {
+  .xq.dense .question, .xq.dense .opt { font-size: var(--t-sm); line-height: 1.35; }
+  .xq.dense .opt { min-height: 40px; padding-block: 4px; }
+  .xq.dense .opts { gap: 4px; }
+}
+@media (max-height: 740px) {
+  .xq .question, .xq .opt { font-size: var(--t-sm); line-height: 1.35; }
+  .xq .opt { min-height: 40px; padding-block: 4px; }
+  .xq .opts { gap: 4px; }
+}
+/* Mobile : pendant l'examen, la barre du bas disparaît (le logo ramène à l'accueil, l'examen reste en cours) */
+@media (max-width: 719px) {
+  body.xrun .bottomnav { display: none; }
+  body.xrun { padding-bottom: env(safe-area-inset-bottom, 0px); }
+}
+@media (max-width: 519px) {
+  .page.fit .exambar > .stack { display: none; }
+  .page.fit .exambar > .row { width: 100%; justify-content: space-between; }
+}
 
 /* Formulaires */
 label.f { display: flex; flex-direction: column; gap: 6px; font-size: var(--t-sm); font-weight: 600; }
@@ -538,7 +598,7 @@ input[type=checkbox] { width: 18px; height: 18px; }
 <div id="toast" class="toast" hidden></div>
 <script>
 // Retour à l'accueil : seulement sur le site publié
-(function () { var h = document.getElementById("home"); if (h && /github\.io$/.test(location.hostname)) h.hidden = false; })();
+(function () { var h = document.getElementById("home"); if (h && /^https?:$/.test(location.protocol) && /\/(qcm|qrc|atelier)\/(index\.html)?$/.test(location.pathname)) h.hidden = false; })();
 // Bascule clair / sombre, mémorisée (clé commune au QCM, à l'atelier QRC et à l'accueil)
 (function () {
   var K = "prepa-theme", root = document.documentElement, b = document.getElementById("theme");
@@ -555,6 +615,190 @@ input[type=checkbox] { width: 18px; height: 18px; }
 })();
 </script>
 
+<script>/* Synchro commune aux applis Prépa DGFiP 2027 : compte (identifiant + mot de passe) et Firestore.
+   Une appli s'enregistre avec PrepaSync.attach(clé, { get, merge }) :
+     get()    renvoie l'état local à synchroniser (objet JSON) ;
+     merge(o) fusionne l'état distant o dans l'état local, le sauvegarde et réaffiche, sans rappeler changed().
+   Après chaque sauvegarde locale, l'appli appelle PrepaSync.changed(clé).
+   Données : users/{uid}/apps/{clé} = { json, u, dev }. Firestore garde les écritures hors connexion
+   et les envoie au retour du réseau ; chaque appareil reçoit les changements des autres en direct.
+   Le SDK Firebase n'est chargé qu'une fois un compte connecté sur l'appareil (ou à l'ouverture du formulaire). */
+(function () {
+  "use strict";
+  var CONFIG = {
+    apiKey: "AIzaSyBEGSyRvn1lGRwpZunKyl3DY6HsHe7ZY1Y",
+    authDomain: "prepa-dgfip-2027.firebaseapp.com",
+    projectId: "prepa-dgfip-2027",
+    storageBucket: "prepa-dgfip-2027.firebasestorage.app",
+    messagingSenderId: "483566332972",
+    appId: "1:483566332972:web:3f3a41ad9ab6f0f4da3589"
+  };
+  var SDK = "https://www.gstatic.com/firebasejs/12.19.0/";
+  // L'identifiant devient une adresse interne : aucun courrier n'y est envoyé, il n'y a donc pas de « mot de passe oublié ».
+  var DOMAIN = "prepa.pbailly.fr";
+  var FLAG = "prepa-sync-compte", MAX = 900000;
+
+  var apps = {}, listeners = [], fb = null, F = null, user = null, state = "local", err = "", started = false;
+  var DEV = (function () {
+    try { var d = localStorage.getItem("prepa-appareil"); if (!d) { d = Math.random().toString(36).slice(2, 10); localStorage.setItem("prepa-appareil", d); } return d; }
+    catch (e) { return "inconnu"; }
+  })();
+  function flag(v) { try { if (v) localStorage.setItem(FLAG, "1"); else localStorage.removeItem(FLAG); } catch (e) { } }
+  function hasFlag() { try { return localStorage.getItem(FLAG) === "1"; } catch (e) { return false; } }
+
+  // JSON à clés triées : deux états identiques donnent la même chaîne, quel que soit l'ordre d'insertion.
+  function canon(o) {
+    if (o === null || typeof o !== "object") return JSON.stringify(o);
+    if (Array.isArray(o)) return "[" + o.map(canon).join(",") + "]";
+    return "{" + Object.keys(o).sort().filter(function (k) { return o[k] !== undefined; }).map(function (k) { return JSON.stringify(k) + ":" + canon(o[k]); }).join(",") + "}";
+  }
+  function emit() { var s = api.status(); listeners.forEach(function (f) { try { f(s); } catch (e) { } }); }
+  function setState(s, e) { state = s; err = e || ""; emit(); }
+
+  function load() {
+    if (fb) return fb;
+    fb = Promise.all([import(SDK + "firebase-app.js"), import(SDK + "firebase-auth.js"), import(SDK + "firebase-firestore.js")]).then(function (m) {
+      var A = m[0], Au = m[1], Fs = m[2];
+      var app = A.initializeApp(CONFIG);
+      var auth = Au.initializeAuth(app, { persistence: [Au.indexedDBLocalPersistence, Au.browserLocalPersistence] });
+      var db;
+      try { db = Fs.initializeFirestore(app, { localCache: Fs.persistentLocalCache({ tabManager: Fs.persistentMultipleTabManager() }) }); }
+      catch (e) { db = Fs.getFirestore(app); }
+      F = { Au: Au, Fs: Fs, auth: auth, db: db };
+      return F;
+    });
+    fb.catch(function () { fb = null; setState("local", "Service de synchronisation injoignable."); });
+    return fb;
+  }
+  function start() {
+    if (started) return load();
+    started = true;
+    setState("connexion");
+    return load().then(function (f) {
+      f.Au.onAuthStateChanged(f.auth, function (u) {
+        Object.keys(apps).forEach(stop);
+        user = u;
+        if (u) { flag(true); setState("attente"); Object.keys(apps).forEach(watch); }
+        else { flag(false); setState("local"); }
+      });
+      return f;
+    }, function (e) { started = false; throw e; });
+  }
+
+  function stop(key) { var a = apps[key]; if (a && a.unsub) { a.unsub(); a.unsub = null; a.ref = null; } }
+  function watch(key) {
+    var a = apps[key]; if (!a || !user || !F || a.unsub) return;
+    a.ref = F.Fs.doc(F.db, "users", user.uid, "apps", key);
+    a.first = true;
+    a.unsub = F.Fs.onSnapshot(a.ref, function (snap) {
+      if (snap.metadata.hasPendingWrites) return; // écho de nos propres écritures
+      var d = snap.exists() ? snap.data() : null;
+      if (d && d.json && d.json !== a.last) {
+        a.last = d.json;
+        try { var o = JSON.parse(d.json); a.canon = canon(o); a.merge(o); } catch (e) { }
+      }
+      if (a.first) { a.first = false; push(key, !d); }
+      setState(snap.metadata.fromCache ? "attente" : "ok");
+    }, function (e) { setState("erreur", (e && e.code) || "erreur"); });
+  }
+  function push(key, now) {
+    var a = apps[key]; if (!a) return;
+    clearTimeout(a.t);
+    a.t = setTimeout(function () {
+      if (!a.ref) return;
+      var o; try { o = a.get(); } catch (e) { return; }
+      var c = canon(o); if (c === a.canon) return;
+      var json = JSON.stringify(o);
+      if (json.length > MAX) { setState("plein"); return; }
+      a.canon = c; a.last = json;
+      F.Fs.setDoc(a.ref, { json: json, u: Date.now(), dev: DEV }).then(function () { if (state !== "erreur") setState(navigator.onLine === false ? "attente" : "ok"); }, function (e) { setState("erreur", (e && e.code) || "erreur"); });
+    }, now ? 0 : 1200);
+  }
+
+  var MSG = {
+    "auth/invalid-credential": "Identifiant ou mot de passe incorrect.",
+    "auth/wrong-password": "Identifiant ou mot de passe incorrect.",
+    "auth/user-not-found": "Identifiant ou mot de passe incorrect.",
+    "auth/invalid-email": "Identifiant invalide.",
+    "auth/email-already-in-use": "Cet identifiant est déjà pris.",
+    "auth/weak-password": "Mot de passe trop court : 6 caractères minimum.",
+    "auth/network-request-failed": "Pas de connexion réseau.",
+    "auth/too-many-requests": "Trop d'essais : réessaie dans quelques minutes.",
+    "auth/admin-restricted-operation": "La création de compte est fermée.",
+    "auth/operation-not-allowed": "La création de compte est fermée."
+  };
+  function msg(e) { return MSG[e && e.code] || "Échec : " + ((e && (e.code || e.message)) || "erreur inconnue") + "."; }
+  function norm(name) { return String(name || "").trim().toLowerCase(); }
+  function check(name, pw) {
+    if (!/^[a-z0-9][a-z0-9._-]{2,29}$/.test(norm(name))) return "Identifiant : 3 à 30 caractères, lettres, chiffres, point, tiret ou tiret bas.";
+    if (!pw || pw.length < 6) return "Mot de passe : 6 caractères minimum.";
+    return "";
+  }
+
+  var api = {
+    attach: function (key, o) {
+      apps[key] = { get: o.get, merge: o.merge, canon: null, last: null, ref: null, unsub: null, t: null };
+      if (user) watch(key); else if (hasFlag()) start();
+    },
+    changed: function (key) { if (apps[key] && apps[key].ref) push(key); },
+    onStatus: function (f) { listeners.push(f); f(api.status()); },
+    status: function () { return { state: state, error: err, user: user ? (user.displayName || (user.email || "").split("@")[0]) : "" }; },
+    label: function () {
+      var s = api.status();
+      if (s.user) return state === "ok" ? "synchronisée avec le compte " + s.user : state === "plein" ? "trop volumineuse pour le compte, sur cet appareil seulement" : state === "erreur" ? "sur cet appareil (synchro en erreur)" : "sur cet appareil, envoi au compte " + s.user + " dès que le réseau revient";
+      return state === "connexion" ? "sur cet appareil (connexion…)" : "sur cet appareil";
+    },
+    signIn: function (name, pw) {
+      var bad = check(name, pw); if (bad) return Promise.reject(bad);
+      return start().then(function (f) { return f.Au.signInWithEmailAndPassword(f.auth, norm(name) + "@" + DOMAIN, pw); }).then(function () { }, function (e) { throw typeof e === "string" ? e : msg(e); });
+    },
+    signUp: function (name, pw) {
+      var bad = check(name, pw); if (bad) return Promise.reject(bad);
+      return start().then(function (f) {
+        return f.Au.createUserWithEmailAndPassword(f.auth, norm(name) + "@" + DOMAIN, pw).then(function (cr) {
+          return f.Au.updateProfile(cr.user, { displayName: norm(name) }).then(function () { emit(); });
+        });
+      }).then(function () { }, function (e) { throw typeof e === "string" ? e : msg(e); });
+    },
+    signOut: function () { return F ? F.Au.signOut(F.auth) : Promise.resolve(); },
+    // Bloc « Compte » prêt à l'emploi, construit avec les classes de la charte (sheet, field, input, btn).
+    mount: function (el) {
+      if (!el) return;
+      function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+      function draw(msgText) {
+        var s = api.status();
+        if (s.user) {
+          el.innerHTML = '<div class="sync-box"><p>Connecté en tant que <b>' + esc(s.user) + '</b>. Ta progression est ' + esc(api.label()) + '.</p>' +
+            '<p class="small muted">Connecte-toi avec le même identifiant sur tes autres appareils : tout se synchronise en direct, et hors connexion les changements partent dès le retour du réseau.</p>' +
+            '<div class="row"><button type="button" class="btn" data-sync="out">Se déconnecter</button></div></div>';
+        } else {
+          el.innerHTML = '<form class="sync-box" novalidate><p class="small muted">Sans compte, la progression reste sur cet appareil. Avec un compte, elle se synchronise entre tous tes appareils.</p>' +
+            '<label class="field"><span>Identifiant</span><input class="input" name="u" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>' +
+            '<label class="field"><span>Mot de passe</span><input class="input" name="p" type="password" autocomplete="current-password" required minlength="6"></label>' +
+            (msgText ? '<p class="small sync-err" role="alert">' + esc(msgText) + '</p>' : '') +
+            '<div class="row"><button type="submit" class="btn pri" data-sync="in">Se connecter</button><button type="button" class="btn" data-sync="up">Créer le compte</button></div>' +
+            '<p class="small muted">Pas de récupération par e-mail : note bien ton mot de passe.</p></form>';
+        }
+      }
+      function go(kind) {
+        var f = el.querySelector("form"); if (!f) return;
+        var u = f.elements.u.value, p = f.elements.p.value;
+        el.querySelectorAll("button").forEach(function (b) { b.disabled = true; });
+        (kind === "up" ? api.signUp(u, p) : api.signIn(u, p)).then(function () { draw(); }, function (m) { draw(m); var f2 = el.querySelector("form"); if (f2) { f2.elements.u.value = u; } });
+      }
+      el.onsubmit = function (e) { e.preventDefault(); go("in"); };
+      el.onclick = function (e) {
+        var b = e.target.closest("[data-sync]"); if (!b) return;
+        if (b.dataset.sync === "up") { e.preventDefault(); go("up"); }
+        if (b.dataset.sync === "out") { b.disabled = true; api.signOut().then(function () { draw(); }); }
+      };
+      if (!el._syncListen) { el._syncListen = true; listeners.push(function () { if (el.isConnected && !el.contains(document.activeElement)) draw(); }); }
+      draw();
+    }
+  };
+  window.PrepaSync = api;
+})();
+</script>
 <script>
 const BANK = [];
 // Annales officielles 2026, sujet test inspecteur et QCM d'entraînement inédit (dossier 05).
@@ -579,7 +823,7 @@ BANK.push(
 {id:"i26-15",t:"ue",q:"En quelle année a été signé le traité de Lisbonne ?",o:["1957","1992","2001","2007"],a:3,e:"Signé le 13 décembre 2007, en vigueur le 1er décembre 2009.",x:"Il reprend l'essentiel du traité constitutionnel rejeté en 2005, sous la forme de deux traités modifiés : le TUE et le TFUE (ancien traité CE). Il supprime la structure en trois piliers.",u:["https://www.vie-publique.fr/fiches/20315-quest-ce-que-le-traite-de-lisbonne","https://fr.wikipedia.org/wiki/Trait%C3%A9_de_Lisbonne"],s:"QCM inspecteur 2026, Q15"},
 {id:"i26-16",t:"ue",q:"Quelle est la portée des règlements de l'Union européenne ?",o:["Ils nécessitent une transposition en droit national","Ils s'appliquent uniquement aux États qui les acceptent","Ils sont directement applicables dans tous les États membres","Ce sont de simples recommandations"],a:2,e:"Le règlement est obligatoire dans tous ses éléments et directement applicable. C'est la directive qui doit être transposée.",x:"Art. 288 TFUE : le règlement a une portée générale, il est obligatoire dans tous ses éléments et directement applicable dans tout État membre. Exemple : le RGPD, applicable depuis le 25 mai 2018 sans transposition.",u:["https://www.vie-publique.fr/fiches/20370-actes-juridiques-de-lue-quest-ce-quun-reglement","https://fr.wikipedia.org/wiki/R%C3%A8glement_de_l'Union_europ%C3%A9enne"],s:"QCM inspecteur 2026, Q16"},
 {id:"i26-17",t:"ue",q:"Quelle mesure fiscale issue de l'OCDE est entrée en vigueur dans l'UE en 2024 pour lutter contre l'évasion fiscale ?",o:["Un impôt minimum de 15 % sur les multinationales","La suppression des paradis fiscaux en Europe","La taxe numérique européenne","Le renforcement de la TVA intracommunautaire"],a:0,e:"Directive « Pilier 2 » : imposition minimale effective de 15 % des grands groupes (CA ≥ 750 M€).",x:"La directive (UE) 2022/2523 du 15 décembre 2022 (date rectifiée au JOUE) met en œuvre l'accord conclu en 2021 au sein du Cadre inclusif OCDE/G20. Si un groupe est imposé à moins de 15 % dans un pays, un impôt complémentaire est dû.",u:["https://fr.wikipedia.org/wiki/Taux_d'imposition_mondial_minimum"],s:"QCM inspecteur 2026, Q17"},
-{id:"i26-18",t:"ue",q:"Quel État membre présidait le Conseil de l'Union européenne depuis le 1er juillet 2025 ?",o:["Allemagne","Belgique","Danemark","Pologne"],a:2,e:"Pologne (1er semestre 2025), Danemark (2nd semestre 2025), Chypre (1er semestre 2026), Irlande (2nd semestre 2026).",x:"Chaque État préside six mois, au sein de trios qui fixent un programme commun sur 18 mois. Le Danemark avait déjà présidé le Conseil au premier semestre 2012.",u:["https://fr.wikipedia.org/wiki/Pr%C3%A9sidence_danoise_du_Conseil_de_l'Union_europ%C3%A9enne_en_2025","https://fr.wikipedia.org/wiki/Pr%C3%A9sidence_du_Conseil_de_l'Union_europ%C3%A9enne"],s:"QCM inspecteur 2026, Q18",act:1},
+{id:"i26-18",t:"ue",q:"Quel État membre a présidé le Conseil de l'Union européenne du 1er juillet au 31 décembre 2025 ?",o:["Allemagne","Belgique","Danemark","Pologne"],a:2,e:"Pologne (1er semestre 2025), Danemark (2nd semestre 2025), Chypre (1er semestre 2026), Irlande (2nd semestre 2026), puis Lituanie et Grèce en 2027.",x:"Chaque État préside six mois, au sein de trios qui fixent un programme commun sur 18 mois. Le Danemark avait déjà présidé le Conseil au premier semestre 2012.",u:["https://fr.wikipedia.org/wiki/Pr%C3%A9sidence_danoise_du_Conseil_de_l'Union_europ%C3%A9enne_en_2025","https://fr.wikipedia.org/wiki/Pr%C3%A9sidence_du_Conseil_de_l'Union_europ%C3%A9enne"],s:"QCM inspecteur 2026, Q18",act:1},
 {id:"i26-19",t:"ue",q:"Quelle institution veille à la bonne application du droit de l'Union par tous les États membres ?",o:["La Commission européenne","Le Conseil de l'Europe","La Cour de justice de l'Union européenne","La Cour européenne des droits de l'homme"],a:0,e:"La Commission est « gardienne des traités » : elle engage les recours en manquement. La CJUE juge, sur saisine.",x:"Le recours en manquement (art. 258 TFUE) est précédé d'une phase précontentieuse : lettre de mise en demeure, puis avis motivé. Si l'État ne se conforme pas à l'arrêt, la Commission peut demander des sanctions financières (art. 260 TFUE).",u:["https://www.vie-publique.fr/fiches/20332-quel-est-le-role-de-la-commission-europeenne","https://fr.wikipedia.org/wiki/Recours_en_manquement"],s:"QCM inspecteur 2026, Q19"},
 {id:"i26-20",t:"ue",q:"Qui a été élu(e) président(e) du Parlement européen en janvier 2022 et réélu(e) en juillet 2024 ?",o:["Nicole Fontaine","Roberta Metsola","David Sassoli","Martin Schulz"],a:1,e:"Roberta Metsola (Malte) a succédé à David Sassoli, décédé en janvier 2022.",x:"Maltaise, elle est la troisième femme à présider le Parlement européen élu, après Simone Veil (1979) et Nicole Fontaine (1999). Le président est élu pour deux ans et demi, renouvelables.",u:["https://fr.wikipedia.org/wiki/Roberta_Metsola","https://fr.wikipedia.org/wiki/Pr%C3%A9sident_du_Parlement_europ%C3%A9en"],s:"QCM inspecteur 2026, Q20"},
 {id:"i26-21",t:"num",q:"Quel est le rôle principal d'un pare-feu informatique ?",o:["Bloquer les publicités intrusives","Filtrer et sécuriser les connexions réseau","Optimiser la vitesse de connexion","Supprimer automatiquement les virus"],a:1,e:"Le pare-feu filtre les flux entrants et sortants ; c'est l'antivirus qui supprime les logiciels malveillants.",x:"Le pare-feu applique des règles (adresses, ports, protocoles) pour autoriser ou bloquer le trafic. Il complète l'antivirus sans le remplacer.",u:["https://fr.wikipedia.org/wiki/Pare-feu_(informatique)"],s:"QCM inspecteur 2026, Q21"},
@@ -615,10 +859,10 @@ BANK.push(
 {id:"it-07",t:"admin",q:"Qui élabore la loi de finances ?",o:["Le Conseil d'État","Les députés","Le Gouvernement","Les sénateurs"],a:2,e:"Le projet de loi de finances est préparé par le Gouvernement (ministre chargé du budget) puis voté par le Parlement.",x:"Le PLF est déposé en premier à l'Assemblée nationale, au plus tard le 1er mardi d'octobre. Le Parlement dispose de 70 jours pour se prononcer ; au-delà, le Gouvernement peut mettre le projet en vigueur par ordonnance (art. 47).",u:["https://www.vie-publique.fr/fiches/21870-quelles-sont-les-etapes-delaboration-dune-loi-de-finances","https://www.vie-publique.fr/fiches/21872-quelles-sont-les-etapes-dadoption-dune-loi-de-finances"],s:"Sujet test inspecteur, Q7"},
 {id:"it-08",t:"admin",q:"Selon l'article 72 de la Constitution, le représentant de l'État dans les collectivités territoriales représente :",o:["Chacun des membres du Gouvernement","Le Ministre de l'Intérieur","Le Premier ministre","Le Président de la République"],a:0,e:"Art. 72, dernier alinéa : le représentant de l'État, représentant de chacun des membres du Gouvernement, a la charge des intérêts nationaux, du contrôle administratif et du respect des lois.",x:"Ce représentant est le préfet. Il est nommé par décret du Président de la République en Conseil des ministres et exerce le contrôle de légalité des actes des collectivités.",u:["https://www.vie-publique.fr/fiches/20169-quel-est-le-role-dun-prefet","https://fr.wikipedia.org/wiki/Pr%C3%A9fet_(France)"],s:"Sujet test inspecteur, Q8"},
 {id:"it-09",t:"admin",q:"Quel texte consacre le principe de consentement à l'impôt ?",o:["La Constitution de la Ve République de 1958","La Convention européenne des droits de l'homme de 1953","La Déclaration des droits de l'homme et du citoyen de 1789","Le Préambule de la Constitution de 1946"],a:2,e:"Art. 14 de la DDHC : les citoyens ont le droit de constater, par eux-mêmes ou par leurs représentants, la nécessité de la contribution publique et de la consentir librement.",x:"L'art. 13 pose le principe d'égalité devant les charges publiques (contribution répartie selon les facultés). La DDHC fait partie du bloc de constitutionnalité.",u:["https://fr.wikipedia.org/wiki/Consentement_%C3%A0_l%27imp%C3%B4t","https://www.conseil-constitutionnel.fr/le-bloc-de-constitutionnalite/declaration-des-droits-de-l-homme-et-du-citoyen-de-1789"],s:"Sujet test inspecteur, Q9"},
-{id:"it-10",t:"admin",q:"Selon l'Insee, quelle part du PIB représente le déficit public de la France en 2023 ?",o:["3,1 %","4,2 %","5,5 %","7,5 %"],a:2,e:"Déficit public 2023 : 5,5 % du PIB (estimation publiée par l'Insee en mars 2024).",x:"Le déficit a atteint 5,8 % du PIB en 2024. Le seuil de référence européen est de 3 % ; la France fait l'objet d'une procédure pour déficit excessif depuis juillet 2024.",u:["https://fr.wikipedia.org/wiki/D%C3%A9ficit_public","https://fr.wikipedia.org/wiki/Proc%C3%A9dure_de_d%C3%A9ficit_public_excessif"],s:"Sujet test inspecteur, Q10",act:1},
+{id:"it-10",t:"admin",q:"Selon sa première estimation (mars 2024), quelle part du PIB l'Insee attribuait-il au déficit public de la France en 2023 ?",o:["3,1 %","4,2 %","5,5 %","7,5 %"],a:2,e:"5,5 % du PIB en première estimation (Insee, mars 2024) ; le chiffre a depuis été révisé à 5,4 %.",x:"Le déficit a atteint 5,8 % du PIB en 2024, puis 5,1 % en 2025 (Insee, mars 2026). Le seuil de référence européen est de 3 % ; la France fait l'objet d'une procédure pour déficit excessif depuis juillet 2024.",u:["https://www.insee.fr/fr/statistiques/8061907","https://www.insee.fr/fr/statistiques/8956575","https://fr.wikipedia.org/wiki/Proc%C3%A9dure_de_d%C3%A9ficit_public_excessif"],s:"Sujet test inspecteur, Q10",act:1},
 {id:"it-11",t:"ue",q:"En quelle année l'Union européenne a-t-elle reçu le prix Nobel de la paix ?",o:["2001","2004","2007","2012"],a:3,e:"Prix Nobel de la paix 2012, pour sa contribution à la paix, à la réconciliation, à la démocratie et aux droits de l'homme en Europe.",x:"Le prix a été reçu à Oslo par les présidents du Conseil européen (Herman Van Rompuy), de la Commission (José Manuel Barroso) et du Parlement européen (Martin Schulz).",u:["https://fr.wikipedia.org/wiki/Prix_Nobel_de_la_paix_2012"],s:"Sujet test inspecteur, Q11"},
 {id:"it-12",t:"ue",q:"De combien de commissaires est composée la Commission européenne ?",o:["24","25","26","27"],a:3,e:"27 commissaires, un par État membre, président et haut représentant compris.",x:"Le traité de Lisbonne prévoyait de réduire leur nombre aux deux tiers des États, mais le Conseil européen a maintenu la règle d'un commissaire par État. La Commission est nommée pour 5 ans après un vote d'approbation du Parlement européen.",u:["https://www.vie-publique.fr/fiches/20331-comment-sont-nommes-les-membres-de-la-commission-europeenne","https://fr.wikipedia.org/wiki/Commission_europ%C3%A9enne"],s:"Sujet test inspecteur, Q12"},
-{id:"it-13",t:"ue",q:"Quelle est la contribution de la France à l'Union européenne en 2024 ?",o:["21,6 milliards","22,5 milliards","23,1 milliards","23,9 milliards"],a:0,e:"Le prélèvement sur recettes au profit de l'UE était évalué à 21,6 milliards d'euros dans la loi de finances pour 2024.",x:"La France est le deuxième contributeur net au budget européen après l'Allemagne. Cette contribution prend la forme d'un prélèvement sur les recettes de l'État, et non d'une dépense budgétaire.",u:["https://www.touteleurope.eu/fonctionnement-de-l-ue/budget-europeen-quelles-ressources-propres-pour-l-union-europeenne/"],s:"Sujet test inspecteur, Q13",act:1},
+{id:"it-13",t:"ue",q:"À combien la loi de finances initiale pour 2024 évaluait-elle la contribution de la France au budget de l'Union européenne ?",o:["21,6 milliards","22,5 milliards","23,1 milliards","23,9 milliards"],a:0,e:"Le prélèvement sur recettes au profit de l'UE était évalué à 21,6 milliards d'euros en LFI 2024 ; le montant exécuté a finalement atteint 22,3 milliards.",x:"La France est le deuxième contributeur net au budget européen après l'Allemagne. Cette contribution prend la forme d'un prélèvement sur les recettes de l'État, et non d'une dépense budgétaire. Elle remonte nettement en fin de cadre financier : 28,4 milliards en LFI 2026 et 30,9 milliards prévus pour 2027.",u:["https://www.senat.fr/rap/l24-743-233/l24-743-2331.pdf","https://www.touteleurope.eu/fonctionnement-de-l-ue/budget-europeen-quelles-ressources-propres-pour-l-union-europeenne/"],s:"Sujet test inspecteur, Q13",act:1},
 {id:"it-14",t:"ue",q:"Quel est le dernier traité adopté par l'Union européenne ?",o:["Traité d'Amsterdam","Traité de Lisbonne","Traité de Maastricht","Traité de Rome"],a:1,e:"Traité de Lisbonne, signé le 13 décembre 2007, entré en vigueur le 1er décembre 2009.",x:"Ordre chronologique : Rome (1957), Maastricht (1992), Amsterdam (1997), Nice (2001), Lisbonne (2007). Lisbonne a repris l'essentiel du projet de Constitution européenne rejeté en 2005.",u:["https://www.vie-publique.fr/fiches/20315-quest-ce-que-le-traite-de-lisbonne","https://fr.wikipedia.org/wiki/Trait%C3%A9_de_Lisbonne"],s:"Sujet test inspecteur, Q14"},
 {id:"it-15",t:"ue",q:"En quelle année a été mise en place la Politique agricole commune ?",o:["1951","1957","1962","1965"],a:2,e:"La PAC, prévue par le traité de Rome (1957), est mise en œuvre en 1962.",x:"Ses objectifs initiaux : accroître la productivité, assurer un niveau de vie équitable aux agriculteurs, stabiliser les marchés. Elle reste l'un des premiers postes du budget européen.",u:["https://www.vie-publique.fr/fiches/20381-quest-ce-que-la-politique-agricole-commune-pac","https://www.touteleurope.eu/histoire/histoire-de-la-politique-agricole-commune/"],s:"Sujet test inspecteur, Q15"},
 {id:"it-16",t:"ue",q:"Quelle est la principale mission de la Banque centrale européenne ?",o:["Gérer les dossiers de surendettement des particuliers","Promouvoir la coopération monétaire internationale","Soutenir les pays en voie de développement","Veiller à la stabilité des prix"],a:3,e:"Le mandat principal de la BCE est la stabilité des prix dans la zone euro (objectif d'inflation de 2 % à moyen terme).",x:"La BCE, installée à Francfort, définit la politique monétaire de la zone euro et supervise les grandes banques depuis 2014. La promotion de la coopération monétaire internationale est la mission du FMI.",u:["https://www.vie-publique.fr/fiches/21800-quel-est-le-role-de-la-banque-centrale-europeenne-bce","https://fr.wikipedia.org/wiki/Banque_centrale_europ%C3%A9enne"],s:"Sujet test inspecteur, Q16"},
@@ -662,7 +906,7 @@ BANK.push(
 {id:"e-07",t:"admin",q:"Qui exerce le contrôle de légalité sur les actes des collectivités territoriales ?",o:["La chambre régionale des comptes","Le Conseil d'État","Le directeur départemental des finances publiques","Le préfet"],a:3,e:"Le préfet peut déférer l'acte au tribunal administratif dans les 2 mois.",x:"Depuis 1982, le contrôle s'exerce a posteriori : la tutelle a priori a été supprimée. Les actes les plus importants doivent être transmis au préfet pour devenir exécutoires.",u:["https://www.collectivites-locales.gouv.fr/connaitre-les-acteurs-et-les-institutions/controle-de-legalite","https://www.vie-publique.fr/fiches/20195-comment-sexerce-le-controle-sur-les-actes-des-collectivites-locales"],s:"Entraînement, Q7"},
 {id:"e-08",t:"admin",q:"Qu'a fait la loi NOTRe du 7 août 2015 ?",o:["Elle a supprimé la clause générale de compétence des départements et des régions","Elle a créé les métropoles","Elle a supprimé les départements","Elle a instauré l'élection des conseillers régionaux au suffrage direct"],a:0,e:"Les métropoles ont été créées par la loi RCT (2010) puis généralisées par la loi MAPTAM (2014).",x:"NOTRe signifie « nouvelle organisation territoriale de la République ». La loi a aussi relevé à 15 000 habitants le seuil minimal des intercommunalités (avec des dérogations) et transféré aux régions les transports interurbains et scolaires des départements.",u:["https://www.vie-publique.fr/fiches/20112-la-repartition-des-competences-entre-collectivites-apres-la-loi-notre","https://fr.wikipedia.org/wiki/Loi_portant_nouvelle_organisation_territoriale_de_la_R%C3%A9publique"],s:"Entraînement, Q8"},
 {id:"e-09",t:"admin",q:"Un fonctionnaire reçoit un ordre manifestement illégal et de nature à compromettre gravement un intérêt public. Que doit-il faire ?",o:["L'exécuter, par obéissance hiérarchique","Refuser de l'exécuter","Demander l'avis du préfet","Saisir le Conseil constitutionnel"],a:1,e:"Seule exception légale au devoir d'obéissance hiérarchique.",x:"Les deux conditions sont cumulatives (art. L. 121-10 du Code général de la fonction publique). La règle vient de la jurisprudence Langneur du Conseil d'État (1944).",u:["https://www.vie-publique.fr/fiches/20259-quels-sont-les-devoirs-des-fonctionnaires","https://fr.wikipedia.org/wiki/Devoir_d'ob%C3%A9issance"],s:"Entraînement, Q9"},
-{id:"e-10",t:"admin",q:"Fin juin 2026, la dette publique de la France représentait environ :",o:["60 % du PIB","98 % du PIB","119 % du PIB","140 % du PIB"],a:2,e:"3 595,5 Md€, soit 119,0 % du PIB (Insee, 29 septembre 2026).",x:"Le critère de Maastricht fixe un plafond de 60 % du PIB. La dette est un stock, alimenté chaque année par le déficit (un flux).",u:["https://www.vie-publique.fr/questions-reponses/304693-dette-publique-de-la-france-lessentiel-en-6-questions","https://fr.wikipedia.org/wiki/Dette_publique_de_la_France"],s:"Entraînement, Q10",act:1},
+{id:"e-10",t:"admin",q:"Fin juin 2026, la dette publique de la France représentait environ :",o:["60 % du PIB","98 % du PIB","119 % du PIB","140 % du PIB"],a:2,e:"3 595,5 Md€, soit 119,0 % du PIB (Insee, 29 septembre 2026).",x:"Le critère de Maastricht fixe un plafond de 60 % du PIB. La dette est un stock, alimenté chaque année par le déficit (un flux). Elle atteignait 115,7 % du PIB fin 2025.",u:["https://www.insee.fr/fr/statistiques/9053525","https://www.vie-publique.fr/questions-reponses/304693-dette-publique-de-la-france-lessentiel-en-6-questions","https://fr.wikipedia.org/wiki/Dette_publique_de_la_France"],s:"Entraînement, Q10",act:1},
 {id:"e-11",t:"ue",q:"En quelle année le traité de Maastricht a-t-il été signé ?",o:["1957","1986","1992","2007"],a:2,e:"Signé le 7 février 1992, en vigueur le 1er novembre 1993.",x:"En France, il a été approuvé de justesse par le référendum du 20 septembre 1992 (51 % de « oui »). Il crée l'Union européenne, fondée alors sur trois piliers.",u:["https://fr.wikipedia.org/wiki/Trait%C3%A9_de_Maastricht","https://www.vie-publique.fr/fiches/21798-quels-sont-les-criteres-de-maastricht-pour-participer-luem"],s:"Entraînement, Q11"},
 {id:"e-12",t:"ue",q:"Combien d'États membres compte la zone euro au 1er janvier 2026 ?",o:["19","20","21","27"],a:2,e:"21 avec l'entrée de la Bulgarie (la Croatie était entrée en 2023).",x:"Les entrées depuis 2007 : Slovénie (2007), Chypre et Malte (2008), Slovaquie (2009), Estonie (2011), Lettonie (2014), Lituanie (2015), Croatie (2023), Bulgarie (2026).",u:["https://european-union.europa.eu/institutions-law-budget/euro/countries-using-euro_fr","https://fr.wikipedia.org/wiki/Zone_euro"],s:"Entraînement, Q12",act:1},
 {id:"e-13",t:"ue",q:"Quelle institution dispose en principe de l'initiative législative dans l'UE ?",o:["La Commission européenne","Le Parlement européen","Le Conseil européen","Le Conseil de l'Union européenne"],a:0,e:"Monopole de l'initiative : la Commission propose, le Parlement et le Conseil adoptent.",x:"Le Parlement européen (art. 225 TFUE), le Conseil (art. 241 TFUE) et une initiative citoyenne d'un million de personnes peuvent seulement demander à la Commission de présenter une proposition.",u:["https://www.vie-publique.fr/fiches/20332-quel-est-le-role-de-la-commission-europeenne","https://fr.wikipedia.org/wiki/Commission_europ%C3%A9enne"],s:"Entraînement, Q13"},
@@ -832,12 +1076,12 @@ BANK.push(
 {id:"ad-93",t:"admin",q:"Les prélèvements sur recettes sont versés au profit :",o:["Des ministères","Des collectivités territoriales et de l'Union européenne","Des entreprises publiques","Des organismes de Sécurité sociale uniquement"],a:1,e:"Ils sont déduits des recettes de l'État (exception à l'universalité).",x:"Le principal prélèvement au profit des collectivités est la dotation globale de fonctionnement (DGF). Celui au profit de l'Union européenne correspond à la contribution française au budget européen.",u:["https://www.vie-publique.fr/fiches/21933-que-sont-les-transferts-financiers-de-letat-aux-collectivites-locales"],s:"Fiche 4"},
 {id:"ad-94",t:"admin",q:"Le principe d'annualité budgétaire connaît notamment pour exception :",o:["Les autorisations d'engagement pluriannuelles et les reports de crédits","Les budgets annexes","Les fonds de concours","Les virements"],a:0,e:"L'autorisation vaut pour l'année civile, mais les AE et les reports permettent une gestion pluriannuelle.",x:"L'année budgétaire correspond à l'année civile. Les reports de crédits sont plafonnés (en principe 3 % des crédits initiaux).",u:["https://www.vie-publique.fr/fiches/21823-quels-sont-les-grands-principes-budgetaires"],s:"Fiche 4"},
 // --- Actualité (fiche 8) ---
-{id:"ad-95",t:"admin",q:"Quel déficit public le projet de loi de finances pour 2027 vise-t-il pour 2027 ?",o:["3,0 % du PIB","4,1 % du PIB","5,0 % du PIB","5,8 % du PIB"],a:2,e:"5,0 % en 2027 contre 5,4 % prévu en 2026 ; effort de 54 Md€ (PLF présenté le 1er octobre 2026). À suivre jusqu'au vote.",x:"Le déficit public avait atteint 5,8 % du PIB en 2024.",u:["https://www.vie-publique.fr/questions-reponses/294801-elaboration-du-budget-de-letat-en-6-questions-processus-et-enjeux"],s:"Fiche 8 (16 oct. 2026)",act:1},
-{id:"ad-96",t:"admin",q:"Qui est Premier ministre en octobre 2026 ?",o:["François Bayrou","Michel Barnier","Sébastien Lecornu","Gabriel Attal"],a:2,e:"Avec Roland Lescure à l'Économie et aux Finances et David Amiel à l'Action et aux Comptes publics.",x:"Nommé le 9 septembre 2025, il avait auparavant été ministre des Armées (2022-2025).",u:["https://fr.wikipedia.org/wiki/S%C3%A9bastien_Lecornu"],s:"Fiche 8 (16 oct. 2026)",act:1},
-{id:"ad-97",t:"admin",q:"Qui est Première présidente de la Cour des comptes depuis le 23 février 2026 ?",o:["Amélie de Montchalin","Pierre Moscovici","Agnès Verdier-Molinié","Christine Lagarde"],a:0,e:"Elle a succédé à Pierre Moscovici et préside donc aussi le Haut Conseil des finances publiques.",x:"Le Premier président est nommé par décret en Conseil des ministres ; il est inamovible, comme les autres magistrats de la Cour.",u:["https://fr.wikipedia.org/wiki/Am%C3%A9lie_de_Montchalin","https://fr.wikipedia.org/wiki/Cour_des_comptes_(France)"],s:"Fiche 8 (16 oct. 2026)",act:1},
-{id:"ad-98",t:"admin",q:"Qui a été réélu président du Sénat le 1er octobre 2026 ?",o:["Gérard Larcher","Jean-Pierre Bel","Patrick Kanner","Bruno Retailleau"],a:0,e:"Réélu avec 203 voix, après le renouvellement sénatorial de septembre 2026.",x:"Il avait déjà présidé le Sénat de 2008 à 2011, puis sans interruption depuis 2014.",u:["https://fr.wikipedia.org/wiki/G%C3%A9rard_Larcher"],s:"Fiche 8 (16 oct. 2026)",act:1},
-{id:"ad-99",t:"admin",q:"Quel ministre est chargé de l'Action et des Comptes publics en octobre 2026 ?",o:["David Amiel","Amélie de Montchalin","Roland Lescure","Laurent Saint-Martin"],a:0,e:"Roland Lescure est ministre de l'Économie et des Finances.",u:["https://fr.wikipedia.org/wiki/David_Amiel"],s:"Fiche 8 (16 oct. 2026)",act:1},
-{id:"ad-100",t:"admin",q:"Quelle croissance du PIB le PLF 2027 retient-il pour 2027 ?",o:["0,2 %","1,0 %","2,0 %","3,0 %"],a:1,e:"Hypothèse de croissance de 1,0 % (PLF présenté le 1er octobre 2026).",x:"Le Haut Conseil des finances publiques rend un avis sur ces hypothèses avant le dépôt du PLF.",u:["https://www.vie-publique.fr/questions-reponses/294801-elaboration-du-budget-de-letat-en-6-questions-processus-et-enjeux"],s:"Fiche 8 (16 oct. 2026)",act:1}
+{id:"ad-95",t:"admin",q:"Quel déficit public le projet de loi de finances pour 2027 vise-t-il pour 2027 ?",o:["3,0 % du PIB","4,1 % du PIB","5,0 % du PIB","5,8 % du PIB"],a:2,e:"5,0 % en 2027 contre 5,4 % prévu en 2026 ; effort total de 54 Md€, dont 43 Md€ de mesures nouvelles (PLF présenté le 1er octobre 2026). À suivre jusqu'au vote.",x:"Le déficit public avait atteint 5,8 % du PIB en 2024, puis 5,1 % en 2025 (Insee) : il se creuserait donc en 2026 avant de refluer en 2027.",u:["https://presse.economie.gouv.fr/dp-budget-2027/","https://www.vie-publique.fr/questions-reponses/294801-elaboration-du-budget-de-letat-en-6-questions-processus-et-enjeux"],s:"Fiche 8 (16 oct. 2026)",act:1},
+{id:"ad-96",t:"admin",q:"Qui est Premier ministre en octobre 2026 ?",o:["François Bayrou","Michel Barnier","Sébastien Lecornu","Gabriel Attal"],a:2,e:"Avec Roland Lescure à l'Économie et aux Finances et David Amiel à l'Action et aux Comptes publics.",x:"Nommé le 9 septembre 2025, il a démissionné le 6 octobre puis a été reconduit le 10 octobre 2025 (gouvernement Lecornu II). Il avait auparavant été ministre des Armées (2022-2025).",u:["https://fr.wikipedia.org/wiki/S%C3%A9bastien_Lecornu"],s:"Fiche 8 (16 oct. 2026)",act:1},
+{id:"ad-97",t:"admin",q:"Qui est Première présidente de la Cour des comptes depuis le 23 février 2026 ?",o:["Amélie de Montchalin","Pierre Moscovici","Agnès Verdier-Molinié","Christine Lagarde"],a:0,e:"Elle a succédé à Pierre Moscovici et préside donc aussi le Haut Conseil des finances publiques ; elle est la première femme à diriger la Cour.",x:"Le Premier président est nommé par décret en Conseil des ministres ; il est inamovible, comme les autres magistrats de la Cour. Elle était jusque-là ministre de l'Action et des Comptes publics, ce qui a suscité un débat sur les conflits d'intérêts.",u:["https://fr.wikipedia.org/wiki/Am%C3%A9lie_de_Montchalin","https://fr.wikipedia.org/wiki/Cour_des_comptes_(France)"],s:"Fiche 8 (16 oct. 2026)",act:1},
+{id:"ad-98",t:"admin",q:"Qui a été réélu président du Sénat le 1er octobre 2026 ?",o:["Gérard Larcher","Jean-Pierre Bel","Patrick Kanner","Bruno Retailleau"],a:0,e:"Réélu dès le premier tour avec 203 voix sur 302 suffrages exprimés, après le renouvellement de la série 2 du Sénat le 27 septembre 2026.",x:"Il avait déjà présidé le Sénat de 2008 à 2011, puis sans interruption depuis 2014. Le président du Sénat est élu pour trois ans, après chaque renouvellement partiel.",u:["https://fr.wikipedia.org/wiki/G%C3%A9rard_Larcher","https://fr.wikipedia.org/wiki/%C3%89lections_s%C3%A9natoriales_fran%C3%A7aises_de_2026"],s:"Fiche 8 (16 oct. 2026)",act:1},
+{id:"ad-99",t:"admin",q:"Quel ministre est chargé de l'Action et des Comptes publics en octobre 2026 ?",o:["David Amiel","Amélie de Montchalin","Roland Lescure","Laurent Saint-Martin"],a:0,e:"Nommé le 22 février 2026 en remplacement d'Amélie de Montchalin, partie à la Cour des comptes ; Roland Lescure est ministre de l'Économie et des Finances.",u:["https://fr.wikipedia.org/wiki/David_Amiel"],s:"Fiche 8 (16 oct. 2026)",act:1},
+{id:"ad-100",t:"admin",q:"Quelle croissance du PIB le PLF 2027 retient-il pour 2027 ?",o:["0,2 %","1,0 %","2,0 %","3,0 %"],a:1,e:"Hypothèse de croissance de 1,0 % en 2027, après 0,5 % prévu en 2026 (PLF présenté le 1er octobre 2026).",x:"Le Haut Conseil des finances publiques rend un avis sur ces hypothèses avant le dépôt du PLF ; le 1er octobre 2026, il a jugé la prévision pour 2027 « optimiste ».",u:["https://www.hcfp.fr/liste-avis/avis-ndeg2026-5-lois-de-finances-2027","https://presse.economie.gouv.fr/dp-budget-2027/"],s:"Fiche 8 (16 oct. 2026)",act:1}
 );
 
 // Union européenne : construction, élargissements, institutions, droit, budget,
@@ -881,7 +1125,7 @@ BANK.push(
 {id:"ue-33",t:"ue",q:"Qui élit le président de la Commission européenne ?",o:["Le Conseil européen seul","Le Parlement européen, sur proposition du Conseil européen","Les citoyens au suffrage direct","Le Conseil de l'UE"],a:1,e:"Le Conseil européen propose en tenant compte des élections ; le Parlement élit à la majorité de ses membres.",x:"Le Conseil européen statue à la majorité qualifiée. Le collège des commissaires est ensuite approuvé en bloc par le Parlement, après audition de chaque candidat.",u:["https://www.vie-publique.fr/fiches/20331-comment-sont-nommes-les-membres-de-la-commission-europeenne","https://fr.wikipedia.org/wiki/Pr%C3%A9sident_de_la_Commission_europ%C3%A9enne"],s:"Fiche 5"},
 {id:"ue-34",t:"ue",q:"Quelle institution peut renverser la Commission européenne par une motion de censure ?",o:["Le Conseil européen","Le Parlement européen","La Cour de justice","Le Conseil de l'UE"],a:1,e:"Motion adoptée à la majorité des deux tiers des suffrages exprimés et à la majorité des membres.",x:"La Commission Santer a démissionné en 1999 sous la menace d'une motion de censure.",u:["https://www.vie-publique.fr/fiches/20345-de-quels-moyens-de-controle-le-parlement-europeen-dispose-t-il"],s:"Connaissance UE"},
 {id:"ue-35",t:"ue",q:"Qui compose le Conseil européen ?",o:["Les ministres de chaque État selon le sujet","Les chefs d'État ou de gouvernement, son président et le président de la Commission","Les 720 députés européens","Les gouverneurs des banques centrales"],a:1,e:"Il fixe les grandes orientations et ne légifère pas.",x:"Le haut représentant pour les affaires étrangères participe à ses travaux. Le Conseil européen est devenu une institution à part entière avec le traité de Lisbonne.",u:["https://www.vie-publique.fr/fiches/20336-quest-ce-que-le-conseil-europeen","https://european-union.europa.eu/institutions-law-budget/institutions-and-bodies/search-all-eu-institutions-and-bodies/european-council_fr"],s:"Fiche 5"},
-{id:"ue-36",t:"ue",q:"Qui préside le Conseil européen depuis décembre 2024 ?",o:["Charles Michel","António Costa","Donald Tusk","Herman Van Rompuy"],a:1,e:"Mandat de deux ans et demi, renouvelable une fois.",x:"Ancien Premier ministre du Portugal (2015-2024), il a succédé au Belge Charles Michel.",u:["https://fr.wikipedia.org/wiki/Ant%C3%B3nio_Costa"],s:"Fiche 5",act:1},
+{id:"ue-36",t:"ue",q:"Qui préside le Conseil européen depuis décembre 2024 ?",o:["Charles Michel","António Costa","Donald Tusk","Herman Van Rompuy"],a:1,e:"Mandat de deux ans et demi, renouvelable une fois : le premier court du 1er décembre 2024 au 31 mai 2027.",x:"Ancien Premier ministre du Portugal (2015-2024), il a succédé au Belge Charles Michel.",u:["https://fr.wikipedia.org/wiki/Ant%C3%B3nio_Costa"],s:"Fiche 5",act:1},
 {id:"ue-37",t:"ue",q:"Quelle est la durée du mandat du président du Conseil européen ?",o:["6 mois","2 ans et demi, renouvelable une fois","5 ans","Illimitée"],a:1,e:"Poste stable créé par le traité de Lisbonne (premier titulaire : Herman Van Rompuy).",x:"Titulaires : Herman Van Rompuy (2009-2014), Donald Tusk (2014-2019), Charles Michel (2019-2024), António Costa (depuis décembre 2024). Il est élu par le Conseil européen à la majorité qualifiée.",u:["https://fr.wikipedia.org/wiki/Pr%C3%A9sident_du_Conseil_europ%C3%A9en"],s:"Fiche 5"},
 {id:"ue-38",t:"ue",q:"Qui siège au Conseil de l'Union européenne ?",o:["Un ministre par État membre, selon le sujet traité","Les chefs d'État ou de gouvernement","Les commissaires européens","Les juges de la CJUE"],a:0,e:"Il est co-législateur et co-autorité budgétaire avec le Parlement.",x:"Ses travaux sont préparés par le Comité des représentants permanents (Coreper). Il siège à Bruxelles, et à Luxembourg en avril, juin et octobre.",u:["https://www.vie-publique.fr/fiches/20328-quest-ce-que-le-conseil-de-lunion-europeenne-ue","https://european-union.europa.eu/institutions-law-budget/institutions-and-bodies/search-all-eu-institutions-and-bodies/council-european-union_fr"],s:"Fiche 5"},
 {id:"ue-39",t:"ue",q:"Quelle est la durée de la présidence tournante du Conseil de l'UE ?",o:["3 mois","6 mois","1 an","2 ans et demi"],a:1,e:"Chaque État la préside six mois, par trios.",x:"La présidence organise et préside les réunions du Conseil, sauf le Conseil des affaires étrangères, présidé par le haut représentant. La France l'a exercée pour la dernière fois au premier semestre 2022.",u:["https://fr.wikipedia.org/wiki/Pr%C3%A9sidence_du_Conseil_de_l'Union_europ%C3%A9enne"],s:"Fiche 5"},
@@ -970,7 +1214,7 @@ BANK.push(
 {id:"nu-19",t:"num",q:"Qu'est-ce que Pix ?",o:["Un service public de certification des compétences numériques","Un réseau social","Un moteur de recherche public","Un antivirus de l'État"],a:0,e:"Il suit le cadre de référence des compétences numériques, comme le programme du concours.",x:"Pix évalue 16 compétences réparties en 5 domaines, issues du cadre européen DigComp.",u:["https://fr.wikipedia.org/wiki/Pix_(certification_num%C3%A9rique)"],s:"Culture numérique"},
 {id:"nu-20",t:"num",q:"Qu'est-ce qu'une IA générative ?",o:["Un système qui produit du texte, des images ou des sons à partir d'instructions","Un tableur avancé","Un antivirus","Un réseau de fibre optique"],a:0,e:"Elle peut se tromper (« hallucinations ») : on vérifie ses productions.",x:"Elle repose sur de grands modèles entraînés sur d'immenses volumes de données ; ChatGPT, lancé en novembre 2022, l'a popularisée. Un agent public ne doit pas y saisir de données personnelles ou couvertes par le secret.",u:["https://www.cnil.fr/fr/les-questions-reponses-de-la-cnil-sur-lutilisation-dun-systeme-dia-generative","https://fr.wikipedia.org/wiki/Intelligence_artificielle_g%C3%A9n%C3%A9rative"],s:"Fiche 6"},
 {id:"nu-21",t:"num",q:"Qu'est-ce qu'un hypertrucage (deepfake) ?",o:["Une vidéo ou un son falsifié de façon réaliste par l'IA","Un virus de messagerie","Un réseau privé","Un format de compression"],a:0,e:"Risque de désinformation et d'usurpation d'identité.",x:"« Hypertrucage » est le terme français recommandé. Le règlement européen sur l'IA impose de signaler les contenus ainsi générés ou manipulés.",u:["https://fr.wikipedia.org/wiki/Deepfake"],s:"Culture numérique"},
-{id:"nu-22",t:"num",q:"Depuis le 1er septembre 2026, quelle obligation de facturation électronique s'applique à toutes les entreprises ?",o:["Émettre toutes leurs factures électroniquement","Pouvoir recevoir des factures électroniques","Supprimer les factures papier archivées","Déclarer leurs factures à la CNIL"],a:1,e:"Les grandes entreprises et ETI doivent aussi émettre ; les PME et microentreprises émettront à partir du 1er septembre 2027.",x:"Les factures transitent par des plateformes agréées par l'administration fiscale ; le « e-reporting » transmet en parallèle les données des opérations non facturées électroniquement (ventes aux particuliers, international). Objectif : mieux lutter contre la fraude à la TVA.",u:["https://www.impots.gouv.fr/professionnel/je-passe-la-facturation-electronique","https://fr.wikipedia.org/wiki/D%C3%A9mat%C3%A9rialisation_de_factures"],s:"Fiche 6",act:1},
+{id:"nu-22",t:"num",q:"Depuis le 1er septembre 2026, quelle obligation de facturation électronique s'applique à toutes les entreprises ?",o:["Émettre toutes leurs factures électroniquement","Pouvoir recevoir des factures électroniques","Supprimer les factures papier archivées","Déclarer leurs factures à la CNIL"],a:1,e:"Les grandes entreprises et ETI doivent aussi émettre ; les PME et microentreprises émettront à partir du 1er septembre 2027.",x:"Les factures transitent par des plateformes agréées par l'administration fiscale ; le « e-reporting » transmet en parallèle les données des opérations non facturées électroniquement (ventes aux particuliers, international). Objectif : mieux lutter contre la fraude à la TVA.",u:["https://www.impots.gouv.fr/professionnel/questions/partir-de-quand-suis-je-concerne-par-la-reforme-de-la-facturation","https://www.impots.gouv.fr/professionnel/je-passe-la-facturation-electronique","https://fr.wikipedia.org/wiki/D%C3%A9mat%C3%A9rialisation_de_factures"],s:"Fiche 6",act:1},
 {id:"nu-23",t:"num",q:"Depuis quand l'impôt sur le revenu est-il prélevé à la source ?",o:["1er janvier 2017","1er janvier 2019","1er janvier 2021","1er septembre 2026"],a:1,e:"Le prélèvement à la source est entré en vigueur le 1er janvier 2019.",x:"Le collecteur (employeur, caisse de retraite) applique le taux transmis par la DGFiP. La déclaration annuelle de revenus reste obligatoire pour calculer l'impôt définitif.",u:["https://www.vie-publique.fr/fiches/21835-quest-ce-que-le-prelevement-la-source","https://www.vie-publique.fr/eclairage/18923-impot-sur-le-revenu-la-mise-en-place-du-prelevement-la-source"],s:"Fiche 6"},
 {id:"nu-24",t:"num",q:"Qu'est-ce que le HTML ?",o:["Un langage de balisage pour créer des pages web","Un virus","Un protocole de paiement","Un système d'exploitation"],a:0,e:"HyperText Markup Language.",x:"Le HTML structure le contenu ; la mise en forme relève du CSS et l'interactivité de JavaScript. Il a été créé par Tim Berners-Lee au CERN au début des années 1990.",u:["https://fr.wikipedia.org/wiki/Hypertext_Markup_Language"],s:"Culture numérique"},
 {id:"nu-25",t:"num",q:"Quel raccourci clavier annule la dernière action sous Windows ?",o:["Ctrl + C","Ctrl + V","Ctrl + Z","Ctrl + S"],a:2,e:"Ctrl + C copie, Ctrl + V colle, Ctrl + S enregistre.",x:"Ctrl + Y rétablit l'action annulée ; Ctrl + X coupe ; Ctrl + A sélectionne tout.",s:"Culture numérique"},
@@ -1599,10 +1843,20 @@ BANK.push(
 {id:"ad3-239",t:"admin",q:"Quelle juridiction financière a été supprimée par la réforme de la responsabilité des gestionnaires publics ?",o:["La chambre régionale des comptes","Le Conseil des prélèvements obligatoires","La Cour de discipline budgétaire et financière","La Cour des comptes européenne"],a:2,e:"Créée en 1948, la CDBF a disparu au 1er janvier 2023 ; ses attributions ont été reprises par la chambre du contentieux de la Cour des comptes.",u:["https://fr.wikipedia.org/wiki/Cour_de_discipline_budg%C3%A9taire_et_financi%C3%A8re"],s:"Ordonnance n° 2022-408 du 23 mars 2022"},
 {id:"ad3-240",t:"admin",q:"Dans le régime de responsabilité des gestionnaires publics, quel est le plafond général de l'amende encourue ?",o:["Trois mois de rémunération annuelle","Six mois de rémunération annuelle","Deux ans de rémunération","Au montant du préjudice, sans plafond"],a:1,e:"CJF, art. L131-16 : six mois de rémunération annuelle de la personne sanctionnée, plafond ramené à un mois pour les infractions de l'article L131-13. L'amende sanctionne notamment des fautes graves ayant causé un préjudice financier significatif ; c'est une sanction, non une réparation du préjudice.",x:"Le plafond spécifique prévu pour les personnes sans traitement ni salaire (art. L131-17) a été déclaré contraire à la Constitution (décision n° 2025-1148 QPC du 18 juillet 2025).",s:"CJF, art. L131-16"},
 // --- Actualité (fiche 8) ---
-{id:"ad3-241",t:"admin",q:"Selon l'Insee (29 septembre 2026), à combien s'élevait la dette publique au sens de Maastricht fin juin 2026 ?",o:["2 595,5 Md€","3 095,5 Md€","4 095,5 Md€","3 595,5 Md€"],a:3,e:"Soit 119,0 % du PIB.",s:"Fiche 8 (16 oct. 2026)",act:1},
-{id:"ad3-242",t:"admin",q:"Quel effort budgétaire le projet de loi de finances pour 2027, présenté le 1er octobre 2026, prévoit-il ?",o:["54 Md€","5,4 Md€","24 Md€","104 Md€"],a:0,e:"Pour ramener le déficit public à 5,0 % du PIB en 2027, contre 5,4 % prévu en 2026.",s:"Fiche 8 (16 oct. 2026)",act:1},
-{id:"ad3-243",t:"admin",q:"Quel déficit public le Gouvernement prévoit-il pour 2026 dans le PLF pour 2027 ?",o:["4,4 % du PIB","5,0 % du PIB","5,4 % du PIB","6,1 % du PIB"],a:2,e:"L'objectif pour 2027 est de 5,0 % du PIB.",s:"Fiche 8 (16 oct. 2026)",act:1},
-{id:"ad3-244",t:"admin",q:"Qui est ministre de l'Économie et des Finances en octobre 2026 ?",o:["David Amiel","Roland Lescure","Bruno Le Maire","Éric Lombard"],a:1,e:"Dans le gouvernement de Sébastien Lecornu ; David Amiel est ministre de l'Action et des Comptes publics.",s:"Fiche 8 (16 oct. 2026)",act:1}
+{id:"ad3-241",t:"admin",q:"Selon l'Insee (29 septembre 2026), à combien s'élevait la dette publique au sens de Maastricht fin juin 2026 ?",o:["2 595,5 Md€","3 095,5 Md€","4 095,5 Md€","3 595,5 Md€"],a:3,e:"Soit 119,0 % du PIB, après 117,5 % fin mars 2026.",u:["https://www.insee.fr/fr/statistiques/9053525"],s:"Fiche 8 (16 oct. 2026)",act:1},
+{id:"ad3-242",t:"admin",q:"Quel effort total de redressement le projet de loi de finances pour 2027, présenté le 1er octobre 2026, prévoit-il ?",o:["54 Md€","5,4 Md€","24 Md€","104 Md€"],a:0,e:"Dont 43 Md€ de mesures nouvelles portées par le PLF et le PLFSS, pour ramener le déficit public à 5,0 % du PIB en 2027, contre 5,4 % prévu en 2026.",u:["https://presse.economie.gouv.fr/dp-budget-2027/"],s:"Fiche 8 (16 oct. 2026)",act:1},
+{id:"ad3-243",t:"admin",q:"Quel déficit public le Gouvernement prévoit-il pour 2026 dans le PLF pour 2027 ?",o:["4,4 % du PIB","5,0 % du PIB","5,4 % du PIB","6,1 % du PIB"],a:2,e:"Contre 5,1 % constaté en 2025 par l'Insee : le déficit se creuserait en 2026 ; l'objectif pour 2027 est de 5,0 % du PIB.",u:["https://presse.economie.gouv.fr/dp-budget-2027/"],s:"Fiche 8 (16 oct. 2026)",act:1},
+{id:"ad3-244",t:"admin",q:"Qui est ministre de l'Économie et des Finances en octobre 2026 ?",o:["David Amiel","Roland Lescure","Bruno Le Maire","Éric Lombard"],a:1,e:"En fonction depuis le 5 octobre 2025 (gouvernements Lecornu I et II), il a succédé à Éric Lombard ; David Amiel est ministre de l'Action et des Comptes publics.",u:["https://fr.wikipedia.org/wiki/Roland_Lescure"],s:"Fiche 8 (16 oct. 2026)",act:1},
+// --- Actualité : projet de loi de finances pour 2027 et finances publiques en 2026 (vérifié le 17 oct. 2026) ---
+{id:"act27-01",t:"admin",q:"À quelle date le projet de loi de finances pour 2027 a-t-il été présenté en Conseil des ministres et déposé à l'Assemblée nationale ?",o:["Le 15 septembre 2026","Le 1er octobre 2026","Le 6 octobre 2026","Le 3 novembre 2026"],a:1,e:"Le jeudi 1er octobre 2026, avec le PLFSS. La LOLF impose un dépôt au plus tard le premier mardi d'octobre, soit le 6 octobre en 2026.",x:"Le Parlement dispose ensuite de 70 jours pour se prononcer (art. 47 de la Constitution) ; à défaut, les dispositions du projet peuvent être mises en vigueur par ordonnance.",u:["https://presse.economie.gouv.fr/dp-budget-2027/"],s:"Dossier de presse Budget 2027 (1er oct. 2026)",act:1},
+{id:"act27-02",t:"admin",q:"Quel niveau de dette publique le PLF pour 2027 prévoit-il pour la fin de 2027 ?",o:["112,6 % du PIB","115,7 % du PIB","121,7 % du PIB","131,7 % du PIB"],a:2,e:"Après 115,7 % fin 2025 et 119,3 % prévus fin 2026.",x:"La charge d'intérêts des administrations publiques passerait de 79,2 Md€ en 2026 à 91,2 Md€ en 2027. Le HCFP souligne que la dette approcherait 122 % du PIB même si l'objectif de déficit était tenu.",u:["https://presse.economie.gouv.fr/dp-budget-2027/","https://www.hcfp.fr/liste-avis/avis-ndeg2026-5-lois-de-finances-2027"],s:"Dossier de presse Budget 2027 (1er oct. 2026)",act:1},
+{id:"act27-03",t:"admin",q:"Quel montant de dépenses de l'État « sous norme » (périmètre des dépenses de l'État) le PLF pour 2027 prévoit-il ?",o:["421 Md€","503 Md€","511 Md€","612 Md€"],a:2,e:"Contre 503 Md€ en LFI 2026 ; hors Défense et prélèvements sur recettes, ces dépenses sont gelées à 373 Md€.",x:"Cette norme, définie par la loi de programmation des finances publiques 2023-2027, couvre le budget général, les budgets annexes, les comptes spéciaux et les prélèvements sur recettes au profit des collectivités et de l'UE, mais pas la charge de la dette.",u:["https://presse.economie.gouv.fr/dp-budget-2027/"],s:"Dossier de presse Budget 2027 (1er oct. 2026)",act:1},
+{id:"act27-04",t:"admin",q:"De combien les crédits de la mission « Défense » augmentent-ils dans le PLF pour 2027 ?",o:["+1,6 Md€","+3,2 Md€","+6,4 Md€","+12,8 Md€"],a:2,e:"Soit +11 %, pour atteindre 63,4 Md€ : c'est la plus forte hausse de tous les budgets de l'État.",x:"Elle applique la loi du 16 août 2026 actualisant la programmation militaire 2024-2030, qui ajoute 36 Md€ de crédits entre 2026 et 2030 et remplace la JDC par une Journée de mobilisation.",u:["https://presse.economie.gouv.fr/dp-budget-2027/"],s:"Dossier de presse Budget 2027 (1er oct. 2026)",act:1},
+{id:"act27-05",t:"admin",q:"Dans le PLF pour 2027, à quel montant par foyer le Gouvernement propose-t-il de ramener le plafond de l'abattement de 10 % appliqué aux pensions de retraite ?",o:["1 500 €","3 000 €","5 000 €","6 000 €"],a:1,e:"Contre 4 439 € actuellement (coût de la dépense fiscale réduit d'environ 25 %). Les députés ont supprimé cet article 3 en séance le 15 octobre 2026 ; la navette se poursuit.",x:"Le PLFSS prévoit aussi de revaloriser à l'inflation les pensions inférieures à 1 260 € par mois et de permettre, au-delà, une revalorisation moindre, sans baisse des pensions.",u:["https://presse.economie.gouv.fr/dp-budget-2027/"],s:"Dossier de presse Budget 2027 (1er oct. 2026)",act:1},
+{id:"act27-06",t:"admin",q:"Dans son avis du 1er octobre 2026, comment le Haut Conseil des finances publiques a-t-il jugé la prévision de croissance de 1,0 % retenue pour 2027 ?",o:["Prudente","Plausible","Optimiste","Conforme au consensus"],a:2,e:"Il a jugé plausible le scénario pour 2026, mais optimiste la croissance prévue pour 2027 ; la prévision d'inflation (1,8 %) est en revanche consensuelle.",x:"Placé auprès de la Cour des comptes et présidé par son Premier président, le HCFP apprécie le réalisme des prévisions du Gouvernement ; son avis est joint au projet de loi de finances.",u:["https://www.hcfp.fr/liste-avis/avis-ndeg2026-5-lois-de-finances-2027"],s:"HCFP, avis n° 2026-5 (1er oct. 2026)",act:1},
+{id:"act27-07",t:"admin",q:"Selon l'Insee (mars 2026), quel était le taux de prélèvements obligatoires de la France en 2025 ?",o:["40,1 % du PIB","42,8 % du PIB","43,6 % du PIB","46,2 % du PIB"],a:2,e:"Après 42,8 % en 2024 (même publication) : la hausse tient notamment à des mesures fiscales nouvelles. Le PLF 2027 prévoit 43,9 % en 2026 et 44,2 % en 2027.",u:["https://www.insee.fr/fr/statistiques/8956575","https://www.insee.fr/fr/statistiques/8997691"],s:"Insee, Informations rapides n° 78 (27 mars 2026)",act:1},
+{id:"act27-08",t:"admin",q:"Selon l'Insee, quel a été le déficit public de la France en 2025 ?",o:["4,4 % du PIB","5,1 % du PIB","5,8 % du PIB","6,2 % du PIB"],a:1,e:"152,5 Md€, soit 5,1 % du PIB, après 5,8 % en 2024 (Insee, mars puis mai 2026).",x:"La baisse tient surtout au dynamisme des recettes, notamment des prélèvements obligatoires. La dette publique atteignait 115,7 % du PIB fin 2025.",u:["https://www.insee.fr/fr/statistiques/8956575","https://www.insee.fr/fr/statistiques/8997691"],s:"Insee (27 mars et 29 mai 2026)",act:1},
+{id:"act27-09",t:"admin",q:"Selon le bilan publié par Bercy en avril 2026, quel montant de droits et pénalités le contrôle fiscal a-t-il permis de notifier en 2025 ?",o:["4,2 Md€","11,4 Md€","17,1 Md€","31,5 Md€"],a:2,e:"En hausse de 3 % sur un an. La DGFiP a effectivement encaissé 11,4 Md€ en 2025 : il faut distinguer montants notifiés et montants recouvrés.",x:"Avec environ 3 Md€ dans le champ social, les fraudes détectées et redressées ont dépassé pour la première fois 20 Md€. La loi du 25 juin 2026 relative à la lutte contre les fraudes sociales et fiscales a renforcé les moyens de détection et de recouvrement.",u:["https://presse.economie.gouv.fr/fraudes-fiscales-et-sociales-plus-de-20-milliards-deuros-detectes-et-redresses-en-2025/","https://presse.economie.gouv.fr/bilan-du-controle-fiscal-2025/"],s:"Communiqué de Bercy (8 avril 2026)",act:1}
 );
 
 // Union européenne (2) : histoire de la construction européenne (pères fondateurs, CECA, CED, traités de Rome à Lisbonne, TSCG),
@@ -1883,7 +2137,11 @@ BANK.push(
 {id:"ue2-252",t:"ue",q:"La citoyenneté de l'Union :",o:["S'ajoute à la citoyenneté nationale et ne la remplace pas","Remplace la nationalité des États membres","S'acquiert par une demande à la Commission","Est réservée aux résidents de la zone euro"],a:0,e:"Art. 20 TFUE : est citoyen de l'Union toute personne ayant la nationalité d'un État membre.",u:["https://fr.wikipedia.org/wiki/Citoyennet%C3%A9_de_l%27Union_europ%C3%A9enne"],s:"TFUE, art. 20"},
 {id:"ue2-253",t:"ue",q:"Dans un pays tiers où la France n'est pas représentée, quel droit la citoyenneté de l'Union confère-t-elle à un Français ?",o:["Une protection assurée par les Nations unies","Aucune protection particulière","Une protection assurée par la seule Commission européenne","La protection consulaire de tout autre État membre, comme ses propres nationaux"],a:3,e:"Art. 20 et 23 TFUE.",u:["https://fr.wikipedia.org/wiki/Citoyennet%C3%A9_de_l%27Union_europ%C3%A9enne"],s:"TFUE, art. 23"},
 {id:"ue2-254",t:"ue",q:"Quelle ville française sera capitale européenne de la culture en 2028 ?",o:["Rouen","Clermont-Ferrand","Bourges","Montpellier"],a:2,e:"Choisie en décembre 2023 face à Rouen, Clermont-Ferrand et Montpellier ; Marseille l'avait été en 2013.",u:["https://fr.wikipedia.org/wiki/Capitale_europ%C3%A9enne_de_la_culture"],s:"Banque UE"},
-{id:"ue2-255",t:"ue",q:"Quel prix l'Union européenne a-t-elle reçu en 2012 ?",o:["Le prix Sakharov","Le prix Nobel de la paix","Le prix Charlemagne","Le prix Princesse des Asturies"],a:1,e:"Pour sa contribution, pendant plus de soixante ans, à la paix, à la réconciliation, à la démocratie et aux droits de l'homme en Europe.",s:"Banque UE"}
+{id:"ue2-255",t:"ue",q:"Quel prix l'Union européenne a-t-elle reçu en 2012 ?",o:["Le prix Sakharov","Le prix Nobel de la paix","Le prix Charlemagne","Le prix Princesse des Asturies"],a:1,e:"Pour sa contribution, pendant plus de soixante ans, à la paix, à la réconciliation, à la démocratie et aux droits de l'homme en Europe.",s:"Banque UE"},
+// --- Actualité : présidences du Conseil de l'UE 2026-2028 (vérifié le 17 oct. 2026) ---
+{id:"act27-10",t:"ue",q:"Quel État membre a présidé le Conseil de l'Union européenne au premier semestre 2026 ?",o:["Le Danemark","Chypre","L'Irlande","Malte"],a:1,e:"Chypre a succédé au Danemark le 1er janvier 2026 et a passé le relais à l'Irlande le 1er juillet 2026.",x:"C'était la deuxième présidence chypriote, après celle du second semestre 2012 ; elle clôturait le trio formé avec la Pologne et le Danemark.",u:["https://fr.wikipedia.org/wiki/Pr%C3%A9sidence_chypriote_du_Conseil_de_l'Union_europ%C3%A9enne_en_2026","https://fr.wikipedia.org/wiki/Pr%C3%A9sidence_du_Conseil_de_l'Union_europ%C3%A9enne"],s:"Calendrier des présidences du Conseil",act:1},
+{id:"act27-11",t:"ue",q:"Quel État membre présidera le Conseil de l'Union européenne au second semestre 2027 ?",o:["La Lituanie","La Grèce","L'Italie","La Lettonie"],a:1,e:"La Grèce succédera à la Lituanie le 1er juillet 2027 et clôturera le trio formé avec l'Irlande et la Lituanie.",x:"Ce sera sa sixième présidence ; la précédente remonte au premier semestre 2014.",u:["https://fr.wikipedia.org/wiki/Pr%C3%A9sidence_du_Conseil_de_l'Union_europ%C3%A9enne"],s:"Calendrier des présidences du Conseil",act:1},
+{id:"act27-12",t:"ue",q:"Quel État membre ouvrira, au premier semestre 2028, le trio de présidences du Conseil de l'UE qui suivra celui de l'Irlande, de la Lituanie et de la Grèce ?",o:["L'Italie","La Lettonie","Le Luxembourg","La France"],a:0,e:"L'Italie (1er semestre 2028) sera suivie de la Lettonie (2nd semestre 2028), puis du Luxembourg (1er semestre 2029).",x:"L'ordre de rotation est fixé à l'avance par une décision du Conseil, la dernière datant de 2016 ; chaque trio adopte un programme commun sur dix-huit mois.",u:["https://fr.wikipedia.org/wiki/Pr%C3%A9sidence_du_Conseil_de_l'Union_europ%C3%A9enne"],s:"Calendrier des présidences du Conseil",act:1}
 );
 
 // Union européenne (banque 3) : droit de l'UE (sources, actes, principes, grands arrêts,
@@ -2108,7 +2366,11 @@ BANK.push(
 {id:"ue3-216",t:"ue",q:"Où siège l'Agence des droits fondamentaux de l'Union européenne (FRA), créée en 2007 ?",o:["Strasbourg","Vienne","Luxembourg","Genève"],a:1,e:"Elle apporte une expertise indépendante aux institutions et aux États ; elle a succédé à l'Observatoire européen des phénomènes racistes et xénophobes.",u:["https://european-union.europa.eu/institutions-law-budget/institutions-and-bodies/search-all-eu-institutions-and-bodies/european-union-agency-fundamental-rights-fra_fr"],s:"Règlement (CE) n° 168/2007"},
 {id:"ue3-217",t:"ue",q:"Quelle institution a déclenché en septembre 2018 la procédure de l'article 7 § 1 TUE à l'encontre de la Hongrie ?",o:["La Commission européenne","La Cour de justice","Le Conseil européen","Le Parlement européen"],a:3,e:"Contre la Pologne, la procédure avait été engagée par la Commission en décembre 2017, avant d'être close en 2024.",u:["https://www.touteleurope.eu/fonctionnement-de-l-ue/violation-des-valeurs-de-l-ue-comment-fonctionne-la-procedure-de-sanctions-article-7/"],s:"Parlement européen, 12 septembre 2018"},
 {id:"ue3-218",t:"ue",q:"Quel document la Commission publie-t-elle chaque année depuis 2020 pour évaluer, dans chaque État membre, la justice, la lutte contre la corruption, la liberté des médias et les contre-pouvoirs ?",o:["Le rapport sur la convergence","Le rapport sur l'État de droit","Le rapport sur la compétitivité","Les recommandations par pays du semestre européen"],a:1,e:"Outil préventif, distinct de la procédure de l'article 7 et du règlement de conditionnalité.",u:["https://www.touteleurope.eu/fonctionnement-de-l-ue/l-etat-de-droit-est-une-valeur-des-etats-europeens-et-de-l-union-europeenne/"],s:"Commission, depuis 2020"},
-{id:"ue3-219",t:"ue",q:"En octobre 2021, la Cour de justice a condamné la Pologne à une astreinte d'un million d'euros par jour en lien avec :",o:["Son refus d'adopter l'euro","La pollution de l'air dans ses grandes villes","Le régime disciplinaire applicable aux juges","Le non-respect des quotas laitiers"],a:2,e:"La Pologne n'avait pas suspendu l'activité de la chambre disciplinaire de sa Cour suprême ; l'astreinte a été réduite de moitié en 2023.",s:"CJUE, ordonnance du 27 octobre 2021"}
+{id:"ue3-219",t:"ue",q:"En octobre 2021, la Cour de justice a condamné la Pologne à une astreinte d'un million d'euros par jour en lien avec :",o:["Son refus d'adopter l'euro","La pollution de l'air dans ses grandes villes","Le régime disciplinaire applicable aux juges","Le non-respect des quotas laitiers"],a:2,e:"La Pologne n'avait pas suspendu l'activité de la chambre disciplinaire de sa Cour suprême ; l'astreinte a été réduite de moitié en 2023.",s:"CJUE, ordonnance du 27 octobre 2021"},
+// --- Actualité : budget européen et politique monétaire en 2026 (vérifié le 17 oct. 2026) ---
+{id:"act27-13",t:"ue",q:"Quel montant de contribution française au budget de l'Union européenne pour 2027 l'Assemblée nationale a-t-elle adopté le 14 octobre 2026 ?",o:["24,9 Md€","28,4 Md€","30,9 Md€","35,2 Md€"],a:2,e:"L'article 55 du PLF évalue le prélèvement sur recettes au profit de l'UE à 30,9 Md€ ; il a été adopté par 111 voix contre 93. Il était d'environ 28,4 Md€ en LFI 2026.",x:"Ce vote porte sur une évaluation : le montant dû découle du budget de l'UE et des règles relatives aux ressources propres. La hausse tient à l'accélération des paiements en fin de cadre 2021-2027, au soutien à l'Ukraine et aux intérêts de l'emprunt NextGenerationEU.",u:["https://www.touteleurope.eu/economie-et-social/budget-europeen-l-assemblee-nationale-approuve-une-contribution-francaise-de-309-milliards-d-euros-pour-2027/","https://presse.economie.gouv.fr/dp-budget-2027/"],s:"Toute l'Europe (15 oct. 2026)",act:1},
+{id:"act27-14",t:"ue",q:"Quel montant total la Commission européenne a-t-elle proposé en juillet 2025 pour le cadre financier pluriannuel 2028-2034 ?",o:["Environ 1 000 milliards d'euros","Environ 1 200 milliards d'euros","Environ 2 000 milliards d'euros","Environ 3 500 milliards d'euros"],a:2,e:"Soit 1,26 % du RNB de l'Union, dont 0,11 % pour rembourser l'emprunt NextGenerationEU ; le cadre 2021-2027 avoisine 1 200 Md€ hors plan de relance.",x:"Le 10 octobre 2026, la présidence irlandaise a proposé de ramener l'enveloppe à 1 825 Md€. Le règlement est adopté à l'unanimité par le Conseil, après approbation du Parlement européen (art. 312 TFUE).",u:["https://www.touteleurope.eu/fonctionnement-de-l-ue/budget-de-l-union-europeenne-la-commission-devoile-un-cadre-financier-de-2-000-milliards-d-euros-pour-la-periode-2028-2034/","https://www.touteleurope.eu/economie-et-social/conseil-europeen-la-france-pousse-pour-faire-adopter-rapidement-le-budget-la-competitivite-de-l-ue-au-coeur-des-debats/"],s:"Commission (16 juillet 2025) ; Toute l'Europe (16 oct. 2026)",act:1},
+{id:"act27-15",t:"ue",q:"Quel est le taux de la facilité de dépôt de la Banque centrale européenne depuis le 16 septembre 2026 ?",o:["2,00 %","2,25 %","2,50 %","4,00 %"],a:2,e:"Le Conseil des gouverneurs l'a relevé de 25 points de base le 10 septembre 2026, après une première hausse à 2,25 % en juin 2026 ; il était de 2,00 % depuis juin 2025.",x:"Ces hausses répondent aux tensions sur l'inflation liées au conflit au Moyen-Orient et aux prix de l'énergie. La BCE pilote l'orientation de sa politique monétaire par ce taux ; celui des opérations principales de refinancement est fixé à 2,65 %.",u:["https://www.ecb.europa.eu/stats/policy_and_exchange_rates/key_ecb_interest_rates/html/index.fr.html","https://www.banque-france.fr/fr/communiques-de-presse/declaration-de-politique-monetaire-15"],s:"BCE, décision du 10 septembre 2026",act:1}
 );
 
 // Culture numérique (banque 2) : recherche et veille, données et tableur, communication, création de contenus,
@@ -2299,7 +2561,7 @@ BANK.push(
 {id:"nu2-165",t:"num",q:"Que désigne le « minage » d'une cryptomonnaie comme le bitcoin ?",o:["L'extraction de métaux rares pour fabriquer les ordinateurs","Le vol de portefeuilles numériques","La conversion de cryptoactifs en euros","La validation des transactions et la création de nouveaux blocs par calcul informatique, rémunérées en cryptoactifs"],a:3,e:"Ce mécanisme (preuve de travail) consomme beaucoup d'électricité. Le bitcoin, lancé en 2009, est la première cryptomonnaie.",u:["https://fr.wikipedia.org/wiki/Bitcoin"],s:"Banque numérique"},
 {id:"nu2-166",t:"num",q:"Quel règlement européen encadre les émetteurs de cryptoactifs et les prestataires de services sur cryptoactifs ?",o:["MiCA","DSA","DORA","eIDAS"],a:0,e:"Markets in Crypto-Assets, pleinement applicable depuis le 30 décembre 2024. DORA porte sur la résilience opérationnelle numérique du secteur financier.",s:"Banque numérique"},
 {id:"nu2-167",t:"num",q:"Qu'est-ce qu'un NFT (jeton non fongible) ?",o:["Une monnaie interchangeable comme l'euro","Un format de fichier vidéo","Un logiciel antivirus","Un jeton numérique unique, inscrit sur une blockchain et associé à un actif (souvent numérique)"],a:3,e:"« Non fongible » : il n'est pas interchangeable avec un autre, contrairement à une unité de monnaie.",u:["https://fr.wikipedia.org/wiki/Jeton_non_fongible"],s:"Banque numérique"},
-{id:"nu2-168",t:"num",q:"Que vise le projet d'euro numérique porté par la BCE ?",o:["Remplacer les billets et les pièces","Créer une cryptomonnaie privée","Offrir au public une monnaie de banque centrale sous forme électronique, en complément des espèces","Supprimer les comptes bancaires"],a:2,e:"Le projet est encore en préparation ; ce ne serait pas une cryptomonnaie, mais une monnaie émise par la banque centrale.",u:["https://fr.wikipedia.org/wiki/Euro_numérique"],s:"Banque numérique",act:1},
+{id:"nu2-168",t:"num",q:"Que vise le projet d'euro numérique porté par la BCE ?",o:["Remplacer les billets et les pièces","Créer une cryptomonnaie privée","Offrir au public une monnaie de banque centrale sous forme électronique, en complément des espèces","Supprimer les comptes bancaires"],a:2,e:"Ce ne serait pas une cryptomonnaie, mais une monnaie émise par la banque centrale ; en 2026, la BCE vise une première émission potentielle en 2029, si le règlement européen est adopté, après un projet pilote en 2027.",u:["https://www.ecb.europa.eu/euro/digital_euro/html/index.fr.html","https://fr.wikipedia.org/wiki/Euro_num%C3%A9rique"],s:"Banque numérique",act:1},
 {id:"nu2-169",t:"num",q:"Lequel de ces logiciels est un logiciel libre ?",o:["Microsoft Word","Adobe Photoshop","LibreOffice","Windows 11"],a:2,e:"Comme Firefox, Thunderbird ou VLC ; les autres sont des logiciels propriétaires.",u:["https://fr.wikipedia.org/wiki/LibreOffice","https://fr.wikipedia.org/wiki/Logiciel_libre"],s:"Banque numérique"},
 {id:"nu2-170",t:"num",q:"Qu'est-ce que le SILL ?",o:["Le socle interministériel de logiciels libres, liste de logiciels libres recommandés aux administrations","Un service de sauvegarde en ligne","Un système d'information sur les loyers","Un indice de sécurité des logiciels"],a:0,e:"Il est tenu par la DINUM avec des agents publics utilisateurs.",u:["https://fr.wikipedia.org/wiki/Socle_interministériel_de_logiciels_libres"],s:"Banque numérique"},
 {id:"nu2-171",t:"num",q:"Qu'est-ce qu'une API (interface de programmation) ?",o:["Un écran tactile","Une interface qui permet à des logiciels d'échanger automatiquement des données ou des services","Une adresse IP privée","Un antivirus en ligne"],a:1,e:"Les administrations s'en servent pour échanger des données sans les redemander aux usagers.",u:["https://fr.wikipedia.org/wiki/Interface_de_programmation"],s:"Banque numérique"},
@@ -3167,6 +3429,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">"
 const pct = (a,b) => b ? Math.round(a*1000/b)/10 : null;
 const fmtPct = v => v==null ? "—" : (Math.round(v)) + " %";
 const fmtNum = (v,d=2) => (Math.round(v*Math.pow(10,d))/Math.pow(10,d)).toLocaleString("fr-FR");
+const fmtDur = ms => { const s = Math.round((ms||0)/1000); return s < 60 ? s+" s" : Math.floor(s/60)+" min "+String(s%60).padStart(2,"0"); };
 function dayNum(d=new Date()){ return Math.floor((d.getTime() - d.getTimezoneOffset()*60000)/86400000); }
 function hash(str){ let h=2166136261; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619);} return h>>>0; }
 function rng(seed){ let s=seed>>>0||1; return ()=>{ s^=s<<13; s>>>=0; s^=s>>17; s^=s<<5; s>>>=0; return s/4294967296; }; }
@@ -3195,6 +3458,7 @@ const ICO = {
   arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
   link:'<path d="M9.5 14.5 14.5 9.5M10 6.5 11.5 5a4 4 0 0 1 5.5 5.5L15.5 12M14 17.5 12.5 19A4 4 0 0 1 7 13.5L8.5 12"/>',
   clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  flag:'<path d="M5.5 21V4.5M5.5 4.5h11.5l-2.2 4 2.2 4H5.5"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
   info:'<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.8v.2"/>',
   sliders:'<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>'
@@ -3234,17 +3498,16 @@ function normalize(s){
 function serialize(){
   const cards = {}; for(const [id,r] of Object.entries(S.cards)) cards[id] = packRec(r);
   let out = JSON.stringify({...S, cards});
-  if(out.length > 230000){ // garde-fou de taille du document du compte
+  if(out.length > 800000){ // garde-fou de taille du document du compte (Firestore : 1 Mo)
     S.exams = S.exams.slice(0,20); S.exams.forEach((x,i)=>{ if(i>=2){ delete x.ids; delete x.ans; } });
     out = JSON.stringify({...S, cards});
   }
   return out;
 }
-let saveTimer=null;
 function save(remoteToo=true){
   S.u = Date.now();
   try { localStorage.setItem(KEY, serialize()); } catch(e){}
-  if(remoteToo){ clearTimeout(saveTimer); saveTimer=setTimeout(pushRemote, 1500); }
+  if(remoteToo && window.PrepaSync) PrepaSync.changed("qcm");
 }
 // Fusion appareil / compte : carte par carte (révision la plus récente), examens et cartes perso par identifiant.
 function merge(a, b){
@@ -3263,37 +3526,22 @@ function merge(a, b){
   return out;
 }
 
-// ---------- Stockage du compte (capacité db) ----------
-const remote = {db:null, uid:null, busy:false, again:false, status:"local"};
-async function initRemote(){
-  try{
-    if(!window.claude || !window.claude.use) return;
-    const [db,user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
-    if(!db || !user) return;
-    const uid = await user.id();
-    if(!uid) return;
-    remote.db = db; remote.uid = uid;
-    const snap = await db.doc("data/users/"+uid+"/state").get();
-    if(snap.exists){
-      const r = snap.data();
-      const body = r && r.json ? JSON.parse(r.json) : null;
-      if(body){ S = merge(S, normalize(body)); try{ localStorage.setItem(KEY, serialize()); }catch(e){} session=null; }
+// ---------- Synchro du compte (commun/sync.js) ----------
+// L'examen en cours reste propre à l'appareil : il n'est ni envoyé ni remplacé par la synchro.
+function initSync(){
+  if(!window.PrepaSync) return;
+  PrepaSync.attach("qcm", {
+    get: () => { const o = JSON.parse(serialize()); delete o.run; return o; },
+    merge: o => {
+      const run = S.run;
+      S = merge(S, normalize(o)); S.run = run;
+      try { localStorage.setItem(KEY, serialize()); } catch(e){}
+      invalidate();
+      const a = document.activeElement;
+      if(a && a.closest && a.closest("input,textarea,select")) renderPills(); else render();
     }
-    remote.status = "compte";
-    await pushRemote();
-    render();
-  }catch(e){ remote.status = "local"; renderPills(); }
-}
-async function pushRemote(){
-  if(!remote.db) return;
-  if(remote.busy){ remote.again = true; return; }
-  remote.busy = true;
-  try{
-    await remote.db.doc("data/users/"+remote.uid+"/state").set({json: serialize(), u: S.u});
-    remote.status = "compte";
-  }catch(e){ remote.status = (e && e.code==="quota_exceeded") ? "plein" : "local"; }
-  remote.busy = false; renderPills();
-  if(remote.again){ remote.again=false; pushRemote(); }
+  });
+  PrepaSync.onStatus(() => renderPills());
 }
 
 // ---------- Cartes ----------
@@ -3396,7 +3644,7 @@ function renderTabs(){
 function segHtml(){
   return [["insp","Insp.","Inspecteur"],["ctrl","Contr.","Contrôleur"]].map(([k,s,l]) => `<button type="button" data-mod="${k}" aria-pressed="${S.set.mod===k}" title="Module ${l.toLowerCase()}">${s}</button>`).join("");
 }
-function saveStatus(){ return remote.status==="compte" ? "sur ton compte" : remote.status==="plein" ? "stockage du compte plein, cet appareil seulement" : "sur cet appareil"; }
+function saveStatus(){ return window.PrepaSync ? PrepaSync.label() : "sur cet appareil"; }
 function renderPills(){
   const e = EXAMS[S.set.mod==="ctrl"?"ctrl":"insp"];
   const d = daysTo(e.date);
@@ -3408,7 +3656,8 @@ function renderPills(){
 function render(){
   invalidate(); renderTabs();
   const m = $("#main");
-  m.classList.toggle("fit", tab==="jour");
+  m.classList.toggle("fit", tab==="jour" || (tab==="examen" && !!S.run));
+  document.body.classList.toggle("xrun", tab==="examen" && !!S.run);
   ({jour:viewJour, examen:viewExam, progres:viewProgres, banque:viewBanque, plus:viewPlus, ajout:viewAjout, reglages:viewReglages})[tab](m);
   renderPills();
 }
@@ -3505,6 +3754,18 @@ function persistSession(){
 // ----- Examen blanc -----
 let tick = null;
 let lastResult = null;
+let xsheet = false; // mobile : feuille de réponse affichée à la place de la question
+// Cocher une case passe à la question suivante ; recliquer la case cochée la décoche et reste sur place.
+function xAnswer(v){
+  const R = S.run; if(!R) return;
+  const id = R.ids[R.pos];
+  if(R.ans[id]===v){ delete R.ans[id]; save(); render(); return; }
+  const full = () => R.ids.every(i=>R.ans[i]!=null), was = full();
+  R.ans[id] = v; save(); render();
+  if(!was && full()) toast("Toutes les questions ont une réponse : tu peux rendre la copie.");
+  const pos = R.pos, rid = R.id;
+  if(pos < R.ids.length-1) setTimeout(()=>{ if(S.run && S.run.id===rid && S.run.pos===pos && tab==="examen"){ S.run.pos++; save(); render(); } }, 250);
+}
 function buildExam(kind){
   const E = EXAMS[kind];
   const usable = allCards().filter(c=>!c.d && !c.mine && (S.set.act || !c.act));
@@ -3520,12 +3781,25 @@ function buildExam(kind){
 }
 function startExam(kind){
   const E = EXAMS[kind];
-  lastResult = null;
-  S.run = {id:"x"+Date.now().toString(36), kind, ids:buildExam(kind), ans:{}, start:Date.now(), dur:E.min*60000, pos:0, pen:S.set.pen};
+  lastResult = null; xsheet = false;
+  S.run = {id:"x"+Date.now().toString(36), kind, ids:buildExam(kind), ans:{}, flag:{}, t:{}, start:Date.now(), dur:E.min*60000, pos:0, pen:S.set.pen};
   markSeen(S.run.ids);
   save(); render();
 }
 function examLeft(){ return S.run ? S.run.start + S.run.dur - Date.now() : 0; }
+// Temps par question : le temps écoulé entre deux affichages revient à la question qui était à l'écran (10 min au plus d'affilée).
+function xTime(){
+  const R = S.run; if(!R) return;
+  const now = Date.now(); R.t = R.t || {};
+  if(R.sid && R.since) R.t[R.sid] = (R.t[R.sid]||0) + Math.min(now - R.since, 600000);
+  R.since = now; R.sid = R.ids[R.pos];
+}
+function xFlag(){
+  const R = S.run; if(!R) return;
+  const id = R.ids[R.pos]; R.flag = R.flag || {};
+  if(R.flag[id]) delete R.flag[id]; else R.flag[id] = 1;
+  save(); render();
+}
 function fmtClock(ms){ ms=Math.max(0,ms); const s=Math.floor(ms/1000); const h=Math.floor(s/3600), mi=Math.floor((s%3600)/60), se=s%60; return (h?h+" h ":"")+String(mi).padStart(2,"0")+" min "+String(se).padStart(2,"0"); }
 function viewExam(m){
   clearInterval(tick);
@@ -3554,16 +3828,19 @@ function viewExam(m){
     </div>
   </article>
   ${last.length?`<article class="sheet"><h2 class="h-sec">Derniers examens</h2><div class="tw"><table class="t">
-    <thead><tr><th>Date</th><th>Module</th><th class="num">Justes</th><th class="num">Fausses</th><th class="num">Ann</th><th class="num">Note / 20</th></tr></thead>
-    <tbody>${last.map(x=>`<tr><td>${new Date(x.at).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</td><td>${EXAMS[x.kind].l}</td><td class="num">${x.ok}</td><td class="num">${x.ko}</td><td class="num">${x.ab}</td><td class="num"><b>${fmtNum(x.note,1)}</b></td></tr>`).join("")}</tbody></table></div></article>`:""}`;
+    <thead><tr><th>Date</th><th>Module</th><th class="num">Justes</th><th class="num">Fausses</th><th class="num">Ann</th><th class="num hide-sm">Temps / q.</th><th class="num">Note / 20</th></tr></thead>
+    <tbody>${last.map(x=>`<tr${x.ids?` class="click" data-xrev="${x.id}" tabindex="0" title="Revoir la copie"`:""}><td>${new Date(x.at).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</td><td>${EXAMS[x.kind].l}</td><td class="num">${x.ok}</td><td class="num">${x.ko}</td><td class="num">${x.ab}</td><td class="num hide-sm">${x.tq?fmtDur(x.tq):"—"}</td><td class="num"><b>${fmtNum(x.note,1)}</b></td></tr>`).join("")}</tbody></table></div>
+    ${last.some(x=>x.ids)?`<p class="small muted">Clique sur un des 5 derniers examens pour revoir la copie.</p>`:""}</article>`:""}`;
 }
 function viewExamRun(m){
   const R = S.run; const E = EXAMS[R.kind];
   if(examLeft()<=0) return finishExam(true);
   const id = R.ids[R.pos]; const c = cardMap().get(id);
   if(!c){ R.ids.splice(R.pos,1); R.pos=Math.min(R.pos,R.ids.length-1); save(); return viewExamRun(m); }
+  xTime();
   const perm = permFor(id, R.id);
   const a = R.ans[id];
+  const fl = !!(R.flag && R.flag[id]);
   const nAns = R.ids.filter(i=>R.ans[i]!=null && R.ans[i]>=0).length;
   const nAb = R.ids.filter(i=>R.ans[i]===-1).length;
   m.innerHTML = `
@@ -3577,23 +3854,27 @@ function viewExamRun(m){
       <span id="endbox"><button class="btn sm" data-act="endask">Rendre la copie</button></span>
     </div>
   </div>
-  <div class="split">
-    <article class="sheet">
-      <div class="row" style="gap:6px"><span class="badge mono out">Q${R.pos+1}</span><span class="badge acc">${esc(THEMES[c.t].l)}</span></div>
+  <div class="xgrid${xsheet?" show-sheet":""}">
+    <article class="sheet xq${c.q.length + c.o.join("").length > 300 ? " dense" : ""}">
+      <div class="row between">
+        <div class="row" style="gap:6px"><span class="badge mono out">Q${R.pos+1} / ${R.ids.length}</span><span class="badge acc">${esc(THEMES[c.t].l)}</span></div>
+        <div class="row" style="gap:6px">
+          <button class="btn sm xflag${fl?" on":""}" data-act="xflag" aria-pressed="${fl}" title="Signaler la question pour la revoir (touche R)">${ico("flag")}<span class="hide-xs">À revoir</span></button>
+          <button class="btn sm xsheet-btn" data-act="xsheet">Feuille <span class="mono">${nAns+nAb}/${R.ids.length}</span></button>
+          <button class="btn sm" data-xnav="-1" ${R.pos===0?"disabled":""}>Précédente</button>
+          <button class="btn sm" data-xnav="1" ${R.pos===R.ids.length-1?"disabled":""}>Suivante</button>
+        </div>
+      </div>
       <p class="question">${esc(c.q)}</p>
       <div class="opts">
         ${perm.map((oi,k)=>`<button class="opt ${a===k?"chosen":""}" data-xpick="${k}" aria-pressed="${a===k}"><span class="box">${k+1}</span><span class="t">${esc(c.o[oi])}</span><span class="lab">${a===k?"Cochée":""}</span></button>`).join("")}
         <button class="opt ann ${a===-1?"chosen":""}" data-xpick="-1" aria-pressed="${a===-1}"><span class="box">Ann</span><span class="t">Je m'abstiens</span><span class="lab">${a===-1?"Cochée":""}</span></button>
       </div>
-      <div class="row between">
-        <button class="btn" data-xnav="-1" ${R.pos===0?"disabled":""}>Précédente</button>
-        <button class="btn pri" data-xnav="1" ${R.pos===R.ids.length-1?"disabled":""}>Suivante ${ico("arrow")}</button>
-      </div>
     </article>
-    <aside class="sheet tight">
-      <div class="row between"><h2 class="h-card">Feuille de réponse</h2><span class="small muted mono">${nAns+nAb} / ${R.ids.length}</span></div>
-      <div class="omr">${R.ids.map((i,k)=>`<button class="${R.ans[i]>=0?"done":R.ans[i]===-1?"abst":""} ${k===R.pos?"cur":""}" data-xgo="${k}" aria-label="Question ${k+1}">${k+1}</button>`).join("")}</div>
-      <div class="legend"><span><i class="done"></i>cochée</span><span><i class="abst"></i>abstention</span><span><i></i>vide</span></div>
+    <aside class="sheet tight xomr">
+      <div class="row between"><h2 class="h-card">Feuille de réponse</h2><span class="row" style="gap:8px"><span class="small muted mono">${nAns+nAb} / ${R.ids.length}</span><button class="btn sm xback" data-act="xsheet">Retour</button></span></div>
+      <div class="omr">${R.ids.map((i,k)=>`<button class="${R.ans[i]>=0?"done":R.ans[i]===-1?"abst":""} ${k===R.pos?"cur":""} ${R.flag&&R.flag[i]?"flag":""}" data-xgo="${k}" aria-label="Question ${k+1}${R.flag&&R.flag[i]?", à revoir":""}">${k+1}</button>`).join("")}</div>
+      <div class="legend"><span><i class="done"></i>cochée</span><span><i class="abst"></i>abstention</span><span><i></i>vide</span><span><i class="flag"></i>à revoir</span></div>
     </aside>
   </div>`;
   tick = setInterval(()=>{ const t=$("#timer"); if(!t || !S.run){ clearInterval(tick); return; } const left=examLeft(); t.textContent=fmtClock(left); t.classList.toggle("low", left<5*60000); if(left<=0){ clearInterval(tick); finishExam(true); } }, 1000);
@@ -3601,6 +3882,7 @@ function viewExamRun(m){
 function finishExam(timeout){
   const R = S.run; if(!R) return;
   clearInterval(tick);
+  xTime();
   let ok=0, ko=0, ab=0; const by={}; const wrong=[];
   for(const id of R.ids){
     const c = cardMap().get(id); if(!c) continue;
@@ -3613,11 +3895,13 @@ function finishExam(timeout){
   }
   const raw = ok - R.pen*ko;
   const note = Math.max(0, raw) / R.ids.length * 20;
-  const res = {id:R.id, kind:R.kind, at:Date.now(), n:R.ids.length, ok, ko, ab, pen:R.pen, raw, note, by, wrong, timeout:!!timeout, ids:R.ids, ans:R.ans};
+  const tt = R.ids.reduce((s,id)=>s+((R.t||{})[id]||0), 0);
+  const res = {id:R.id, kind:R.kind, at:Date.now(), n:R.ids.length, ok, ko, ab, pen:R.pen, raw, note, by, wrong, timeout:!!timeout,
+    dur: Math.min(Date.now(), R.start+R.dur) - R.start, tq: Math.round(tt / R.ids.length), ids:R.ids, ans:R.ans, t:R.t||{}, flag:Object.keys(R.flag||{})};
   S.exams.unshift(res); S.exams = S.exams.slice(0,40);
-  S.exams.forEach((x,i)=>{ if(i>=5){ delete x.ids; delete x.ans; } });
+  S.exams.forEach((x,i)=>{ if(i>=5){ delete x.ids; delete x.ans; delete x.t; delete x.flag; } });
   S.run = null; save();
-  lastResult = res; tab="examen"; render();
+  lastResult = res; revF = res.ko ? "ko" : "all"; tab="examen"; render();
 }
 function viewExamResult(m, x){
   const E = EXAMS[x.kind];
@@ -3633,6 +3917,7 @@ function viewExamResult(m, x){
     <div class="stat"><span>Points bruts</span><b>${fmtNum(x.raw,2)} <small>/ ${x.n}</small></b><span>pénalité −${fmtNum(x.pen)}</span></div>
     <div class="stat"><span>Justes</span><b>${x.ok}</b><span>${fmtPct(pct(x.ok,x.n))} des questions</span></div>
     <div class="stat"><span>Fausses · Ann</span><b>${x.ko} <small>· ${x.ab}</small></b><span>${x.ko?"à revoir en priorité":"aucune erreur"}</span></div>
+    ${x.tq?`<div class="stat"><span>Temps moyen</span><b>${fmtDur(x.tq)}</b><span>par question · ${fmtDur(x.dur)} au total</span></div>`:""}
   </div>
   <article class="sheet">
     <h2 class="h-sec">Par thème</h2>
@@ -3641,8 +3926,27 @@ function viewExamResult(m, x){
       <tbody>${rows}</tbody></table></div>
     <div class="row"><button class="btn" data-act="examhome">Retour</button></div>
   </article>
-  ${x.ids?`<article class="sheet"><h2 class="h-sec">Correction</h2><div class="stack" style="gap:var(--s2)">${x.ids.map((id,k)=>{ const c=cardMap().get(id); if(!c) return ""; const a=x.ans[id]; const perm=permFor(id,x.id); const st = a==null||a===-1 ? "abst" : perm[a]===c.a ? "ok" : "ko";
-    return `<div class="item"><button class="head" data-toggle><span class="badge ${st==="ok"?"ok":st==="ko"?"bad":"warn"}">${ico(st==="ok"?"check":st==="ko"?"cross":"info")}Q${k+1} · ${st==="ok"?"juste":st==="ko"?"fausse":"abstention"}</span> ${esc(c.q)}</button><div class="body" hidden><ol>${perm.map((oi,j)=>`<li class="${oi===c.a?"good":""}">${esc(c.o[oi])}${oi===c.a?' <span class="badge ok">Bonne réponse</span>':""}${a===j&&oi!==c.a?' <span class="badge bad">Ta réponse</span>':""}</li>`).join("")}</ol>${explHtml(c)}</div></div>`; }).join("")}</div></article>`:""}`;
+  ${x.ids?reviewHtml(x):`<article class="sheet tight"><p class="small muted">Le détail question par question n'est conservé que pour les 5 derniers examens.</p></article>`}`;
+}
+// Revue de la copie : question par question, filtrable, avec le temps passé et les questions signalées.
+let revF = "all";
+function reviewHtml(x){
+  const flags = new Set(x.flag||[]);
+  const items = x.ids.map((id,k)=>{ const c=cardMap().get(id); if(!c) return null; const a=x.ans[id]; const perm=permFor(id,x.id);
+    return {id,k,c,a,perm,st: a==null||a===-1 ? "abst" : perm[a]===c.a ? "ok" : "ko", fl: flags.has(id), t:(x.t||{})[id]||0}; }).filter(Boolean);
+  const F = [["all","Toutes",items.length],["ko","Fausses",items.filter(i=>i.st==="ko").length],["abst","Abstentions",items.filter(i=>i.st==="abst").length],["flag","À revoir",items.filter(i=>i.fl).length],["ok","Justes",items.filter(i=>i.st==="ok").length]];
+  const shown = items.filter(i=> revF==="all" || (revF==="flag" ? i.fl : i.st===revF));
+  const open = revF!=="all" && revF!=="ok";
+  const slow = items.filter(i=>i.t).sort((p,q)=>q.t-p.t)[0];
+  return `<article class="sheet">
+    <div class="row between"><h2 class="h-sec">Revoir la copie</h2>${slow?`<span class="small muted">Plus long : Q${slow.k+1} (${fmtDur(slow.t)})</span>`:""}</div>
+    <div class="chips" role="group" aria-label="Filtrer les questions">${F.map(([k,l,n])=>`<button data-revf="${k}" aria-pressed="${revF===k}" ${n?"":"disabled"}>${l} <span class="mono">${n}</span></button>`).join("")}</div>
+    <div class="stack" style="gap:var(--s2)">${shown.length ? shown.map(i=>`<div class="item"><button class="head" data-toggle>
+      <span class="badge ${i.st==="ok"?"ok":i.st==="ko"?"bad":"warn"}">${ico(i.st==="ok"?"check":i.st==="ko"?"cross":"info")}Q${i.k+1} · ${i.st==="ok"?"juste":i.st==="ko"?"fausse":"abstention"}</span>
+      ${i.fl?`<span class="badge warn">${ico("flag")}à revoir</span>`:""}${i.t?`<span class="badge mono out">${fmtDur(i.t)}</span>`:""}
+      <span class="badge acc">${esc(THEMES[i.c.t].s)}</span> ${esc(i.c.q)}</button>
+      <div class="body"${open?"":" hidden"}><ol>${i.perm.map((oi,j)=>`<li class="${oi===i.c.a?"good":""}">${esc(i.c.o[oi])}${oi===i.c.a?' <span class="badge ok">Bonne réponse</span>':""}${i.a===j&&oi!==i.c.a?' <span class="badge bad">Ta réponse</span>':""}</li>`).join("")}</ol>${explHtml(i.c)}</div></div>`).join("") : `<p class="empty">Aucune question dans ce filtre.</p>`}</div>
+  </article>`;
 }
 
 // ----- Progrès -----
@@ -3679,7 +3983,9 @@ function viewProgres(m){
     <div class="stat"><span>Réussite en révision</span><b>${fmtPct(pct(totalOk,totalAns))}</b><span>${plural(totalAns,"réponse")}</span></div>
     <div class="stat"><span>Questions vues</span><b>${seen} <small>/ ${tot}</small></b><span>${acq} acquises</span></div>
     ${x0?`<div class="stat"><span>Dernier examen blanc</span><b>${fmtNum(x0.note,1)} <small>/ 20</small></b>${x1?`<span class="delta ${x0.note>=x1.note?"up":"down"}">${x0.note>=x1.note?"+":"−"}${fmtNum(Math.abs(x0.note-x1.note),1)} pt</span>`:`<span>${EXAMS[x0.kind].l.toLowerCase()}</span>`}</div>`:""}
+    ${x0&&x0.tq?`<div class="stat"><span>Temps moyen par question</span><b>${fmtDur(x0.tq)}</b><span>dernier examen · ${fmtDur(EXAMS[x0.kind].min*60000/EXAMS[x0.kind].n)} disponibles</span></div>`:""}
   </div>
+  ${notesHtml()}
   <article class="sheet">
     <div class="row between">
       <h2 class="h-sec">Par thème</h2>
@@ -3706,7 +4012,61 @@ function viewProgres(m){
       <tbody>${st.map(s=>`<tr><td>${THEMES[s.t].s}</td><td class="num">${s.total}</td><td class="num">${s.seen}</td><td class="num">${s.acq}</td><td class="num">${s.n}</td><td class="r"><button class="btn sm" data-theme-session="${s.t}">30 questions</button></td></tr>`).join("")}</tbody>
     </table></div>
   </article>`;
+  drawNotes();
 }
+
+// Évolution des notes d'examen blanc : une courbe par module (sélecteur si les deux existent), données en tableau.
+let notesK = null;
+function notesData(){
+  const kinds = Object.keys(EXAMS).filter(k=>S.exams.some(x=>x.kind===k));
+  if(!kinds.length) return {kinds, k:null, list:[]};
+  let k = notesK && kinds.includes(notesK) ? notesK : (S.set.mod==="ctrl" ? "ctrl" : "insp");
+  if(!kinds.includes(k)) k = kinds[0];
+  return {kinds, k, list: S.exams.filter(x=>x.kind===k).slice().sort((a,b)=>a.at-b.at)};
+}
+function notesHtml(){
+  const {kinds, k, list} = notesData();
+  if(!list.length) return "";
+  const day = t => new Date(t).toLocaleDateString("fr-FR",{day:"numeric",month:"short"});
+  return `<article class="sheet">
+    <div class="row between"><h2 class="h-sec">Évolution des notes · ${EXAMS[k].l.toLowerCase()}</h2>
+      ${kinds.length>1?`<div class="chips" role="group" aria-label="Module">${kinds.map(q=>`<button data-notesk="${q}" aria-pressed="${q===k}">${EXAMS[q].l}</button>`).join("")}</div>`:""}</div>
+    ${list.length>1 ? `<div class="chart" id="notes-chart" role="img" aria-label="Notes des ${list.length} derniers examens blancs ${EXAMS[k].l.toLowerCase()}, de ${fmtNum(list[0].note,1)} à ${fmtNum(list[list.length-1].note,1)} sur 20"></div>`
+      : `<p class="small muted">Une seule note pour l'instant (${fmtNum(list[0].note,1)} / 20) : la courbe apparaîtra au deuxième examen blanc.</p>`}
+    <details><summary class="small">Voir les données</summary><div class="tw"><table class="t">
+      <thead><tr><th>Date</th><th class="num">Note / 20</th><th class="num">Justes</th><th class="num">Fausses</th><th class="num">Ann</th><th class="num">Temps / q.</th></tr></thead>
+      <tbody>${list.slice().reverse().map(x=>`<tr><td>${day(x.at)}</td><td class="num"><b>${fmtNum(x.note,1)}</b></td><td class="num">${x.ok}</td><td class="num">${x.ko}</td><td class="num">${x.ab}</td><td class="num">${x.tq?fmtDur(x.tq):"—"}</td></tr>`).join("")}</tbody></table></div></details>
+  </article>`;
+}
+function drawNotes(){
+  const el = $("#notes-chart"); if(!el) return;
+  const {list} = notesData(); const n = list.length; if(n<2) return;
+  const W = Math.max(280, el.clientWidth), H = 210, pl = 30, pr = 44, pt = 14, pb = 28;
+  const X = i => pl + i*(W-pl-pr)/(n-1), Y = v => pt + (1 - v/20)*(H-pt-pb);
+  const day = t => new Date(t).toLocaleDateString("fr-FR",{day:"numeric",month:"short"});
+  const ticks = n>4 ? [0, Math.round((n-1)/2), n-1] : [...Array(n).keys()];
+  const pts = list.map((x,i)=>[X(i), Y(Math.max(0,Math.min(20,x.note)))]);
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true">
+    ${[0,5,10,15,20].map(v=>`<line x1="${pl}" x2="${W-pr+8}" y1="${Y(v)}" y2="${Y(v)}" class="g${v===10?" mid":""}"/><text x="${pl-8}" y="${Y(v)+4}" class="ax" text-anchor="end">${v}</text>`).join("")}
+    ${ticks.map(i=>`<text x="${X(i)}" y="${H-8}" class="ax" text-anchor="${i===0?"start":i===n-1?"end":"middle"}">${day(list[i].at)}</text>`).join("")}
+    <line class="cross" x1="0" x2="0" y1="${pt}" y2="${H-pb}" visibility="hidden"/>
+    <polyline points="${pts.map(p=>p.join(",")).join(" ")}" class="ln"/>
+    ${pts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="4" class="pt"/>`).join("")}
+    <text x="${pts[n-1][0]+8}" y="${pts[n-1][1]+4}" class="last">${fmtNum(list[n-1].note,1)}</text>
+    ${pts.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="16" class="hit" data-i="${i}" tabindex="0" aria-label="${day(list[i].at)} : ${fmtNum(list[i].note,1)} sur 20"/>`).join("")}
+  </svg><div class="tip" hidden></div>`;
+  const tip = el.querySelector(".tip"), cross = el.querySelector(".cross");
+  const show = i => { const x = list[i], p = pts[i];
+    tip.innerHTML = `<b>${fmtNum(x.note,1)} / 20</b> · ${day(x.at)}<br>${x.ok} justes · ${x.ko} fausses · ${x.ab} ann${x.tq?`<br>${fmtDur(x.tq)} par question`:""}`;
+    tip.hidden = false; tip.style.left = Math.min(Math.max(p[0], 80), W-80)+"px"; tip.style.top = p[1]+"px";
+    cross.setAttribute("x1",p[0]); cross.setAttribute("x2",p[0]); cross.setAttribute("visibility","visible"); };
+  const hide = () => { tip.hidden = true; cross.setAttribute("visibility","hidden"); };
+  el.querySelectorAll(".hit").forEach(h => { const i = Number(h.dataset.i);
+    h.addEventListener("pointerenter", ()=>show(i)); h.addEventListener("focus", ()=>show(i));
+    h.addEventListener("pointerleave", hide); h.addEventListener("blur", hide); h.addEventListener("click", ()=>show(i)); });
+}
+let notesTimer = null;
+window.addEventListener("resize", () => { clearTimeout(notesTimer); notesTimer = setTimeout(()=>{ if(tab==="progres") drawNotes(); }, 150); });
 
 // ----- Banque -----
 let bq = {t:"all", f:"", flag:"", lim:40};
@@ -3814,7 +4174,11 @@ function viewReglages(m){
       <div class="row"><button class="btn" data-act="newday">Recomposer la session du jour</button></div>
     </article>
     <article class="sheet">
-      <div class="row between"><h2 class="h-sec">Sauvegarde</h2><span class="badge out">Progression enregistrée <span id="save-st"></span></span></div>
+      <div class="row between"><h2 class="h-sec">Compte et synchronisation</h2></div>
+      <div id="acct"></div>
+    </article>
+    <article class="sheet">
+      <div class="row between"><h2 class="h-sec">Sauvegarde manuelle</h2><span class="badge out">Progression enregistrée <span id="save-st"></span></span></div>
       <textarea id="exp" readonly aria-label="Sauvegarde" style="min-height:90px;font-family:var(--f-num);font-size:var(--t-xs)">${esc(serialize())}</textarea>
       <div class="row"><button class="btn" data-act="copy">Copier</button></div>
       <label class="f">Importer une sauvegarde<textarea id="imp"></textarea></label>
@@ -3825,6 +4189,7 @@ function viewReglages(m){
       <div id="resetbox"><button class="btn danger" data-act="resetask">Effacer toute ma progression</button></div>
     </article>
   </section>`;
+  if(window.PrepaSync) PrepaSync.mount($("#acct")); else $("#acct").innerHTML = `<p class="small muted">Synchronisation indisponible : progression enregistrée sur cet appareil.</p>`;
 }
 
 // ----- Plus -----
@@ -3841,14 +4206,18 @@ function viewPlus(m){
   </article>
   <div class="grid" style="--min:240px">
     <button type="button" class="sheet tight plus-link" data-go="ajout"><span class="ic">${ico("plus")}</span><b>Ajouter une carte</b><span>${plural(S.custom.length,"carte")}</span></button>
-    <button type="button" class="sheet tight plus-link" data-go="reglages"><span class="ic">${ico("sliders")}</span><b>Réglages</b><span>Session, pénalité, sauvegarde</span></button>
+    <button type="button" class="sheet tight plus-link" data-go="reglages"><span class="ic">${ico("sliders")}</span><b>Réglages et compte</b><span>Session, pénalité, synchronisation</span></button>
   </div>`;
 }
 
 // ---------- Événements ----------
 document.addEventListener("click", e => {
+  const tr = e.target.closest("tr[data-xrev]");
+  if(tr){ const x = S.exams.find(z=>z.id===tr.dataset.xrev); if(x){ lastResult = x; revF = x.ko ? "ko" : "all"; render(); window.scrollTo({top:0}); } return; }
   const b = e.target.closest("button,a[data-tab]"); if(!b) return;
   const d = b.dataset;
+  if(d.revf){ revF = d.revf; render(); return; }
+  if(d.notesk){ notesK = d.notesk; render(); return; }
   if(d.tab){ e.preventDefault(); go(d.tab); return; }
   if(d.mod){ if(S.set.mod!==d.mod){ S.set.mod=d.mod; S.daily=null; session=null; save(); render(); toast("Module : "+MODULES[d.mod].l+"."); } return; }
   if(d.go){ go(d.go); return; }
@@ -3856,9 +4225,9 @@ document.addEventListener("click", e => {
   if(d.toggle!=null){ const body=b.nextElementSibling; if(body) body.hidden=!body.hidden; return; }
   if(d.exam){ startExam(d.exam); return; }
   if(d.pen!=null){ S.set.pen = Number(d.pen); save(); render(); return; }
-  if(d.xpick!=null && S.run){ const id=S.run.ids[S.run.pos]; const v=Number(d.xpick); if(S.run.ans[id]===v) delete S.run.ans[id]; else S.run.ans[id]=v; save(); render(); return; }
+  if(d.xpick!=null && S.run){ xAnswer(Number(d.xpick)); return; }
   if(d.xnav && S.run){ S.run.pos = Math.min(Math.max(0, S.run.pos + Number(d.xnav)), S.run.ids.length-1); save(); render(); return; }
-  if(d.xgo!=null && S.run){ S.run.pos = Number(d.xgo); save(); render(); return; }
+  if(d.xgo!=null && S.run){ S.run.pos = Number(d.xgo); xsheet = false; save(); render(); return; }
   if(d.bqt){ bq.t = d.bqt; bq.lim=40; render(); return; }
   if(d.themeSession){ const t=d.themeSession; startExtra(buildDaily(30, t), "Révision ciblée · "+THEMES[t].l); return; }
   if(d.delask){ const box=$("#del-"+CSS.escape(d.delask)); if(box) box.innerHTML = `<span class="confirm">Supprimer définitivement ? <button class="btn danger" data-del="${esc(d.delask)}">Oui, supprimer</button><button class="btn" data-act="rerender">Annuler</button></span>`; return; }
@@ -3869,6 +4238,8 @@ document.addEventListener("click", e => {
     case "more": startExtra(buildDaily(10), "10 questions de plus"); break;
     case "endask": $("#endbox").innerHTML = `<div class="confirm">Rendre la copie maintenant ? <button class="btn danger" data-act="end">Oui, rendre</button><button class="btn" data-act="rerender">Continuer</button></div>`; break;
     case "end": finishExam(false); break;
+    case "xsheet": xsheet = !xsheet; render(); break;
+    case "xflag": xFlag(); break;
     case "examhome": lastResult=null; render(); break;
     case "bqmore": bq.lim += 40; render(); break;
     case "rerender": render(); break;
@@ -3901,15 +4272,40 @@ document.addEventListener("keydown", e => {
     if(session.picked==null){ if(["1","2","3","4"].includes(e.key)) pick(Number(e.key)-1); }
     else if(e.key==="Enter"){ e.preventDefault(); next(); }
   } else if(tab==="examen" && S.run){
-    if(["1","2","3","4"].includes(e.key)){ const id=S.run.ids[S.run.pos]; S.run.ans[id]=Number(e.key)-1; save(); render(); }
+    if(["1","2","3","4"].includes(e.key)) xAnswer(Number(e.key)-1);
+    else if(e.key==="r" || e.key==="R") xFlag();
     else if(e.key==="ArrowRight"){ S.run.pos=Math.min(S.run.pos+1,S.run.ids.length-1); save(); render(); }
     else if(e.key==="ArrowLeft"){ S.run.pos=Math.max(S.run.pos-1,0); save(); render(); }
   }
 });
+document.addEventListener("keydown", e => {
+  const tr = e.target.closest && e.target.closest("tr[data-xrev]");
+  if(tr && (e.key==="Enter" || e.key===" ")){ e.preventDefault(); tr.click(); }
+});
+// Mobile : glisser vers la gauche pour la question suivante, vers la droite pour la précédente (examen) ;
+// en session du jour, glisser vers la gauche après avoir répondu passe à la suite.
+(function(){
+  let x0=null, y0=0, t0=0;
+  document.addEventListener("touchstart", e => {
+    const t = e.touches[0];
+    x0 = (e.touches.length===1 && !(e.target.closest && e.target.closest(".omr,.tw,input,textarea,select,.chips"))) ? t.clientX : null;
+    y0 = t.clientY; t0 = Date.now();
+  }, {passive:true});
+  document.addEventListener("touchend", e => {
+    if(x0==null) return;
+    const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; x0 = null;
+    if(Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx)*0.6 || Date.now()-t0 > 700) return;
+    if(tab==="examen" && S.run){
+      const p = Math.min(Math.max(0, S.run.pos + (dx<0?1:-1)), S.run.ids.length-1);
+      if(p!==S.run.pos){ S.run.pos = p; xsheet = false; save(); render(); }
+    } else if(tab==="jour" && session && session.picked!=null && dx<0) next();
+  }, {passive:true});
+})();
 window.addEventListener("storage", e => { if(e.key===KEY){ S = load(); invalidate(); session=null; render(); } });
 
 render();
-initRemote();
+initSync();
 </script>
 
+<script>if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("../sw.js").catch(function(){});</script>
 </body></html>

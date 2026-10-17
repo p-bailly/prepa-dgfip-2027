@@ -36,46 +36,31 @@
   };
   function ico(n) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICO[n] + '</svg>'; }
 
-  /* ---------- Stockage : base de l'Artifact (espace privé) + navigateur ---------- */
+  /* ---------- Stockage : navigateur + compte synchronisé (commun/sync.js) ---------- */
   var Store = {
-    ref: null, writing: false, pending: false, remote: false,
     loadLocal: function () { try { var s = localStorage.getItem(KEY); if (s) return JSON.parse(s); } catch (e) { } return null; },
     saveLocal: function () { try { localStorage.setItem(KEY, JSON.stringify(S.prog)); } catch (e) { } },
-    init: async function () {
+    init: function () {
       var loc = this.loadLocal(); if (loc && loc.v === 1) S.prog = normalize(loc);
       render();
-      try {
-        if (!window.claude || !window.claude.use) { status(); return; }
-        var db = await window.claude.use('db'), user = await window.claude.use('user');
-        if (!db || !user) { status(); return; }
-        var id = await user.id(); if (!id) { status(); return; }
-        this.ref = db.doc('data/users/' + id + '/progress');
-        var snap = await this.ref.get();
-        var d = snap.exists ? snap.data() : null;
-        if (d && d.prog && (d.prog.updated || 0) >= (S.prog.updated || 0)) {
-          S.prog = normalize(JSON.parse(JSON.stringify(d.prog))); this.saveLocal(); this.remote = true; render();
-        } else if (S.prog.updated) { this.push(); } else { this.remote = true; }
-      } catch (e) { this.ref = null; }
-      status();
+      if (!window.PrepaSync) return;
+      // Progression entière : la version la plus récente l'emporte.
+      PrepaSync.attach('qrc', {
+        get: function () { return S.prog; },
+        merge: function (o) {
+          if (o && o.v === 1 && (o.updated || 0) > (S.prog.updated || 0)) {
+            S.prog = normalize(JSON.parse(JSON.stringify(o))); Store.saveLocal();
+            var a = document.activeElement; if (!(a && a.closest && a.closest('input,select,textarea'))) render();
+          }
+        }
+      });
+      PrepaSync.onStatus(status);
     },
-    save: function () { S.prog.updated = Date.now(); this.saveLocal(); if (this.ref) this.push(); },
-    push: async function () {
-      if (!this.ref) return;
-      if (this.writing) { this.pending = true; return; }
-      this.writing = true;
-      try { await this.ref.set({ prog: JSON.parse(JSON.stringify(S.prog)) }); this.remote = true; }
-      catch (e) {
-        var c = e && e.code;
-        if (c === 'unavailable') { var self = this; setTimeout(function () { self.push(); }, 1500 + Math.random() * 1500); }
-        else { this.ref = null; this.remote = false; }
-      }
-      this.writing = false; status();
-      if (this.pending) { this.pending = false; this.push(); }
-    }
+    save: function () { S.prog.updated = Date.now(); this.saveLocal(); if (window.PrepaSync) PrepaSync.changed('qrc'); }
   };
   function status() {
     var el = $('#store'); if (!el) return;
-    el.textContent = Store.remote && Store.ref ? 'Progression enregistrée dans ton espace privé claude.ai (retrouvée sur tous tes appareils).' : 'Progression enregistrée dans ce navigateur.';
+    el.textContent = 'Progression ' + (window.PrepaSync ? PrepaSync.label() : 'sur cet appareil') + '.';
   }
 
   /* ---------- Répétition espacée par type ---------- */
@@ -263,6 +248,7 @@
     });
     h += '</tbody></table></div></article>';
     if (ep.length) h += '<article class="sheet"><h2 class="h-sec">Dernières épreuves blanches</h2><div class="tw"><table class="t"><thead><tr><th>Date</th><th class="num">Score</th><th class="num">Durée</th><th class="hide-sm">Exercices</th></tr></thead><tbody>' + ep.slice(0, 6).map(function (e) { return '<tr><td>' + new Date(e.d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) + '</td><td class="num"><b>' + pct(e.s) + '</b></td><td class="num">' + mmss(e.t) + '</td><td class="hide-sm small">' + e.x.map(function (x) { return esc((T[x.id] || { nom: x.id }).nom) + ' (' + pct(x.s) + ')'; }).join(', ') + '</td></tr>'; }).join('') + '</tbody></table></div></article>';
+    h += '<article class="sheet"><h2 class="h-sec">Compte et synchronisation</h2><p class="small muted" id="store"></p><div id="acct"></div></article>';
     h += '<article class="sheet"><h2 class="h-sec">Réglages</h2>';
     h += '<div class="seg-row"><span>Programme</span><div class="seg" role="group" aria-label="Programme"><button type="button" data-p="I" aria-pressed="' + (profil() === 'I') + '">Inspecteur</button><button type="button" data-p="C" aria-pressed="' + (profil() === 'C') + '">Contrôleur</button></div></div>';
     h += '<div class="seg-row"><span>Comptes affichés dans les corrigés</span><div class="seg" role="group" aria-label="Plan comptable"><button type="button" data-pcg="0" aria-pressed="' + !S.prog.settings.pcgOld + '">PCG 2025 (657, 757)</button><button type="button" data-pcg="1" aria-pressed="' + !!S.prog.settings.pcgOld + '">Ancien PCG (675, 775)</button></div></div>';
@@ -365,6 +351,7 @@
     var v = $('#view');
     v.innerHTML = S.view === 'dash' ? viewDash() : S.view === 'train' ? viewTrain() : S.view === 'fiches' ? viewFiches() : S.view === 'annales' ? viewAnnales() : viewExam();
     document.querySelectorAll('[data-p]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.p === profil())); });
+    if (S.view === 'dash') { status(); if (window.PrepaSync) PrepaSync.mount($('#acct')); }
     measure();
   }
   function measure() { var t = $('.appbar'); if (t) document.documentElement.style.setProperty('--hh', t.offsetHeight + 'px'); }

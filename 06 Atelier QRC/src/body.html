@@ -34,7 +34,7 @@
 </div>
 <script>
 // Retour à l'accueil : seulement sur le site publié
-(function () { var h = document.getElementById("home"); if (h && /github\.io$/.test(location.hostname)) h.hidden = false; })();
+(function () { var h = document.getElementById("home"); if (h && /^https?:$/.test(location.protocol) && /\/(qcm|qrc|atelier)\/(index\.html)?$/.test(location.pathname)) h.hidden = false; })();
 // Bascule clair / sombre, mémorisée (clé commune au QCM, à l'atelier QRC et à l'accueil)
 (function () {
   var K = "prepa-theme", root = document.documentElement, b = document.getElementById("theme");

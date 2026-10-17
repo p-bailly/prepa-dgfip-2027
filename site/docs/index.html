@@ -52,6 +52,9 @@ li small { flex: none; font-family: var(--f-num); font-size: .75rem; color: var(
 .theme-btn:focus-visible, .back:focus-visible { outline: 2px solid var(--qcm); outline-offset: 2px; }
 .theme-btn svg, .back svg { width: 18px; height: 18px; }
 </style>
+<link rel="manifest" href="../manifest.webmanifest">
+<meta name="theme-color" content="#2A44C7">
+<link rel="apple-touch-icon" href="../icones/icone-180.png">
 </head>
 <body>
 <main class="wrap">
@@ -135,5 +138,6 @@ li small { flex: none; font-family: var(--f-num); font-size: .75rem; color: var(
   if (mq && mq.addEventListener) mq.addEventListener("change", show);
 })();
 </script>
+<script>if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("../sw.js").catch(function () {});</script>
 </body>
 </html>
