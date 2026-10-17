@@ -166,8 +166,8 @@ a.card:hover { border-color: var(--edge); }
     <span class="brand"><i aria-hidden="true">27</i>Prépa DGFiP</span>
     <nav class="nav" aria-label="Applis">
       <a class="home" href="./" aria-current="page"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7v9H4z"/></svg></span><span class="full">Aujourd'hui</span><span class="short">Accueil</span></a>
-      <a class="qcm" href="qcm/"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg></span><span class="full">QCM DGFiP 2027</span><span class="short">QCM</span><span class="n" id="nav-qcm"></span></a>
-      <a class="qrc" href="qrc/"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 11h6M9 15h3"/></svg></span><span class="full">Atelier QRC compta</span><span class="short">QRC</span><span class="n" id="nav-qrc"></span></a>
+      <a class="qcm" href="qcm/"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg></span><span class="full">QCM</span><span class="short">QCM</span><span class="n" id="nav-qcm"></span></a>
+      <a class="qrc" href="qrc/"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 11h6M9 15h3"/></svg></span><span class="full">QRC de comptabilité</span><span class="short">QRC</span><span class="n" id="nav-qrc"></span></a>
       <a class="ate" href="atelier/"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg></span><span class="full">Écrit et oral</span><span class="short">Écrit-oral</span></a>
       <a class="doc" href="docs/"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H10l2 2h6.5A1.5 1.5 0 0 1 20 7.5v11a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5z"/></svg></span><span class="full">Documents</span><span class="short">Docs</span></a>
     </nav>
@@ -200,11 +200,11 @@ a.card:hover { border-color: var(--edge); }
         <span class="tag">QCM · série du jour</span>
         <div class="big"><b id="q-done">0</b><span id="q-of">/ 30 questions</span></div>
         <div class="bar" aria-hidden="true"><i id="q-bar"></i></div>
-        <p id="q-sub">Révision espacée, examens blancs, progrès comparés au jury.</p>
+        <p id="q-sub">Révision espacée et épreuves blanches, progrès comparés au jury.</p>
         <a class="btn go" href="qcm/" id="q-go">Commencer la série</a>
       </div>
       <a class="card" href="qrc/">
-        <span class="tag qrc">Atelier QRC compta</span>
+        <span class="tag qrc">QRC de comptabilité</span>
         <h2 id="r-title">Exercices chiffrés de comptabilité</h2>
         <p id="r-sub">Écritures, TVA, amortissements, analyse financière : corrigés pas à pas.</p>
         <span class="more" id="r-go">Ouvrir l'atelier →</span>
@@ -221,7 +221,7 @@ a.card:hover { border-color: var(--edge); }
       <div class="card">
         <h2>Derniers résultats</h2>
         <ul class="res" id="results" hidden></ul>
-        <p class="empty" id="results-empty">Tes notes d'examens blancs, d'épreuves QRC, d'écrits et d'oraux apparaîtront ici.</p>
+        <p class="empty" id="results-empty">Tes notes d'épreuves blanches QCM et QRC, d'écrits et d'oraux apparaîtront ici.</p>
       </div>
       <a class="card doc-card" href="docs/">
         <span class="tag doc">Documents</span>
@@ -291,7 +291,7 @@ a.card:hover { border-color: var(--edge); }
     if (done >= total) { set("q-sub", "Série du jour terminée" + (dl.n ? " : " + dl.ok + " justes sur " + dl.n + "." : ".")); set("q-go", "Voir mes progrès"); }
     else { set("q-sub", due ? plural(due, "carte") + " à revoir en plus des nouvelles questions." : "Aucune carte en retard : place aux nouvelles questions."); set("q-go", done ? "Continuer la série" : "Commencer la série"); }
     if (due) set("nav-qcm", due);
-    (q.exams || []).slice(0, 3).forEach(function (x) { if (x && x.at && typeof x.note === "number") results.push({ t: x.at, k: "", l: "Examen blanc QCM", v: dec(x.note) + "/20" }); });
+    (q.exams || []).slice(0, 3).forEach(function (x) { if (x && x.at && typeof x.note === "number") results.push({ t: x.at, k: "", l: "Épreuve blanche QCM", v: dec(x.note) + "/20" }); });
   }
 
   // Atelier QRC : types d'exercices à revoir, dernier exercice, épreuves
