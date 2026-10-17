@@ -796,9 +796,18 @@ details.pistes .body { padding: 0 14px 14px; display: flex; flex-direction: colu
   function norm(name) { return String(name || "").trim().toLowerCase(); }
   function check(name, pw) {
     if (!/^[a-z0-9][a-z0-9._-]{2,29}$/.test(norm(name))) return "Identifiant : 3 à 30 caractères, lettres, chiffres, point, tiret ou tiret bas.";
-    if (!pw || pw.length < 6) return "Mot de passe : 6 caractères minimum.";
+    if (!pw) return "Saisis un mot de passe.";
     return "";
   }
+  // Firebase exige 6 caractères au moins : on lui envoie l'empreinte SHA-256 du mot de passe,
+  // ce qui accepte n'importe quel mot de passe, même très court.
+  function derive(pw) {
+    var data = new TextEncoder().encode("prepa-dgfip-2027|" + pw);
+    return crypto.subtle.digest("SHA-256", data).then(function (h) {
+      return "p1:" + Array.prototype.map.call(new Uint8Array(h), function (b) { return ("0" + b.toString(16)).slice(-2); }).join("");
+    });
+  }
+  function bad(e) { var c = e && e.code; return c === "auth/invalid-credential" || c === "auth/wrong-password" || c === "auth/user-not-found"; }
 
   var api = {
     attach: function (key, o) {
@@ -817,13 +826,22 @@ details.pistes .body { padding: 0 14px 14px; display: flex; flex-direction: colu
       return state === "connexion" ? "sur cet appareil (connexion…)" : "sur cet appareil";
     },
     signIn: function (name, pw) {
-      var bad = check(name, pw); if (bad) return Promise.reject(bad);
-      return start().then(function (f) { return f.Au.signInWithEmailAndPassword(f.auth, norm(name) + "@" + DOMAIN, pw); }).then(function () { }, function (e) { throw typeof e === "string" ? e : msg(e); });
+      var why = check(name, pw); if (why) return Promise.reject(why);
+      var mail = norm(name) + "@" + DOMAIN;
+      return Promise.all([start(), derive(pw)]).then(function (r) {
+        var f = r[0], key = r[1];
+        return f.Au.signInWithEmailAndPassword(f.auth, mail, key).catch(function (e) {
+          // Compte créé avant l'empreinte (mot de passe envoyé tel quel) : connexion puis conversion.
+          if (!bad(e) || pw.length < 6) throw e;
+          return f.Au.signInWithEmailAndPassword(f.auth, mail, pw).then(function (cr) { return f.Au.updatePassword(cr.user, key).catch(function () { }); }, function () { throw e; });
+        });
+      }).then(function () { }, function (e) { throw typeof e === "string" ? e : msg(e); });
     },
     signUp: function (name, pw) {
-      var bad = check(name, pw); if (bad) return Promise.reject(bad);
-      return start().then(function (f) {
-        return f.Au.createUserWithEmailAndPassword(f.auth, norm(name) + "@" + DOMAIN, pw).then(function (cr) {
+      var why = check(name, pw); if (why) return Promise.reject(why);
+      return Promise.all([start(), derive(pw)]).then(function (r) {
+        var f = r[0];
+        return f.Au.createUserWithEmailAndPassword(f.auth, norm(name) + "@" + DOMAIN, r[1]).then(function (cr) {
           return f.Au.updateProfile(cr.user, { displayName: norm(name) }).then(function () { emit(); });
         });
       }).then(function () { }, function (e) { throw typeof e === "string" ? e : msg(e); });
@@ -843,7 +861,7 @@ details.pistes .body { padding: 0 14px 14px; display: flex; flex-direction: colu
         } else {
           el.innerHTML = '<form class="sync-box" novalidate><p class="small muted">Sans compte, la progression reste sur cet appareil. Avec un compte, elle se synchronise entre tous tes appareils.</p>' +
             '<label class="field"><span>Identifiant</span><input class="input" name="u" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>' +
-            '<label class="field"><span>Mot de passe</span><input class="input" name="p" type="password" autocomplete="current-password" required minlength="6"></label>' +
+            '<label class="field"><span>Mot de passe</span><input class="input" name="p" type="password" autocomplete="current-password" required></label>' +
             (msgText ? '<p class="small sync-err" role="alert">' + esc(msgText) + '</p>' : '') +
             '<div class="row"><button type="submit" class="btn pri" data-sync="in">Se connecter</button><button type="button" class="btn" data-sync="up">Créer le compte</button></div>' +
             '<p class="small muted">Pas de récupération par e-mail : note bien ton mot de passe.</p></form>';
