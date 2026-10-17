@@ -8,3 +8,8 @@ desktop.ini
 .tmp.driveupload/
 .claude/
 node_modules/
+# Copies et réponses récupérées pour correction (personnelles)
+08 Depots/
+# Clés d'accès (ne jamais versionner)
+*cle-service*.json
+*-firebase-adminsdk-*.json

@@ -205,3 +205,13 @@ details.fold > summary::-webkit-details-marker { display: none; }
 details.fold > summary::after { content: ""; position: absolute; right: 4px; top: 50%; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: translateY(-70%) rotate(45deg); }
 details.fold[open] > summary::after { transform: translateY(-30%) rotate(-135deg); }
 details.fold:not([open]) { gap: 0; }
+/* Dépôt de fichiers pour correction */
+.depot { display: flex; flex-direction: column; gap: var(--s3); }
+.drop { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 96px; padding: var(--s4); border: 2px dashed var(--line); border-radius: var(--r-md); background: var(--sunk); text-align: center; cursor: pointer; }
+.drop:hover, .drop.over, .drop:focus-within { border-color: var(--accent); background: var(--accent-soft); }
+.drop input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.drop .dz-t { display: inline-flex; align-items: center; gap: 8px; color: var(--accent); }
+.drop .dz-t svg { width: 20px; height: 20px; }
+.deplist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.deplist li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 4px 8px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); }
+.deplist li > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

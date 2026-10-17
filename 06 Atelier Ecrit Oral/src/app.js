@@ -7,7 +7,7 @@
   var S = C.blank();                                    // état synchronisable
   var UI = { view: 'ecrit', cat: 'all', dur: 180, hist: '', sujet: {}, libre: '', oq: '', recent: [], trans: true }; // préférences de cet appareil
   var T = { open: {}, confirm: null, saved: null, lastPhase: null, over: false, oral: null, att: null, rec: null, micErr: null,
-    oscores: {}, ocomment: '', oeval: false, osaved: null, olimitHit: false, pending: false, more: 0, trans: '', interim: '', tr: null, trErr: null, oclaude: '' };
+    oscores: {}, ocomment: '', oeval: false, osaved: null, olimitHit: false, pending: false, more: 0, trans: '', interim: '', tr: null, trErr: null };
   var QBY = {}; D.Q.forEach(function (q) { QBY[q.id] = q; });
   var CATBY = {}; D.CATS.forEach(function (c) { CATBY[c.id] = c; });
 
@@ -338,6 +338,7 @@
     if (sel.consigne) h += '<div class="consigne"><span class="eyebrow">Ce qu’on te demande</span><ol>' + sel.consigne.map(function (c) { return '<li>' + tx(c) + '</li>'; }).join('') + '</ol></div>';
     h += '<div class="startrow"><button type="button" class="btn pri" data-act="start">' + ico('clock') + 'Commencer l’épreuve · ' + tx(C.hm(ep.min)) + '</button>' + (sel.corrige ? '<span class="badge out">Corrigé disponible après l’épreuve</span>' : '') + '</div></article>';
     h += '<article class="sheet"><div class="row between"><h2 class="h-sec">Répartition conseillée du temps</h2>' + srcs(ep.phasesSrc) + '</div>' + phasesList(ep) + '</article>';
+    h += '<details class="sheet fold"><summary><h2 class="h-sec">Copie faite sur papier ? Dépose-la</h2></summary>' + depotCard({ kind: 'ecrit', ep: ep.id, sujet: sel.id, titre: sel.libre ? (UI.libre || 'Sujet libre') : sel.titre }) + '</details>';
     h += '<p class="small"><button type="button" class="btn sm ghost" data-v="reperes">' + ico('book') + 'Format officiel, critères et défauts relevés par le jury</button></p>';
     return h;
   }
@@ -388,7 +389,7 @@
     h += '</section>';
     h += '<div class="score" aria-live="polite"><span class="big" id="gnote">' + gradeVal(g) + '<small>/20</small></span><div class="stack" style="gap:4px"><b id="grated">' + gradedTxt(g) + '</b><span class="small muted">' + tx('Moyenne des candidats en 2026 : ' + num(ep.moyenne.v) + '/20.') + '</span>' + srcs(ep.moyenne.src) + '</div></div>';
     h += '<article class="sheet tight"><div class="row between"><b>' + tx(titreOf(run)) + '</b><div class="row">' + (s && s.pdf ? pdfBtn(s.pdf, 'Sujet') : '') + (s && s.corrige ? pdfBtn(s.corrige.pdf, 'Corrigé', 'ghost') : '') + '</div></div>' + (s && s.corrige ? '<p class="small muted">' + tx(s.corrige.t) + '</p>' : '') + '</article>';
-    h += claudeEcrit(run, s);
+    h += '<article class="sheet">' + depotCard({ kind: 'ecrit', ep: run.ep, sujet: run.sujet, runId: run.id, titre: titreOf(run), used: run.used }) + '</article>';
     h += '<article class="sheet"><div class="row between"><h2 class="h-sec">Grille</h2><span class="scale">0 absent · 1 insuffisant · 2 moyen · 3 bien · 4 très bien</span></div><p class="small muted">Pondération indicative : le barème officiel n’est pas publié.</p>';
     var parts = [];
     ep.grille.forEach(function (c) { if (parts.indexOf(c.part) < 0) parts.push(c.part); });
@@ -438,79 +439,141 @@
     return h;
   }
 
-  /* ===== Correction par Claude =====
-     L'atelier rédige la demande de correction (sujet, grille, barème, format de réponse) ; tu la colles dans claude.ai
-     avec ta copie (photos ou texte) ou la transcription de ton oral. La dernière ligne de la réponse (« GRILLE: … »)
-     se colle ensuite ici pour remplir la grille. */
-  var CLAUDE_URL = 'https://claude.ai/new';
-  function deConcours(c) { return /^[aeiouyéè]/i.test(c) ? 'd’' + c : 'de ' + c; }
-  function absUrl(u) { try { return new URL(u, location.href).href; } catch (e) { return u; } }
-  function ecritPrompt(run) {
-    var ep = D.EP[run.ep], s = sujetBy(run.sujet), L = [];
-    L.push('Tu es membre du jury du concours externe ' + deConcours(ep.concours) + ' des finances publiques (DGFiP), session 2027. Corrige ma copie de l’épreuve écrite n° 1 : « ' + ep.nom + ' » (' + C.hm(ep.min) + ', coefficient ' + ep.coef + ').');
-    L.push('', 'FORMAT OFFICIEL');
-    ep.faits.forEach(function (f) { L.push('- ' + ty(f.t)); });
-    L.push('', 'SUJET : ' + titreOf(run) + (s ? ' (' + s.kind + ')' : ''));
-    if (s && s.pdf) L.push('PDF du sujet (je le joins aussi) : ' + absUrl(s.pdf));
-    if (s && s.consigne) { L.push('Consignes :'); s.consigne.forEach(function (c, i) { L.push((i + 1) + '. ' + ty(c)); }); }
-    L.push('Temps que j’ai utilisé : ' + C.dur(run.used || 0) + ' sur ' + C.hm(ep.min) + '.');
-    L.push('', 'GRILLE DE CORRECTION (niveau 0 à 4 : ' + D.NIVEAUX.map(function (n, i) { return i + ' ' + n.toLowerCase(); }).join(', ') + ')');
-    ep.grille.forEach(function (c) { L.push('- ' + c.id + ' [' + c.part + ', ' + c.w + ' point' + (c.w > 1 ? 's' : '') + '] ' + ty(c.t) + ' : ' + ty(c.d)); });
-    L.push('Note sur 20 = somme des points × niveau / 4.');
-    L.push('', 'DÉFAUTS RELEVÉS PAR LE JURY 2026 (indique ceux présents dans ma copie)');
-    ep.defauts.forEach(function (d) { L.push('- ' + d.id + ' : ' + ty(d.t)); });
-    L.push('', 'Sois aussi exigeant que le jury : la moyenne des candidats en 2026 était de ' + num(ep.moyenne.v) + '/20. Lis toute la copie ; si un passage est illisible, signale-le.');
-    L.push('', 'RÉPONDS EN FRANÇAIS, DANS CET ORDRE');
-    L.push('1. Pour chaque critère : son niveau (0 à 4) et une phrase de justification qui cite ma copie.');
-    L.push('2. La note sur 20.');
-    L.push('3. Trois points forts, trois axes de progrès concrets, et une reformulation d’exemple pour le passage le plus faible.');
-    L.push('4. Sur la toute dernière ligne, exactement ce format, sans rien d’autre :');
-    L.push('GRILLE: ' + ep.grille.map(function (c) { return c.id + '=N'; }).join('; ') + ' | DEFAUTS: id, id');
-    L.push('', 'MA COPIE : jointe en photos ci-dessous (ou collée à la suite si je l’ai tapée).');
-    return L.join('\n');
+  /* ===== Dépôts pour correction =====
+     Tu déposes ta copie (photos ou PDF) ou ta réponse orale (transcription, enregistrement) sur ton compte.
+     La correction se fait ensuite depuis le terminal (outils/depots.js), qui écrit la note, la grille et le
+     commentaire sur le dépôt : ils s'affichent ici, et un bouton les reporte dans ta grille ou ton historique. */
+  var DEP = { list: [], sel: [], busy: false, prog: 0, msg: '', ctx: null, unsub: null, open: {} };
+  // Abonnement unique ; le réaffichage est différé (le premier appel peut arriver pendant un affichage)
+  function depInit() {
+    if (DEP.started || !window.PrepaSync || !PrepaSync.depots) return;
+    DEP.started = true;
+    DEP.unsub = PrepaSync.depots.watch(function (l) {
+      if (!l) return;
+      var sig = JSON.stringify(l.map(function (d) { return [d.id, d.statut, d.correction ? d.correction.at : 0]; }));
+      if (sig === DEP.sig) return; DEP.sig = sig; DEP.list = l;
+      setTimeout(function () { if (editing()) T.pending = true; else render(); }, 0);
+    });
   }
-  function oralPrompt(q) {
-    var O = D.ORAL[profil()], cat = CATBY[q.c], o = T.oral, used = o && o.start ? Math.round(C.elapsed(o, Date.now())) : 0, L = [];
-    L.push('Tu es membre du jury de l’oral d’admission du concours externe ' + deConcours(O.concours) + ' des finances publiques (DGFiP), session 2027 : ' + O.min + ' minutes, coefficient ' + O.coef + ', une présentation de 5 minutes au plus, des échanges sur le parcours et les motivations, puis des mises en situation.');
-    L.push('', 'QUESTION POSÉE (' + cat.t + (q.s ? ', ' + D.SUBS[q.s] : '') + ') : ' + ty(q.q));
-    L.push('Points attendus (repères de préparation, pas un corrigé officiel) :');
-    q.p.forEach(function (x) { L.push('- ' + ty(x)); });
-    L.push('Temps de parole : ' + C.clock(used) + ' pour ' + C.clock(o ? o.limit : UI.dur) + ' prévues.');
-    L.push('', 'MA RÉPONSE (transcription automatique, qui peut contenir des erreurs de reconnaissance vocale) :');
-    L.push(T.trans ? '« ' + T.trans.trim() + ' »' : '(je la colle ci-dessous)');
-    L.push('', 'CRITÈRES (niveau 1 à 4 : ' + D.ORAL.niveaux.map(function (n, i) { return (i + 1) + ' ' + n.toLowerCase(); }).join(', ') + ')');
-    D.ORAL.criteres.forEach(function (c) { L.push('- ' + c.id + ' : ' + ty(c.t)); });
-    L.push('', 'RÉPONDS EN FRANÇAIS, DANS CET ORDRE');
-    L.push('1. Pour chaque critère : son niveau (1 à 4) et une phrase de justification.');
-    L.push('2. Une note indicative sur 20.');
-    L.push('3. Ce qui manquait, une trame de réponse modèle en quelques lignes, et deux relances probables du jury avec la façon d’y répondre.');
-    L.push('4. Sur la toute dernière ligne, exactement ce format, sans rien d’autre :');
-    L.push('GRILLE: ' + D.ORAL.criteres.map(function (c) { return c.id + '=N'; }).join('; '));
-    return L.join('\n');
+  function fsize(n) { return n < 1048576 ? Math.max(1, Math.round(n / 1024)) + ' Ko' : C.dec(n / 1048576, 1) + ' Mo'; }
+  // Photos réduites à 2 200 px de côté en JPEG : lisibles, et légères à envoyer
+  function prepFile(f) {
+    var raw = function () { return f.arrayBuffer().then(function (d) { return { name: f.name, type: f.type || 'application/octet-stream', data: d }; }); };
+    if (!/^image\/(jpeg|png|webp)$/i.test(f.type) || !window.createImageBitmap) return raw();
+    return createImageBitmap(f).then(function (bm) {
+      var k = Math.min(1, 2200 / Math.max(bm.width, bm.height)), c = document.createElement('canvas');
+      c.width = Math.round(bm.width * k); c.height = Math.round(bm.height * k);
+      c.getContext('2d').drawImage(bm, 0, 0, c.width, c.height);
+      return new Promise(function (res, rej) { c.toBlob(function (b) { if (b) res(b); else rej(); }, 'image/jpeg', 0.82); });
+    }).then(function (b) {
+      return b.arrayBuffer().then(function (d) { return d.byteLength < f.size ? { name: f.name.replace(/\.[^.]+$/, '') + '.jpg', type: 'image/jpeg', data: d } : raw(); });
+    }, raw);
   }
-  // Lit la ligne « GRILLE: id=n; … | DEFAUTS: … » de la réponse de Claude
-  function parseReply(txt, crit, min, max, defs) {
-    var g = /GRILLE\s*:\s*([^\n|]*)/i.exec(txt || ''); if (!g) return null;
-    var ids = crit.map(function (c) { return c.id; }), sc = {}, n = 0;
-    g[1].split(/[;,]/).forEach(function (p) { var k = /([a-z_]+)\s*=\s*(\d)/i.exec(p); if (k && ids.indexOf(k[1]) >= 0) { var v = Number(k[2]); if (v >= min && v <= max) { sc[k[1]] = v; n++; } } });
-    var df = null, d = /DEFAUTS\s*:\s*([^\n]*)/i.exec(txt);
-    if (defs && d) { var dids = defs.map(function (x) { return x.id; }); df = d[1].split(/[\s,;]+/).filter(function (x) { return dids.indexOf(x) >= 0; }); }
-    return n ? { scores: sc, defauts: df, n: n } : null;
+  function depMatch(ctx) {
+    return DEP.list.filter(function (d) {
+      return ctx.kind === 'ecrit' ? d.kind === 'ecrit' && (ctx.runId ? d.runId === ctx.runId : (!d.runId && d.sujet === ctx.sujet)) : d.kind === 'oral' && d.aid === ctx.aid;
+    });
   }
-  function claudeBox(kind, info) {
-    var h = '<div class="claude" id="claudebox"><div class="row between"><h3 class="h-card">Faire corriger par Claude</h3><span class="badge out">avec ton compte Claude</span></div>';
-    h += '<ol class="how"><li>Copie la demande de correction, puis ouvre Claude et colle-la.</li><li>' + (kind === 'ecrit' ? 'Joins les photos de ta copie (ou colle-la si tu l’as tapée) et le PDF du sujet.' : (T.trans ? 'Ta transcription est déjà dans la demande : relis-la avant de copier.' : 'Colle ta réponse à la suite de la demande (ou dicte-la).')) + '</li><li>Colle ici la réponse de Claude : ' + (kind === 'ecrit' ? 'la grille' : 'l’évaluation') + ' se remplit toute seule.</li></ol>';
-    h += '<div class="row"><button type="button" class="btn pri" data-act="ccopy" data-k="' + kind + '">' + ico('file') + 'Copier la demande</button><a class="btn" href="' + CLAUDE_URL + '" target="_blank" rel="noopener">' + ico('arrow') + 'Ouvrir Claude</a>' + (info || '') + '</div>';
-    h += '<details class="pistes"><summary>Voir la demande</summary><div class="body"><textarea class="input" id="cprompt" readonly rows="8" aria-label="Demande de correction"></textarea></div></details>';
-    h += '<label class="field"><span>Réponse de Claude</span><textarea class="input" id="creply" placeholder="Colle ici toute la réponse de Claude"></textarea></label>';
-    h += '<div class="row"><button type="button" class="btn" data-act="capply" data-k="' + kind + '">' + ico('check') + 'Remplir avec la réponse</button><span class="small" id="cmsg" role="status"></span></div></div>';
-    return h;
+  function depTitle(d) { return d.kind === 'ecrit' ? (d.titre || 'Copie') : (QBY[d.qid] ? QBY[d.qid].q : (d.question || 'Réponse orale')); }
+  function depRow(d, withTitle) {
+    var c = d.correction, op = !!DEP.open[d.id], nf = (d.files || []).length;
+    var h = '<div class="deprow"><button type="button" class="hrow" data-dopen="' + esc(d.id) + '" aria-expanded="' + op + '"><span class="t1">' + tx(withTitle ? depTitle(d) : (d.kind === 'ecrit' ? 'Copie' : 'Réponse') + ' déposée le ' + fdate(d.createdAt)) + '</span>';
+    h += c ? '<span class="nt">' + C.dec(c.note) + '<small>/20</small></span>' : '<span class="badge warn">en attente</span>';
+    h += '<span class="t2">' + tx((withTitle ? fdate(d.createdAt) + ' · ' : '') + nf + ' fichier' + (nf > 1 ? 's' : '') + (d.trans ? ' · transcription' : '') + (c ? ' · corrigé le ' + fdate(c.at) : ' · correction à demander dans le terminal')) + '</span></button>';
+    if (op) {
+      h += '<div class="hdet">';
+      if (c) {
+        var crit = d.kind === 'ecrit' ? D.EP[d.ep].grille : D.ORAL.criteres, niv = d.kind === 'ecrit' ? D.NIVEAUX : D.ORAL.niveaux;
+        h += '<div class="kvl">' + crit.map(function (k) {
+          var v = c.scores ? c.scores[k.id] : undefined;
+          return '<span class="k">' + tx(k.t) + '</span><span class="v">' + (typeof v === 'number' ? v + ' · ' + tx(niv[d.kind === 'ecrit' ? v : v - 1] || '') : '—') + '</span>';
+        }).join('') + '</div>';
+        if (c.commentaire) h += '<p class="small" style="white-space:pre-wrap">' + esc(c.commentaire) + '</p>';
+        h += '<div class="row"><button type="button" class="btn sm pri" data-act="duse" data-id="' + esc(d.id) + '">' + ico('check') + 'Reporter cette note</button></div>';
+      }
+      if (d.trans) h += '<details class="pistes"><summary>Transcription déposée</summary><div class="body"><p class="small" style="white-space:pre-wrap">' + esc(d.trans) + '</p></div></details>';
+      if (nf) h += '<ul class="plain small">' + d.files.map(function (f) { return '<li>' + esc(f.name) + ' · <span class="mono">' + fsize(f.size) + '</span></li>'; }).join('') + '</ul>';
+      h += '<div class="row">' + (T.confirm === 'ddel:' + d.id ? confirmBox('Supprimer ce dépôt et ses fichiers ?', 'ddel', 'Supprimer') : '<button type="button" class="btn sm danger" data-act="ddelask" data-id="' + esc(d.id) + '">' + ico('trash') + 'Supprimer le dépôt</button>') + '</div></div>';
+    }
+    return h + '</div>';
   }
-  function claudeEcrit(run, s) { return '<article class="sheet">' + claudeBox('ecrit', s && s.pdf ? pdfBtn(s.pdf, 'PDF du sujet', 'ghost') : '') + '</article>'; }
-  function copyText(txt, done) {
-    var box = $('#cprompt'); if (box) box.value = txt;
-    var fallback = function () { var b = $('#cprompt'); if (b) { b.closest('details').open = true; b.focus(); b.select(); } done(false); };
-    try { navigator.clipboard.writeText(txt).then(function () { done(true); }, fallback); } catch (e) { fallback(); }
+  function depotCard(ctx) {
+    var key = ctx.kind + ':' + (ctx.runId || ctx.aid || ctx.sujet || '');
+    if (DEP.key !== key && !DEP.busy) { DEP.key = key; DEP.sel = []; DEP.msg = ''; }
+    DEP.ctx = ctx; depInit();
+    var on = !!(window.PrepaSync && PrepaSync.depots && PrepaSync.depots.ready()), mine = depMatch(ctx), ecrit = ctx.kind === 'ecrit';
+    var h = '<div class="depot" id="depot"><div class="row between"><h3 class="h-card">' + (ecrit ? 'Déposer ma copie' : 'Déposer ma réponse') + '</h3><span class="badge out">correction par Claude</span></div>';
+    h += '<p class="small muted">' + (ecrit ? 'Une photo par page, ou un PDF.' : 'La transcription et les enregistrements de cette réponse partent avec ; tu peux ajouter un fichier.') + ' Demande ensuite à Claude, dans le terminal, de corriger tes dépôts : la note s’affichera ici.</p>';
+    if (!on) h += '<div class="callout warn"><span class="ic">' + ico('alert') + '</span><div><p class="small">Connecte-toi à ton compte (en haut de la page d’accueil) pour déposer : c’est ce qui rend tes fichiers accessibles depuis le terminal.</p></div></div>';
+    else {
+      h += '<label class="drop" id="dropzone"><input type="file" id="dep-in" multiple accept="' + (ecrit ? 'image/*,application/pdf' : 'audio/*,image/*,application/pdf,text/plain') + '"><span class="dz-t">' + ico('file') + '<b>' + (ecrit ? 'Choisir des photos ou un PDF' : 'Ajouter un fichier') + '</b></span><span class="small muted">ou glisse-les ici</span></label>';
+      if (DEP.sel.length) h += '<ul class="deplist">' + DEP.sel.map(function (f, i) { return '<li><span>' + esc(f.name) + '</span><span class="mono small">' + fsize(f.size) + '</span><button type="button" class="btn sm ghost" data-act="dunsel" data-i="' + i + '" aria-label="Retirer ' + esc(f.name) + '">' + ico('cross') + '</button></li>'; }).join('') + '</ul>';
+      h += '<div class="row"><button type="button" class="btn pri" data-act="dsend"' + (DEP.busy || (ecrit && !DEP.sel.length) ? ' disabled' : '') + '>' + ico('arrow') + '<span>' + (DEP.busy ? 'Envoi… ' + Math.round(DEP.prog * 100) + ' %' : 'Envoyer pour correction') + '</span></button><span class="small" id="dep-msg" role="status">' + esc(DEP.msg) + '</span></div>';
+    }
+    if (mine.length) h += '<div class="hlist">' + mine.map(function (d) { return depRow(d, false); }).join('') + '</div>';
+    return h + '</div>';
+  }
+  function depAdd(files) {
+    var tot = DEP.sel.reduce(function (a, f) { return a + f.size; }, 0);
+    DEP.msg = '';
+    Array.prototype.forEach.call(files || [], function (f) {
+      if (tot + f.size <= 40 * 1048576) { DEP.sel.push(f); tot += f.size; } else DEP.msg = 'Fichiers trop lourds : 40 Mo au plus par dépôt.';
+    });
+    render();
+  }
+  function depSend() {
+    var ctx = DEP.ctx; if (!ctx || DEP.busy || !PrepaSync.depots.ready()) return;
+    var meta = { id: C.uid('d'), kind: ctx.kind, prof: profil() }, extra = Promise.resolve([]);
+    if (ctx.kind === 'ecrit') {
+      var ep = D.EP[ctx.ep], s = sujetBy(ctx.sujet);
+      Object.assign(meta, { ep: ctx.ep, concours: ep.concours, sujet: ctx.sujet, titre: ctx.titre || (s ? s.titre : 'Copie'), runId: ctx.runId || null, used: ctx.used || null });
+    } else {
+      var q = QBY[ctx.qid], o = T.oral;
+      Object.assign(meta, { qid: ctx.qid, question: q ? q.q : '', cat: q ? q.c : '', aid: ctx.aid, used: o && o.start ? Math.round(C.elapsed(o, Date.now())) : null, limit: o ? o.limit : UI.dur, trans: String(T.trans || '').slice(0, 10000) });
+      extra = AudioDB.list('aid', ctx.aid).then(function (l) {
+        return Promise.all(l.map(function (m, i) {
+          return AudioDB.get(m.id).then(function (buf) { return buf ? { name: 'enregistrement-' + (i + 1) + ((m.mime || '').indexOf('mp4') >= 0 ? '.m4a' : '.webm'), type: m.mime || 'audio/webm', data: buf } : null; });
+        }));
+      }, function () { return []; });
+    }
+    DEP.busy = true; DEP.prog = 0; DEP.msg = 'Préparation des fichiers…'; render();
+    Promise.all([Promise.all(DEP.sel.map(prepFile)), extra]).then(function (r) {
+      var files = r[0].concat((r[1] || []).filter(Boolean));
+      if (!files.length && !meta.trans) throw 'Rien à envoyer : ajoute un fichier ou une transcription.';
+      DEP.msg = 'Envoi en cours…'; render();
+      return PrepaSync.depots.add(meta, files, function (x) {
+        DEP.prog = x; var b = $('[data-act="dsend"] span'); if (b) b.textContent = 'Envoi… ' + Math.round(x * 100) + ' %';
+      });
+    }).then(function () {
+      DEP.busy = false; DEP.sel = []; DEP.msg = 'Déposé. Demande à Claude, dans le terminal, de corriger tes dépôts.'; render();
+      toast('Dépôt envoyé pour correction.');
+    }, function (e) { DEP.busy = false; DEP.msg = typeof e === 'string' ? e : 'Échec de l’envoi : vérifie ta connexion et réessaie.'; render(); });
+  }
+  // Reporte la note de la correction dans la grille en cours, ou dans l'entraînement déjà enregistré
+  function depUse(d) {
+    var c = d.correction, now = Date.now(); if (!c || !c.scores) return;
+    if (d.kind === 'ecrit') {
+      var run = S.cur.run, E = D.EP[d.ep];
+      if (run && run.endedAt && run.id === d.runId) {
+        run.scores = Object.assign({}, c.scores); if (c.defauts) run.defauts = c.defauts.slice();
+        touchRun(); Store.save(); render(); return toast('Grille remplie avec la correction.');
+      }
+      var e = d.runId && S.ecrits[d.runId];
+      if (e && !e.deleted) {
+        e.scores = Object.assign({}, c.scores); if (c.defauts) e.defauts = c.defauts.slice(); e.note = C.gridNote(E.grille, e.scores).note; e.updatedAt = now;
+        Store.save(); render(); return toast('Note de l’entraînement mise à jour : ' + C.dec(e.note) + '/20.');
+      }
+      S.ecrits[d.id] = { id: d.id, ep: d.ep, sujet: d.sujet, titre: d.titre || null, date: d.createdAt, used: d.used || 0, pausedMs: 0, marks: [], scores: Object.assign({}, c.scores), note: C.gridNote(E.grille, c.scores).note, comment: '', defauts: (c.defauts || []).slice(), createdAt: now, updatedAt: now };
+      Store.save(); render(); return toast('Copie ajoutée à ton historique : ' + C.dec(S.ecrits[d.id].note) + '/20.');
+    }
+    if (T.att && T.att.aid === d.aid && (T.oeval || oralState() === 'done')) {
+      Object.keys(c.scores).forEach(function (k) { T.oscores[k] = c.scores[k]; }); updOEval(); return toast('Évaluation remplie : vérifie, puis enregistre.');
+    }
+    var o = S.oraux[d.aid];
+    if (!o && !QBY[d.qid]) return;
+    var base = o || { id: d.aid, qid: d.qid, cat: d.cat, prof: d.prof, date: d.createdAt, used: d.used || 0, limit: d.limit || UI.dur, comment: '', createdAt: now };
+    base.scores = Object.assign({}, c.scores); base.note = C.oralNote(D.ORAL.criteres, base.scores).note; base.trans = d.trans || base.trans || ''; base.updatedAt = now;
+    S.oraux[d.aid] = base; Store.save(); render(); toast('Réponse notée dans ton historique : ' + C.dec(base.note) + '/20.');
   }
   // Transcription de l'oral par la reconnaissance vocale du navigateur (Chrome, Edge, Safari)
   var Trans = {
@@ -559,7 +622,7 @@
     UI.oq = q.id; UI.recent = [q.id].concat(UI.recent.filter(function (x) { return x !== q.id; })).slice(0, 12);
     T.oral = { limit: limit, start: null, pausedAt: null, pausedMs: 0, endedAt: null };
     Trans.stop();
-    T.att = { aid: C.uid('o') }; T.oscores = {}; T.ocomment = ''; T.oeval = false; T.osaved = null; T.olimitHit = false; T.micErr = null; T.trans = ''; T.interim = ''; T.trErr = null; T.oclaude = '';
+    T.att = { aid: C.uid('o') }; T.oscores = {}; T.ocomment = ''; T.oeval = false; T.osaved = null; T.olimitHit = false; T.micErr = null; T.trans = ''; T.interim = ''; T.trErr = null;
     Store.saveUI();
   }
   function drawQ() {
@@ -621,7 +684,7 @@
   }
   function evalBox() {
     var on = C.oralNote(D.ORAL.criteres, T.oscores), saved = T.osaved && S.oraux[T.osaved];
-    var h = '<div class="eval" id="evalbox">' + claudeBox('oral') + '<div class="row between"><h3 class="h-card">Ton auto-évaluation</h3><span class="scale">1 à retravailler · 2 passable · 3 bien · 4 très bien</span></div>';
+    var h = '<div class="eval" id="evalbox"><div class="row between"><h3 class="h-card">Ton auto-évaluation</h3><span class="scale">1 à retravailler · 2 passable · 3 bien · 4 très bien</span></div>';
     D.ORAL.criteres.forEach(function (c) {
       var v = T.oscores[c.id];
       h += '<div class="ocrit"><div class="ct"><span>' + tx(c.t) + '</span>' + srcs(c.src) + '</div><div class="lv" role="group" aria-label="' + esc(c.t) + '">';
@@ -630,6 +693,7 @@
     });
     h += '<label class="field"><span>Commentaire</span><textarea class="input" id="o-comment" maxlength="2000" placeholder="Ce que tu as oublié, ce que tu dirais autrement">' + esc(T.ocomment) + '</textarea></label>';
     h += '<div class="row between"><span class="small">Note indicative : <b class="mono" id="onote">' + (on.note === null ? '—' : C.dec(on.note)) + '/20</b></span><button type="button" class="btn pri" data-act="osave" id="osave"' + (on.rated < on.total ? ' disabled' : '') + '>' + ico('check') + (saved ? 'Mettre à jour' : 'Enregistrer l’évaluation') + '</button></div>';
+    h += depotCard({ kind: 'oral', aid: T.att ? T.att.aid : '', qid: curQ() ? curQ().id : '' });
     if (saved) h += '<div class="callout ok"><span class="ic">' + ico('check') + '</span><div><h4>Évaluation enregistrée : ' + C.dec(saved.note) + '/20</h4><p class="small">Elle rejoint ton historique dans l’onglet Progrès.</p><div class="row" style="margin-top:8px"><button type="button" class="btn sm pri" data-act="draw">Question suivante</button></div></div></div>';
     return h + '</div>';
   }
@@ -712,6 +776,9 @@
       if (or.length > lim) h += '<div class="row"><button type="button" class="btn sm" data-act="more">Afficher plus</button></div>';
     }
     h += srcs(O.moyenne.src) + '</article>';
+    // Dépôts pour correction
+    depInit();
+    if (DEP.list.length) h += '<article class="sheet"><div class="row between"><h2 class="h-sec">Copies et réponses déposées</h2><span class="small muted">' + DEP.list.filter(function (d) { return !d.correction; }).length + ' en attente de correction</span></div><div class="hlist">' + DEP.list.map(function (d) { return depRow(d, true); }).join('') + '</div></article>';
     // Données
     var lab = ''; try { if (Sync.on && typeof window.PrepaSync.label === 'function') lab = window.PrepaSync.label(); } catch (e) { }
     h += '<article class="sheet flat"><h2 class="h-sec">Tes données</h2><p class="small">' + tx(lab ? 'Progression ' + lab + '.' : 'Historique enregistré dans ce navigateur.') + ' <span id="audioinfo"></span></p>';
@@ -735,7 +802,6 @@
       h += '<div><span class="eyebrow">Ton rythme</span><div class="kvl">' + e.marks.map(function (m, i) { var dm = Math.round((m - ends[i]) / 60); return '<span class="k">' + tx(ep.phases[i].t) + '</span><span class="v">' + (dm > 0 ? '+' + dm : dm < 0 ? '−' + (-dm) : '0') + ' min</span>'; }).join('') + '</div></div>';
     }
     if (e.comment) h += '<p class="small" style="white-space:pre-wrap">' + esc(e.comment) + '</p>';
-    if (e.claude) h += '<details class="pistes"><summary>Correction de Claude</summary><div class="body"><p class="small" style="white-space:pre-wrap">' + esc(e.claude) + '</p></div></details>';
     h += '<div class="row">' + (T.confirm === 'del:' + e.id ? confirmBox('Supprimer cet entraînement ?', 'del', 'Supprimer') : '<button type="button" class="btn sm danger" data-act="delask" data-id="' + esc(e.id) + '">' + ico('trash') + 'Supprimer</button>') + '</div></div>';
     return h;
   }
@@ -746,7 +812,6 @@
     h += '<div class="hdet"><div class="kvl">' + D.ORAL.criteres.map(function (k) { var v = e.scores ? e.scores[k.id] : null; return '<span class="k">' + tx(k.t) + '</span><span class="v">' + (v ? v + ' · ' + tx(D.ORAL.niveaux[v - 1]) : '—') + '</span>'; }).join('') + '</div>';
     if (e.comment) h += '<p class="small" style="white-space:pre-wrap">' + esc(e.comment) + '</p>';
     if (e.trans) h += '<details class="pistes"><summary>Ta réponse transcrite</summary><div class="body"><p class="small" style="white-space:pre-wrap">' + esc(e.trans) + '</p></div></details>';
-    if (e.claude) h += '<details class="pistes"><summary>Correction de Claude</summary><div class="body"><p class="small" style="white-space:pre-wrap">' + esc(e.claude) + '</p></div></details>';
     h += '<div class="recs" data-recs-aid="' + esc(e.id) + '"></div>';
     h += '<div class="row">' + (q ? '<button type="button" class="btn sm" data-act="retry" data-q="' + esc(q.id) + '">' + ico('redo') + 'Retravailler cette question</button>' : '') + (T.confirm === 'odel:' + e.id ? confirmBox('Supprimer cette réponse et ses enregistrements ?', 'odel', 'Supprimer') : '<button type="button" class="btn sm danger" data-act="odelask" data-id="' + esc(e.id) + '">' + ico('trash') + 'Supprimer</button>') + '</div></div>';
     return h;
@@ -864,30 +929,17 @@
       case 'gsave': {
         if (!run || !run.endedAt) return;
         var e = D.EP[run.ep], g = C.gridNote(e.grille, run.scores); if (g.rated < g.total) return;
-        S.ecrits[run.id] = { id: run.id, ep: run.ep, sujet: run.sujet, titre: run.titre || null, date: run.start, used: run.used || Math.round(C.elapsed(run, now)), pausedMs: C.num(run.pausedMs), marks: (run.marks || []).slice(), scores: C.clone(run.scores), note: g.note, comment: run.comment || '', defauts: (run.defauts || []).slice(), claude: run.claude || '', createdAt: now, updatedAt: now };
+        S.ecrits[run.id] = { id: run.id, ep: run.ep, sujet: run.sujet, titre: run.titre || null, date: run.start, used: run.used || Math.round(C.elapsed(run, now)), pausedMs: C.num(run.pausedMs), marks: (run.marks || []).slice(), scores: C.clone(run.scores), note: g.note, comment: run.comment || '', defauts: (run.defauts || []).slice(), createdAt: now, updatedAt: now };
         T.saved = run.id; S.cur = { run: null, updatedAt: now }; Store.save(); render(); return window.scrollTo(0, 0);
       }
-      case 'ccopy': {
-        var txt = b.dataset.k === 'ecrit' ? (run && run.endedAt ? ecritPrompt(run) : '') : (q ? oralPrompt(q) : '');
-        if (!txt) return;
-        return copyText(txt, function (ok) { toast(ok ? 'Demande copiée : ouvre Claude et colle-la (Ctrl+V ou appui long).' : 'Copie automatique impossible : le texte est sélectionné, copie-le.'); });
-      }
-      case 'capply': {
-        var rp = $('#creply'), msgEl = $('#cmsg'), val = rp ? rp.value : '';
-        var say = function (m) { if (msgEl) msgEl.textContent = m; };
-        if (b.dataset.k === 'ecrit') {
-          if (!run || !run.endedAt) return;
-          var E = D.EP[run.ep], r = parseReply(val, E.grille, 0, 4, E.defauts);
-          if (!r) return say('Ligne « GRILLE: … » introuvable : colle toute la réponse de Claude.');
-          run.scores = Object.assign(run.scores || {}, r.scores); if (r.defauts) run.defauts = r.defauts;
-          run.claude = val.slice(0, 20000); touchRun(); Store.save(); render();
-          var sc = $('.score'); if (sc) sc.scrollIntoView({ block: 'center', behavior: 'smooth' });
-          return toast(r.n + ' critère' + (r.n > 1 ? 's' : '') + ' rempli' + (r.n > 1 ? 's' : '') + ' avec la correction de Claude.');
-        }
-        var ro = parseReply(val, D.ORAL.criteres, 1, 4);
-        if (!ro) return say('Ligne « GRILLE: … » introuvable : colle toute la réponse de Claude.');
-        Object.keys(ro.scores).forEach(function (k) { T.oscores[k] = ro.scores[k]; }); T.oclaude = val;
-        updOEval(); return say(ro.n + ' critère' + (ro.n > 1 ? 's' : '') + ' rempli' + (ro.n > 1 ? 's' : '') + ' : vérifie, puis enregistre.');
+      case 'dsend': return depSend();
+      case 'dunsel': DEP.sel.splice(Number(b.dataset.i), 1); DEP.msg = ''; return render();
+      case 'duse': { var dd = DEP.list.filter(function (x) { return x.id === b.dataset.id; })[0]; if (dd) depUse(dd); return; }
+      case 'ddelask': T.confirm = 'ddel:' + b.dataset.id; return render();
+      case 'ddel': {
+        var did = T.confirm && T.confirm.slice(5), dx = DEP.list.filter(function (x) { return x.id === did; })[0]; T.confirm = null;
+        if (dx) PrepaSync.depots.remove(dx).then(function () { toast('Dépôt supprimé.'); }, function () { toast('Suppression impossible : vérifie ta connexion.'); });
+        return render();
       }
       case 'newrun': T.saved = null; render(); return window.scrollTo(0, 0);
       // Oral
@@ -912,7 +964,7 @@
         if (!q || !T.att) return;
         var on = C.oralNote(D.ORAL.criteres, T.oscores); if (on.rated < on.total) return;
         var o = T.oral, used = o && o.start ? Math.round(C.elapsed(o, now)) : 0, prev = S.oraux[T.att.aid];
-        S.oraux[T.att.aid] = { id: T.att.aid, qid: q.id, cat: q.c, prof: profil(), date: prev ? prev.date : now, used: used, limit: o ? o.limit : UI.dur, scores: C.clone(T.oscores), note: on.note, comment: T.ocomment, trans: String(T.trans || '').slice(0, 10000), claude: String(T.oclaude || '').slice(0, 20000), createdAt: prev ? prev.createdAt : now, updatedAt: now };
+        S.oraux[T.att.aid] = { id: T.att.aid, qid: q.id, cat: q.c, prof: profil(), date: prev ? prev.date : now, used: used, limit: o ? o.limit : UI.dur, scores: C.clone(T.oscores), note: on.note, comment: T.ocomment, trans: String(T.trans || '').slice(0, 10000), createdAt: prev ? prev.createdAt : now, updatedAt: now };
         T.osaved = T.att.aid; Store.save(); return render();
       }
       case 'retry': if (QBY[b.dataset.q]) { newAttempt(QBY[b.dataset.q], QBY[b.dataset.q].pres ? 300 : UI.dur); go('oral'); } return;
@@ -945,7 +997,7 @@
   }
 
   document.addEventListener('click', function (ev) {
-    var b = ev.target.closest('[data-v], [data-act], [data-p], [data-sujet], [data-crit], [data-ocrit], [data-cat], [data-open], [data-play], [data-rdel], [data-rdelyes], [data-rdelno], [data-hist]');
+    var b = ev.target.closest('[data-v], [data-act], [data-p], [data-sujet], [data-crit], [data-ocrit], [data-cat], [data-open], [data-play], [data-rdel], [data-rdelyes], [data-rdelno], [data-hist], [data-dopen]');
     if (!b) return;
     var ds = b.dataset;
     if (ds.v) { ev.preventDefault(); return go(ds.v); }
@@ -961,6 +1013,7 @@
     if (ds.cat) { UI.cat = ds.cat; Store.saveUI(); document.querySelectorAll('[data-cat]').forEach(function (x) { x.setAttribute('aria-pressed', String(x.dataset.cat === UI.cat)); }); return; }
     if (ds.hist) { UI.hist = ds.hist; Store.saveUI(); return render(); }
     if (ds.open) { T.open[ds.open] = !T.open[ds.open]; T.confirm = null; return render(); }
+    if (ds.dopen) { DEP.open[ds.dopen] = !DEP.open[ds.dopen]; T.confirm = null; return render(); }
     if (ds.play) return play(ds.play, b);
     if (ds.rdel) { var sp = b.parentNode; sp.innerHTML = '<span class="small">Supprimer ?</span><button type="button" class="btn sm danger" data-rdelyes="' + esc(ds.rdel) + '">Oui</button><button type="button" class="btn sm" data-rdelno="' + esc(ds.rdel) + '">Non</button>'; return; }
     if (ds.rdelno) { b.parentNode.innerHTML = '<button type="button" class="btn sm danger" data-rdel="' + esc(ds.rdelno) + '" aria-label="Supprimer l’enregistrement">' + ico('trash') + 'Supprimer</button>'; return; }
@@ -973,6 +1026,7 @@
     if (t.id === 'libre-t') { UI.libre = t.value; Store.saveUI(); return; }
     if (t.id === 'o-comment') { T.ocomment = t.value; return; }
     if (t.id === 'o-trans') { T.trans = t.value; return; }
+    if (t.id === 'dep-in' && ev.type === 'change') { depAdd(t.files); t.value = ''; return; }
     if (t.id === 'o-trans-on') { UI.trans = t.checked; Store.saveUI(); return; }
     if (!run || !run.endedAt) return;
     if (t.id === 'g-comment') { run.comment = t.value; touchRun(); clearTimeout(tSave); tSave = setTimeout(function () { Store.save(); }, 600); return; }
@@ -982,6 +1036,10 @@
       touchRun(); Store.save();
     }
   }
+  // Glisser-déposer des fichiers sur la zone de dépôt
+  document.addEventListener('dragover', function (ev) { var z = ev.target.closest && ev.target.closest('#dropzone'); if (z) { ev.preventDefault(); z.classList.add('over'); } });
+  document.addEventListener('dragleave', function (ev) { var z = ev.target.closest && ev.target.closest('#dropzone'); if (z) z.classList.remove('over'); });
+  document.addEventListener('drop', function (ev) { var z = ev.target.closest && ev.target.closest('#dropzone'); if (z) { ev.preventDefault(); z.classList.remove('over'); depAdd(ev.dataTransfer && ev.dataTransfer.files); } });
   document.addEventListener('input', onInput);
   document.addEventListener('change', onInput);
   document.addEventListener('focusout', function () { if (T.pending) setTimeout(function () { if (T.pending && !editing()) render(); }, 0); });

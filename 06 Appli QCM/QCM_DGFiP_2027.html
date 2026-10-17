@@ -677,9 +677,11 @@ input[type=checkbox] { width: 18px; height: 18px; }
     return load().then(function (f) {
       f.Au.onAuthStateChanged(f.auth, function (u) {
         Object.keys(apps).forEach(stop);
+        depWatchers.forEach(depStop);
         user = u;
         if (u) { flag(true); setState("attente"); Object.keys(apps).forEach(watch); }
         else { flag(false); setState("local"); }
+        depWatchers.forEach(depSub);
       });
       return f;
     }, function (e) { started = false; throw e; });
@@ -816,6 +818,56 @@ input[type=checkbox] { width: 18px; height: 18px; }
       };
       if (!el._syncListen) { el._syncListen = true; listeners.push(function () { if (el.isConnected && !el.contains(document.activeElement)) draw(); }); }
       draw();
+    }
+  };
+  /* ---------- Dépôts de fichiers (copies, réponses orales) pour une correction faite depuis le terminal ----------
+     users/{uid}/depots/{id} : description (sujet, fichiers, statut, correction) ;
+     users/{uid}/depots/{id}/parts/{n} : morceaux des fichiers en base64 (moins de 1 Mo par document Firestore).
+     Les morceaux sont écrits avant la description : une description présente signifie un dépôt complet. */
+  var PART = 700000, depWatchers = [];
+  function b64(buf) {
+    var a = new Uint8Array(buf), s = "", CH = 0x8000;
+    for (var i = 0; i < a.length; i += CH) s += String.fromCharCode.apply(null, a.subarray(i, i + CH));
+    return btoa(s);
+  }
+  function depPath(id) { return "users/" + user.uid + "/depots/" + id; }
+  function depStop(w) { if (w.unsub) { w.unsub(); w.unsub = null; } }
+  function depSub(w) {
+    depStop(w);
+    if (!user || !F) { w.cb([]); return; }
+    w.unsub = F.Fs.onSnapshot(F.Fs.collection(F.db, "users", user.uid, "depots"), function (s) {
+      w.cb(s.docs.map(function (d) { return d.data(); }).sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); }));
+    }, function () { w.cb(null); });
+  }
+  api.depots = {
+    ready: function () { return !!(user && F); },
+    // files : [{ name, type, data: ArrayBuffer }] ; progress(0..1) appelé après chaque morceau envoyé
+    add: function (meta, files, progress) {
+      if (!user || !F) return Promise.reject("Connecte-toi (en haut de l'accueil) pour déposer.");
+      var Fs = F.Fs, parts = [], list = [];
+      files.forEach(function (f) {
+        var n = Math.max(1, Math.ceil(f.data.byteLength / PART));
+        list.push({ name: f.name, type: f.type || "application/octet-stream", size: f.data.byteLength, first: parts.length, parts: n });
+        for (var k = 0; k < n; k++) parts.push(f.data.slice(k * PART, (k + 1) * PART));
+      });
+      var base = depPath(meta.id), done = 0;
+      return parts.reduce(function (p, buf, j) {
+        return p.then(function () { return Fs.setDoc(Fs.doc(F.db, base + "/parts/" + j), { d: b64(buf) }); }).then(function () { done++; if (progress) progress(done / parts.length); });
+      }, Promise.resolve()).then(function () {
+        return Fs.setDoc(Fs.doc(F.db, base), Object.assign({}, meta, { files: list, nparts: parts.length, statut: "depose", createdAt: Date.now() }));
+      });
+    },
+    // cb(liste) à chaque changement, cb([]) sans compte, cb(null) en cas d'erreur ; renvoie la fonction d'arrêt
+    watch: function (cb) {
+      var w = { cb: cb, unsub: null }; depWatchers.push(w);
+      if (user) depSub(w); else { cb([]); if (hasFlag()) start().catch(function () { }); }
+      return function () { depStop(w); depWatchers = depWatchers.filter(function (x) { return x !== w; }); };
+    },
+    remove: function (d) {
+      if (!user || !F) return Promise.reject("Connecte-toi pour supprimer.");
+      var Fs = F.Fs, base = depPath(d.id), ops = [];
+      for (var j = 0; j < (d.nparts || 0); j++) ops.push(Fs.deleteDoc(Fs.doc(F.db, base + "/parts/" + j)));
+      return Promise.all(ops).then(function () { return Fs.deleteDoc(Fs.doc(F.db, base)); });
     }
   };
   window.PrepaSync = api;
