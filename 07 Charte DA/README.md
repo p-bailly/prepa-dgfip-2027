@@ -34,11 +34,18 @@ hors ligne, des polices système de repli prennent le relais.
 - **Surligneur** jaune, un passage par écran, jamais pour un état.
 - États juste / faux / à revoir toujours doublés d'un pictogramme ou d'un mot ; contrastes ≥ 4,5:1 en clair et en sombre.
 
-# Charte « Pastille » (en cours de déploiement)
+# Charte « Pastille » (en service)
 
-Nouvelle direction, déclinaison **Sage** avec la mise en page **Colonne** : `pastille/tokens.css`. Appliquée pour
-l'instant à l'accueil (`site/index.html`) et à la page Documents (`site/docs/index.html`) ; les trois applis restent
-en « Copie double » jusqu'à leur migration.
+Direction actuelle, déclinaison **Sage** avec la mise en page **Colonne**. Appliquée à l'accueil (`site/index.html`),
+à la page Documents (`site/docs/index.html`) et aux trois applis.
+
+| Fichier | Contenu |
+| --- | --- |
+| `pastille/tokens.css` | Variables (couleurs, relief, rayons, police) et composants de base |
+| `pastille/appli.css` | Ossature et composants communs aux trois applis (menu latéral, onglets du bas, options QCM, feuille de réponse, journal…). Garde les noms de classes de « Copie double » pour que les vues n'aient pas à changer |
+
+Les `build.js` des trois applis ajoutent `tokens.css` puis `appli.css` avant le style propre à chaque appli :
+rien à recopier à la main. Chaque appli choisit son pastel avec `data-app="qcm|qrc|atelier"`.
 
 - **Fond** blanc, encre `#1B1B2F`, menu latéral lilas très pâle `#F7F5FF` ; en sombre, fond `#15141D` et surfaces `#1E1C2A`.
 - **Un pastel par appli**, réservé aux pictogrammes et aux étiquettes : lilas `#C9C2FF` (QCM), menthe `#B8E6C9` (QRC),
@@ -48,4 +55,8 @@ en « Copie double » jusqu'à leur migration.
 - **Mise en page** : menu latéral de 260 px sur ordinateur, barre d'onglets en bas sur téléphone (< 860 px),
   tableau de bord du jour au centre. L'accueil lit la progression que chaque appli garde dans le navigateur.
 - **Typographie** : Nunito seule, de 600 à 900 ; la graisse fait la hiérarchie.
-- États juste / faux toujours doublés d'un pictogramme ou d'un mot, comme dans « Copie double ».
+- États juste / faux / à revoir toujours doublés d'un pictogramme ou d'un mot ; contrastes ≥ 4,5:1 en clair et en sombre
+  (juste `#1D7540`, faux `#B8322A`, à revoir `#855000` sur blanc et sur leur teinte).
+
+La charte « Copie double » ci-dessus (`tokens.css`, `composants.css`, `charte.html`, maquettes) n'est plus employée
+par aucune page ; elle reste pour mémoire.

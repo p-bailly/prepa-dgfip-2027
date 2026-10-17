@@ -10,7 +10,7 @@ Outils de révision pour les concours d'inspecteur et de contrôleur des finance
 | `commun` | `sync.js` : compte (identifiant + mot de passe), synchronisation Firestore entre appareils et dépôt de fichiers, intégré par chaque appli à la construction. |
 | `outils` | `depots.js` : récupère les copies et réponses déposées dans l'atelier (`node outils/depots.js liste`, `recuperer`) et enregistre leur correction (`noter <id> <correction.json>`). Clé de compte de service dans `%USERPROFILE%\.prepa-dgfip\cle-service.json`, jamais versionnée ; les dépôts récupérés vont dans `08 Depots/` (non versionné). `analyse_oral.py` mesure la fluidité des oraux enregistrés (débit, pauses, tics, intonation) avec faster-whisper en local, dans l'environnement `%USERPROFILE%\.prepa-dgfip\venv` ; `recuperer` le lance tout seul. |
 | `site` | Page d'accueil, manifeste et service worker (appli installable, utilisable hors connexion), icônes et PDF publiés (`site/docs/`). |
-| `07 Charte DA` | **Charte « Copie double »** commune aux applis : `charte.html`, maquettes (`maquettes/index.html`), `tokens.css`, logos. |
+| `07 Charte DA` | **Charte « Pastille »** commune au site et aux applis : `pastille/tokens.css` et `pastille/appli.css`, intégrés par chaque `build.js`. L'ancienne charte « Copie double » (`charte.html`, maquettes, `tokens.css`) reste pour mémoire, avec les logos. |
 
 ## Synchronisation
 
