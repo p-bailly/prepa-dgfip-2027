@@ -5,7 +5,7 @@
   var KEY = 'atelier-ecrit-oral-v1', UIKEY = 'atelier-ecrit-oral-ui', TITLE = document.title || 'Atelier écrit et oral';
   var VIEWS = ['ecrit', 'oral', 'progres', 'reperes'];
   var S = C.blank();                                    // état synchronisable
-  var UI = { view: 'ecrit', cat: 'all', dur: 180, hist: '', sujet: {}, libre: '', oq: '', recent: [], trans: true, rep: '' }; // préférences de cet appareil
+  var UI = { view: 'ecrit', cat: 'all', dur: 180, hist: '', sujet: {}, libre: '', oq: '', recent: [], trans: true, rep: '', park: '' }; // préférences de cet appareil
   var T = { open: {}, confirm: null, saved: null, lastPhase: null, over: false, oral: null, att: null, rec: null, micErr: null,
     oscores: {}, ocomment: '', oeval: false, osaved: null, olimitHit: false, pending: false, more: 0, trans: '', interim: '', tr: null, trErr: null };
   var QBY = {}; D.Q.forEach(function (q) { QBY[q.id] = q; });
@@ -245,9 +245,9 @@
           var type = (mr.mimeType || mt || (chunks[0] && chunks[0].type) || 'audio/webm').split(';')[0];
           var blob = new Blob(chunks, { type: type });
           updRec();
-          if (!blob.size) return;
+          if (!blob.size) { if (T.autoAid === me.aid) { T.autoAid = null; depAuto(me.aid); } return; }
           var meta = { id: C.uid('r'), qid: me.qid, aid: me.aid, created: me.t0, dur: Math.round((Date.now() - me.t0) / 1000), mime: type };
-          AudioDB.add(meta, blob).then(function () { refreshRecs(); if (!AudioDB.persistent()) toast('Enregistrement gardé jusqu’à la fermeture de la page : ce navigateur ne permet pas de le conserver.'); }, function () { toast('L’enregistrement n’a pas pu être conservé.'); });
+          AudioDB.add(meta, blob).then(function () { refreshRecs(); if (T.autoAid === me.aid) { T.autoAid = null; depAuto(me.aid); } if (!AudioDB.persistent()) toast('Enregistrement gardé jusqu’à la fermeture de la page : ce navigateur ne permet pas de le conserver.'); }, function () { toast('L’enregistrement n’a pas pu être conservé.'); });
         };
         mr.onerror = function () { try { mr.stop(); } catch (e) { stopTracks(); T.rec = null; updRec(); } };
         me.state = 'rec'; me.mr = mr; me.t0 = Date.now();
@@ -305,7 +305,8 @@
 
   function viewEcrit() {
     var run = S.cur.run;
-    if (run && D.EP[run.ep]) return run.endedAt ? viewGrade(run) : viewRun(run);
+    // Une copie rendue s'affiche pour être notée, sauf si tu es revenu aux sujets (elle reste alors en attente)
+    if (run && D.EP[run.ep] && !(run.endedAt && UI.park === run.id)) return run.endedAt ? viewGrade(run) : viewRun(run);
     if (T.saved && S.ecrits[T.saved] && !S.ecrits[T.saved].deleted) return viewSaved(S.ecrits[T.saved]);
     return viewEcritHome();
   }
@@ -325,6 +326,13 @@
     var p = profil(), ep = epOf(p), list = sujetsOf(ep), sel = selSujet(ep);
     var h = '<section class="hero"><span class="eyebrow">Écrit · concours ' + tx(ep.concours) + '</span><h1 class="h-page">' + tx(ep.nom) + '</h1></section>';
     h += profSeg();
+    var wait = S.cur.run && S.cur.run.endedAt && D.EP[S.cur.run.ep] ? S.cur.run : null;
+    if (wait) {
+      h += '<div class="callout warn"><span class="ic">' + ico('alert') + '</span><div><h4>Une copie attend d’être notée</h4><p class="small">' + tx(titreOf(wait) + ' · rendue le ' + fdate(wait.endedAt) + ' à ' + fhour(wait.endedAt)) + '</p>';
+      h += '<div class="row" style="margin-top:8px"><button type="button" class="btn sm pri" data-act="unpark">La noter</button><button type="button" class="btn sm danger" data-act="abandonask">Supprimer</button></div>';
+      if (T.confirm === 'abandon') h += confirmBox('Supprimer cette copie sans la noter ?', 'abandon', 'Supprimer');
+      h += '</div></div>';
+    }
     // Sujets du format actuel d'abord ; les annales des sessions précédentes dans un bloc repliable
     var choice = function (s) {
       var on = s.id === sel.id;
@@ -338,7 +346,9 @@
     if (ann.length) h += '<details class="pistes"' + (sel.annale ? ' open' : '') + '><summary>Annales des sessions précédentes · ' + ann.length + ' sujets</summary><div class="body"><div class="choices">' + ann.map(choice).join('') + '</div></div></details>';
     h += '<div class="choices">' + main.filter(function (s) { return s.libre; }).map(choice).join('') + '</div>';
     if (sel.consigne) h += '<details class="pistes"><summary>Consignes du sujet</summary><div class="body"><ol class="consigne-l">' + sel.consigne.map(function (c) { return '<li>' + tx(c) + '</li>'; }).join('') + '</ol></div></details>';
-    h += '<div class="startrow"><button type="button" class="btn pri" data-act="start">' + ico('clock') + 'Commencer · ' + tx(C.hm(ep.min)) + '</button></div></article>';
+    h += '<div class="startrow"><button type="button" class="btn pri" data-act="start">' + ico('clock') + 'Commencer · ' + tx(C.hm(ep.min)) + '</button></div>';
+    if (T.confirm === 'start' && wait) h += confirmBox('Ta copie « ' + titreOf(wait) + ' » n’est pas notée : elle sera supprimée. Commencer quand même ?', 'start', 'Commencer');
+    h += '</article>';
     h += '<details class="sheet fold"><summary><h2 class="h-sec">Copie faite sur papier ? Dépose-la</h2></summary>' + depotCard({ kind: 'ecrit', ep: ep.id, sujet: sel.id, titre: sel.libre ? (UI.libre || 'Sujet libre') : sel.titre }) + '</details>';
     return h;
   }
@@ -386,7 +396,9 @@
 
   function viewGrade(run) {
     var ep = D.EP[run.ep], s = sujetBy(run.sujet), g = C.gridNote(ep.grille, run.scores), used = run.used || C.elapsed(run, Date.now());
-    var h = '<h1 class="sr">Note ta copie</h1><div class="score" aria-live="polite"><span class="big" id="gnote">' + gradeVal(g) + '<small>/20</small></span><div class="stack" style="gap:4px"><b id="grated">' + gradedTxt(g) + '</b><span class="small muted">' + tx('Moyenne des candidats en 2026 : ' + num(ep.moyenne.v) + '/20') + '</span></div>';
+    var h = '<h1 class="sr">Note ta copie</h1>';
+    h += '<div class="gradebar"><div class="stack" style="gap:2px"><span class="eyebrow">' + tx('Copie rendue · ' + (s ? s.kind + ' · ' : '') + C.dur(used) + ' sur ' + C.hm(ep.min)) + '</span><b>' + tx(titreOf(run)) + '</b></div><button type="button" class="btn sm" data-act="park">Revenir aux sujets</button></div>';
+    h += '<div class="score" aria-live="polite"><span class="big" id="gnote">' + gradeVal(g) + '<small>/20</small></span><div class="stack" style="gap:4px"><b id="grated">' + gradedTxt(g) + '</b><span class="small muted">' + tx('Moyenne des candidats en 2026 : ' + num(ep.moyenne.v) + '/20') + '</span></div>';
     h += '<div class="row" style="margin-left:auto">' + (s && s.pdf ? pdfBtn(s.pdf, 'Sujet') : '') + (s && s.corrige ? pdfBtn(s.corrige.pdf, 'Corrigé', 'ghost') : '') + (s && s.rapport ? pdfBtn(s.rapport.url, s.rapport.t, 'ghost') : '') + '</div></div>';
     h += '<details class="sheet fold"><summary><h2 class="h-sec">Faire corriger ta copie par Claude</h2></summary>' + depotCard({ kind: 'ecrit', ep: run.ep, sujet: run.sujet, runId: run.id, titre: titreOf(run), used: run.used }) + '</details>';
     h += '<article class="sheet"><div class="row between"><h2 class="h-sec">Grille du jury</h2><span class="scale">0 absent · 1 insuffisant · 2 moyen · 3 bien · 4 très bien</span></div>';
@@ -521,8 +533,12 @@
     });
     render();
   }
-  function depSend() {
-    var ctx = DEP.ctx; if (!ctx || DEP.busy || !PrepaSync.depots.ready()) return;
+  // Réaffichage sans couper une saisie en cours
+  function softRender() { if (editing()) T.pending = true; else render(); }
+  // auto : envoi automatique d'une réponse orale terminée (sans fichiers ajoutés à la main, sans message d'erreur)
+  function depSend(c, auto) {
+    var ctx = c || DEP.ctx; if (!ctx || DEP.busy || !PrepaSync.depots.ready()) return Promise.resolve();
+    var sel = auto ? [] : DEP.sel;
     var meta = { id: C.uid('d'), kind: ctx.kind, prof: profil() }, extra = Promise.resolve([]);
     if (ctx.kind === 'ecrit') {
       var ep = D.EP[ctx.ep], s = sujetBy(ctx.sujet);
@@ -536,18 +552,31 @@
         }));
       }, function () { return []; });
     }
-    DEP.busy = true; DEP.prog = 0; DEP.msg = 'Préparation des fichiers…'; render();
-    Promise.all([Promise.all(DEP.sel.map(prepFile)), extra]).then(function (r) {
+    DEP.busy = true; DEP.prog = 0; DEP.msg = auto ? 'Envoi automatique pour correction…' : 'Préparation des fichiers…'; softRender();
+    return Promise.all([Promise.all(sel.map(prepFile)), extra]).then(function (r) {
       var files = r[0].concat((r[1] || []).filter(Boolean));
-      if (!files.length && !meta.trans) throw 'Rien à envoyer : ajoute un fichier ou une transcription.';
-      DEP.msg = 'Envoi en cours…'; render();
+      if (!files.length && !meta.trans) throw auto ? 'vide' : 'Rien à envoyer : ajoute un fichier ou une transcription.';
+      DEP.msg = 'Envoi en cours…'; softRender();
       return PrepaSync.depots.add(meta, files, function (x) {
         DEP.prog = x; var b = $('[data-act="dsend"] span'); if (b) b.textContent = 'Envoi… ' + Math.round(x * 100) + ' %';
       });
     }).then(function () {
-      DEP.busy = false; DEP.sel = []; DEP.msg = 'Déposé. Demande à Claude, dans le terminal, de corriger tes dépôts.'; render();
-      toast('Dépôt envoyé pour correction.');
-    }, function (e) { DEP.busy = false; DEP.msg = typeof e === 'string' ? e : 'Échec de l’envoi : vérifie ta connexion et réessaie.'; render(); });
+      DEP.busy = false; if (!auto) DEP.sel = []; DEP.msg = 'Déposé. Demande à Claude, dans le terminal, de corriger tes dépôts.'; softRender();
+      toast(auto ? 'Réponse envoyée à Claude pour correction.' : 'Dépôt envoyé pour correction.');
+    }, function (e) { DEP.busy = false; DEP.msg = e === 'vide' ? '' : typeof e === 'string' ? e : 'Échec de l’envoi : vérifie ta connexion et réessaie.'; softRender(); });
+  }
+  // Oral : chaque réponse terminée part en correction, transcription et enregistrements compris.
+  // Une réponse refaite remplace son dépôt précédent tant qu'il n'est pas corrigé.
+  function depAuto(aid) {
+    if (!aid || !window.PrepaSync || !PrepaSync.depots || !PrepaSync.depots.ready()) return;
+    setTimeout(function () { // laisse arriver la fin de la transcription
+      var q = curQ(); if (!q || !T.att || T.att.aid !== aid) return;
+      if (DEP.busy) return setTimeout(function () { depAuto(aid); }, 1500);
+      var old = DEP.list.filter(function (d) { return d.kind === 'oral' && d.aid === aid && !d.correction; });
+      Promise.all(old.map(function (d) { return PrepaSync.depots.remove(d).catch(function () { }); })).then(function () {
+        depSend({ kind: 'oral', aid: aid, qid: q.id }, true);
+      });
+    }, 1500);
   }
   // Reporte la note de la correction dans la grille en cours, ou dans l'entraînement déjà enregistré
   function depUse(d) {
@@ -686,7 +715,9 @@
     });
     h += '<label class="field"><span>Commentaire</span><textarea class="input" id="o-comment" maxlength="2000" placeholder="Ce que tu as oublié, ce que tu dirais autrement">' + esc(T.ocomment) + '</textarea></label>';
     h += '<div class="row between"><span class="small">Note indicative : <b class="mono" id="onote">' + (on.note === null ? '—' : C.dec(on.note)) + '/20</b></span><button type="button" class="btn pri" data-act="osave" id="osave"' + (on.rated < on.total ? ' disabled' : '') + '>' + ico('check') + (saved ? 'Mettre à jour' : 'Enregistrer l’évaluation') + '</button></div>';
-    h += '<details class="pistes"><summary>Faire corriger ta réponse par Claude</summary><div class="body">' + depotCard({ kind: 'oral', aid: T.att ? T.att.aid : '', qid: curQ() ? curQ().id : '' }) + '</div></details>';
+    var aid = T.att ? T.att.aid : '', sent = DEP.list.filter(function (d) { return d.kind === 'oral' && d.aid === aid; })[0], on = !!(window.PrepaSync && PrepaSync.depots && PrepaSync.depots.ready());
+    h += '<p class="small depst' + (sent ? ' ok' : '') + '">' + (sent ? ico('check') + (sent.correction ? 'Corrigée par Claude : ' + C.dec(sent.correction.note) + '/20, détail dans le dépôt ci-dessous.' : 'Envoyée à Claude pour correction : demande-lui dans le terminal de corriger tes dépôts.') : on ? (DEP.busy ? 'Envoi pour correction…' : 'Ta réponse part à Claude pour correction dès que tu cliques sur « J’ai terminé ».') : 'Connecte-toi (en haut de l’accueil) pour que tes réponses partent automatiquement en correction.') + '</p>';
+    h += '<details class="pistes"><summary>Dépôt pour correction</summary><div class="body">' + depotCard({ kind: 'oral', aid: aid, qid: curQ() ? curQ().id : '' }) + '</div></details>';
     if (saved) h += '<div class="callout ok"><span class="ic">' + ico('check') + '</span><div><h4>Évaluation enregistrée : ' + C.dec(saved.note) + '/20</h4><p class="small">Elle rejoint ton historique dans l’onglet Progrès.</p><div class="row" style="margin-top:8px"><button type="button" class="btn sm pri" data-act="draw">Question suivante</button></div></div></div>';
     return h + '</div>';
   }
@@ -853,7 +884,7 @@
   function viewReperes() {
     var cur = UI.rep && (UI.rep === 'oral' || UI.rep === 'docs' || D.EP[UI.rep]) ? UI.rep : epOf(profil()).id;
     var tabs = [['nds', 'Écrit · inspecteur'], ['ad', 'Écrit · contrôleur'], ['oral', 'Oral'], ['docs', 'Documents']];
-    var h = '<section class="hero"><span class="eyebrow">Repères officiels</span><h1 class="h-page">Ce que disent les guides et les jurys</h1></section>';
+    var h = '<h1 class="sr">Repères officiels</h1>';
     h += '<div class="seg wide rtabs" role="tablist" aria-label="Repères">' + tabs.map(function (t) { return '<button type="button" role="tab" data-rep="' + t[0] + '" aria-selected="' + (cur === t[0]) + '" aria-pressed="' + (cur === t[0]) + '">' + tx(t[1]) + '</button>'; }).join('') + '</div>';
     if (D.EP[cur]) {
       var ep = D.EP[cur], parts = [];
@@ -929,7 +960,8 @@
       case 'cancel': T.confirm = null; return render();
       // Écrit
       case 'start': {
-        var ep = epOf(profil()), s = selSujet(ep);
+        if (S.cur.run && S.cur.run.endedAt && T.confirm !== 'start') { T.confirm = 'start'; return render(); }
+        var ep = epOf(profil()), s = selSujet(ep); UI.park = ''; Store.saveUI();
         S.cur = { run: { id: C.uid('e'), ep: ep.id, sujet: s.id, titre: s.libre ? (UI.libre.trim() || 'Sujet libre') : null, start: now, pausedMs: 0, pausedAt: null, endedAt: null, marks: [], scores: {}, defauts: [], comment: '', updatedAt: now }, updatedAt: now };
         T.saved = null; T.confirm = null; T.lastPhase = null; Store.save(); render(); return window.scrollTo(0, 0);
       }
@@ -944,6 +976,8 @@
       case 'end': if (!run) return; C.finish(run, now); run.used = Math.round(C.elapsed(run, now)); T.confirm = null; touchRun(); Store.save(); render(); return window.scrollTo(0, 0);
       case 'reopen': if (!run) return; C.reopen(run, now); delete run.used; T.confirm = null; touchRun(); Store.save(); render(); return window.scrollTo(0, 0);
       case 'abandonask': T.confirm = 'abandon'; return render();
+      case 'park': if (run) { UI.park = run.id; Store.saveUI(); T.confirm = null; render(); window.scrollTo(0, 0); } return;
+      case 'unpark': UI.park = ''; Store.saveUI(); T.confirm = null; render(); return window.scrollTo(0, 0);
       case 'abandon': S.cur = { run: null, updatedAt: now }; T.confirm = null; Store.save(); render(); return window.scrollTo(0, 0);
       case 'gsave': {
         if (!run || !run.endedAt) return;
@@ -976,7 +1010,7 @@
         return render();
       case 'opause': if (!T.oral || !T.oral.start) return; if (T.oral.pausedAt) { C.resume(T.oral, now); Trans.start(); } else { C.pause(T.oral, now); Trans.stop(); } return render();
       case 'orec': if (T.rec) Rec.stop(); else Rec.start(); return;
-      case 'ofinish': if (!T.oral) return; C.finish(T.oral, now); Rec.stop(); Trans.stop(); T.oeval = true; render(); var ev = $('#evalbox'); if (ev) ev.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); return;
+      case 'ofinish': if (!T.oral) return; C.finish(T.oral, now); var recording = !!T.rec; if (recording && T.att) T.autoAid = T.att.aid; Rec.stop(); Trans.stop(); T.oeval = true; if (!recording && T.att) depAuto(T.att.aid); render(); var ev = $('#evalbox'); if (ev) ev.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); return;
       case 'oreset': if (q) { newAttempt(q, q.pres ? 300 : UI.dur); render(); } return;
       case 'oeval': T.oeval = true; return render();
       case 'osave': {

@@ -53,7 +53,9 @@ body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(
 .app:hover { border-color: var(--ink-app); box-shadow: var(--shadow-lift); }
 .app:focus-visible { outline: 2px solid var(--ink-app); outline-offset: 2px; }
 .app img { width: 48px; height: 48px; border-radius: 12px; flex: none; }
-.app h2 { margin: 0; flex: 1; font-family: var(--f-display); font-size: 1.375rem; font-weight: 700; }
+.app .at { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.app h2 { margin: 0; font-family: var(--f-display); font-size: 1.375rem; font-weight: 700; }
+.app .at small { color: var(--muted); font-size: .875rem; line-height: 1.35; }
 .app svg { width: 22px; height: 22px; flex: none; color: var(--ink-app); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -102,22 +104,22 @@ body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(
   <div class="apps" id="apps">
     <a class="app" href="qcm/">
       <img src="qcm.svg" alt="">
-      <h2>QCM DGFiP 2027</h2>
+      <span class="at"><h2>QCM</h2><small>Révision espacée et épreuves blanches</small></span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
     </a>
     <a class="app qrc" href="qrc/">
       <img src="qrc.svg" alt="">
-      <h2>Atelier QRC compta</h2>
+      <span class="at"><h2>QRC de comptabilité</h2><small>Exercices chiffrés, journal et corrigés</small></span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
     </a>
     <a class="app ate" href="atelier/">
       <span class="tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg></span>
-      <h2>Atelier écrit et oral</h2>
+      <span class="at"><h2>Écrit et oral</h2><small>Note de synthèse, analyse de dossier, oral</small></span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
     </a>
     <a class="app doc" href="docs/">
       <span class="tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3.5H7A1.5 1.5 0 0 0 5.5 5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3.5V8h4.5M9 12.5h6M9 16h4"/></svg></span>
-      <h2>Documents</h2>
+      <span class="at"><h2>Documents</h2><small>Fiches, sujets, guides et rapports de jury</small></span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
     </a>
   </div>

@@ -16,8 +16,8 @@
     { "src": "icones/icone-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "QCM DGFiP 2027", "short_name": "QCM", "url": "qcm/", "icons": [{ "src": "icones/icone-192.png", "sizes": "192x192", "type": "image/png" }] },
-    { "name": "Atelier QRC compta", "short_name": "QRC", "url": "qrc/" },
-    { "name": "Atelier écrit et oral", "short_name": "Écrit et oral", "url": "atelier/" }
+    { "name": "QCM", "short_name": "QCM", "url": "qcm/", "icons": [{ "src": "icones/icone-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "QRC de comptabilité", "short_name": "QRC", "url": "qrc/" },
+    { "name": "Écrit et oral", "short_name": "Écrit et oral", "url": "atelier/" }
   ]
 }

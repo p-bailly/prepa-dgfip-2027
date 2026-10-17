@@ -6,7 +6,7 @@
     I: { label: 'inspecteur', date: new Date(2026, 11, 7), n: 4, min: 70, txt: '4 exercices en 1 h 10' },
     C: { label: 'contrôleur', date: new Date(2027, 0, 11), n: 3, min: 60, txt: '3 exercices en 1 h' }
   };
-  var S = { prog: blank(), view: 'dash', train: null, trainType: null, annale: null, exam: null, fiche: null, confirmReset: false };
+  var S = { prog: blank(), view: 'train', train: null, trainType: null, annale: null, exam: null, fiche: null, confirmReset: false };
   var uid = 0;
   var COURT = { affectation: 'Affectation', tva_ca3: 'TVA CA3', tva_coef: 'Coef. TVA', tva_regul: 'Régul. TVA', amort: 'Amortissement', derog: 'Dérogatoire', cession: 'Cession', depreciations: 'Dépréciations', regul: 'Régularisations', augcap: 'Capital', seuil: 'Seuil', commande: 'Coût marginal', sig_caf: 'SIG et CAF', bilan_fonc: 'Bilan fonct.', ratios: 'Ratios', is: 'IS', devises: 'Devises' };
   function blank() { return { v: 1, updated: 0, types: {}, epreuves: [], settings: { profil: 'I', pcgOld: false } }; }
@@ -202,7 +202,8 @@
     if (mode !== 'exam' && mode !== 'review') h += '<span class="clock" title="Temps passé / objectif">' + ico('clock') + '<span id="clock" data-target="' + t.minutes * 60 + '">' + mmss(elapsed(ex)) + ' / ' + t.minutes + ':00</span></span>';
     h += '</section>';
     if (ex.note) h += '<div class="callout warn"><span class="ic">' + ico('flag') + '</span><p>' + esc(ex.note) + '</p></div>';
-    h += '<article class="sheet"><div class="enonce">' + d.enonce + '</div></article>';
+    // Énoncé toujours visible : colonne fixe à gauche sur grand écran, volet à ouvrir sur petit écran
+    h += '<div class="ex-grid"><aside class="ex-enonce"><article class="sheet"><h2 class="h-card">Énoncé</h2><div class="enonce">' + d.enonce + '</div></article></aside><div class="ex-work">';
     if (ex.res) h += scoreHtml(ex);
     h += '<article class="sheet"><h2 class="h-sec">Résultats chiffrés</h2><div class="answers">' + d.questions.map(function (q) { return qHtml(ex, q); }).join('') + '</div></article>';
     h += '<article class="sheet">';
@@ -221,7 +222,11 @@
     }
     h += '</article>';
     if (ex.corr) h += corrHtml(ex);
-    return h + '</div>';
+    h += '</div></div>';
+    // Bouton et volet hors du bloc animé de l'exercice, pour rester fixés à l'écran
+    var fab = '<button type="button" class="btn pri enonce-fab" data-en="open" aria-controls="drawer' + ex.uid + '" aria-expanded="false">' + ico('book') + 'Énoncé</button>';
+    var drawer = '<div class="enonce-drawer" id="drawer' + ex.uid + '" role="dialog" aria-label="Énoncé"><div class="row between"><h2 class="h-card">Énoncé</h2><button type="button" class="btn sm ghost" data-en="close" aria-label="Fermer l’énoncé">' + ico('cross') + 'Fermer</button></div><div class="enonce">' + d.enonce + '</div></div>';
+    return h + '</div>' + fab + drawer;
   }
   function currentEx() {
     if (S.view === 'train') return S.train;
@@ -248,8 +253,13 @@
     });
     h += '</tbody></table></div></article>';
     if (ep.length) h += '<article class="sheet"><h2 class="h-sec">Dernières épreuves blanches</h2><div class="tw"><table class="t"><thead><tr><th>Date</th><th class="num">Score</th><th class="num">Durée</th><th class="hide-sm">Exercices</th></tr></thead><tbody>' + ep.slice(0, 6).map(function (e) { return '<tr><td>' + new Date(e.d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) + '</td><td class="num"><b>' + pct(e.s) + '</b></td><td class="num">' + mmss(e.t) + '</td><td class="hide-sm small">' + e.x.map(function (x) { return esc((T[x.id] || { nom: x.id }).nom) + ' (' + pct(x.s) + ')'; }).join(', ') + '</td></tr>'; }).join('') + '</tbody></table></div></article>';
+    return h;
+  }
+  // Réglages : compte, synchronisation et préférences, dans leur propre onglet
+  function viewReglages() {
+    var h = '<section class="hero"><h1 class="h-page">Réglages</h1></section>';
     h += '<article class="sheet"><h2 class="h-sec">Compte et synchronisation</h2><p class="small muted" id="store"></p><div id="acct"></div></article>';
-    h += '<article class="sheet"><h2 class="h-sec">Réglages</h2>';
+    h += '<article class="sheet"><h2 class="h-sec">Préférences</h2>';
     h += '<div class="seg-row"><span>Programme</span><div class="seg" role="group" aria-label="Programme"><button type="button" data-p="I" aria-pressed="' + (profil() === 'I') + '">Inspecteur</button><button type="button" data-p="C" aria-pressed="' + (profil() === 'C') + '">Contrôleur</button></div></div>';
     h += '<div class="seg-row"><span>Comptes affichés dans les corrigés</span><div class="seg" role="group" aria-label="Plan comptable"><button type="button" data-pcg="0" aria-pressed="' + !S.prog.settings.pcgOld + '">PCG 2025 (657, 757)</button><button type="button" data-pcg="1" aria-pressed="' + !!S.prog.settings.pcgOld + '">Ancien PCG (675, 775)</button></div></div>';
     h += S.confirmReset ? '<div class="confirm"><span>Effacer toute la progression ? Cette action est définitive.</span><button type="button" class="btn sm danger" data-act="resetyes">Effacer</button><button type="button" class="btn sm" data-act="resetno">Annuler</button></div>' : '<div class="row"><button type="button" class="btn sm danger" data-act="reset">Effacer ma progression</button></div>';
@@ -349,13 +359,21 @@
     var cfg = EXAMS[profil()], j = daysTo(cfg.date);
     $('#stamp').innerHTML = '<b>' + (j > 0 ? 'J-' + j : 'Jour J') + '</b>'; $('#stamp').title = 'Écrit ' + cfg.label + ' · ' + dateTxt(cfg.date);
     var v = $('#view');
-    v.innerHTML = S.view === 'dash' ? viewDash() : S.view === 'train' ? viewTrain() : S.view === 'fiches' ? viewFiches() : S.view === 'annales' ? viewAnnales() : viewExam();
+    v.innerHTML = S.view === 'reglages' ? viewReglages() : S.view === 'dash' ? viewDash() : S.view === 'train' ? viewTrain() : S.view === 'fiches' ? viewFiches() : S.view === 'annales' ? viewAnnales() : viewExam();
     document.querySelectorAll('[data-p]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.p === profil())); });
-    if (S.view === 'dash') { status(); if (window.PrepaSync) PrepaSync.mount($('#acct')); }
+    if (S.view === 'reglages') { status(); if (window.PrepaSync) PrepaSync.mount($('#acct')); }
+    v.classList.toggle('wide', !!currentEx());
     measure();
   }
   function measure() { var t = $('.appbar'); if (t) document.documentElement.style.setProperty('--hh', t.offsetHeight + 'px'); }
   function startTrain(id) { S.view = 'train'; S.trainType = id; S.train = makeEx(id); render(); var a = $('#ex' + S.train.uid); if (a) a.scrollIntoView({ block: 'start' }); }
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest && ev.target.closest('[data-en]'); if (!b) return;
+    var dr = document.querySelector('.enonce-drawer'), fab = document.querySelector('.enonce-fab'); if (!dr) return;
+    var open = b.dataset.en === 'open' && !dr.classList.contains('open');
+    dr.classList.toggle('open', open); if (fab) fab.setAttribute('aria-expanded', String(open));
+  });
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { var dr = document.querySelector('.enonce-drawer.open'); if (dr) dr.classList.remove('open'); } });
   function go(v) { S.view = v; S.confirmReset = false; render(); window.scrollTo(0, 0); }
 
   document.addEventListener('click', function (ev) {

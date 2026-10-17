@@ -1,5 +1,5 @@
 <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="manifest" href="../manifest.webmanifest"><meta name="theme-color" content="#2A44C7"><link rel="apple-touch-icon" href="../icones/icone-180.png"><style>[hidden]{display:none!important}body{margin:0}</style></head><body>
-<title>QCM DGFiP 2027</title>
+<title>QCM · Prépa DGFiP 2027</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -166,7 +166,7 @@ mark.hl { background: linear-gradient(transparent 52%, var(--hl) 52%, var(--hl) 
   body { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
   .appbar-in { min-height: 54px; }
   .brand-t small, .stamp span { display: none; }
-  .appbar .seg { display: none; } /* le profil passe dans « Plus » sur mobile */
+  .appbar .seg { display: none; } /* le profil se règle dans « Réglages » sur mobile */
 }
 
 /* ---------- Mise en page ---------- */
@@ -582,7 +582,7 @@ input[type=checkbox] { width: 18px; height: 18px; }
       <a class="home-btn" id="home" href="../" aria-label="Accueil" title="Accueil" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></a>
       <button type="button" class="brand" data-go="jour">
         <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6" fill="currentColor"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg></span>
-        <span class="brand-t"><b>QCM DGFiP 2027</b></span>
+        <span class="brand-t"><b>QCM</b></span>
       </button>
       <div class="appbar-r">
         <span class="stamp" id="stamp"></span>
@@ -3702,21 +3702,22 @@ function startExtra(ids, label){
 function permFor(id, salt){ return shuffle([0,1,2,3], rng(hash(id+"|"+salt))); }
 
 // ---------- Rendu ----------
-// Cinq destinations ; « Plus » regroupe Ajouter et Réglages. [clé, onglet, pictogramme, libellé de la barre du bas]
-const TABS = [["jour","Aujourd'hui","today","Aujourd'hui"],["examen","Examen blanc","exam","Examen"],["progres","Progrès","chart","Progrès"],["banque","Banque","bank","Banque"],["plus","Plus","more","Plus"]];
-const IN_PLUS = ["ajout","reglages"];
+// Cinq destinations ; « Réglages » donne aussi accès aux cartes perso. [clé, onglet, pictogramme, libellé de la barre du bas]
+const TABS = [["jour","Entraînement","today","Entraînement"],["examen","Épreuves","exam","Épreuves"],["progres","Progrès","chart","Progrès"],["banque","Banque","bank","Banque"],["reglages","Réglages","sliders","Réglages"]];
+// Pages rattachées à l'onglet Réglages
+const IN_PLUS = ["ajout"];
 let tab = "jour";
-try { const h = location.hash.replace("#",""); if(TABS.some(t=>t[0]===h) || IN_PLUS.includes(h)) tab=h; } catch(e){}
+try { const h = location.hash.replace("#","").replace(/^plus$/,"reglages"); if(TABS.some(t=>t[0]===h) || IN_PLUS.includes(h)) tab=h; } catch(e){}
 function go(t){ tab=t; render(); window.scrollTo({top:0}); }
 function renderTabs(){
-  const cur = IN_PLUS.includes(tab) ? "plus" : tab;
+  const cur = IN_PLUS.includes(tab) ? "reglages" : tab;
   const due = allCards().filter(c=>eligible(c) && rec(c.id) && rec(c.id).l && rec(c.id).d<=dayNum()).length;
   const link = ([k,l,i,s], bottom) => `<a href="#${k}" data-tab="${k}"${cur===k?' aria-current="page"':""}>${ico(i)}${bottom?`<span>${s}</span>`:l}${!bottom && k==="jour" && due?` <span class="count" title="${plural(due,"question")} à revoir">${due}</span>`:""}</a>`;
   $("#tabs").innerHTML = TABS.map(t => link(t, false)).join("");
   $("#bottomnav").innerHTML = TABS.map(t => link(t, true)).join("");
 }
 function segHtml(){
-  return [["insp","Insp.","Inspecteur"],["ctrl","Contr.","Contrôleur"]].map(([k,s,l]) => `<button type="button" data-mod="${k}" aria-pressed="${S.set.mod===k}" title="Module ${l.toLowerCase()}">${s}</button>`).join("");
+  return [["insp","Inspecteur","Inspecteur"],["ctrl","Contrôleur","Contrôleur"]].map(([k,s,l]) => `<button type="button" data-mod="${k}" aria-pressed="${S.set.mod===k}" title="Module ${l.toLowerCase()}">${s}</button>`).join("");
 }
 function saveStatus(){ return window.PrepaSync ? PrepaSync.label() : "sur cet appareil"; }
 function renderPills(){
@@ -3732,11 +3733,11 @@ function render(){
   const m = $("#main");
   m.classList.toggle("fit", tab==="jour" || (tab==="examen" && !!S.run));
   document.body.classList.toggle("xrun", tab==="examen" && !!S.run);
-  ({jour:viewJour, examen:viewExam, progres:viewProgres, banque:viewBanque, plus:viewPlus, ajout:viewAjout, reglages:viewReglages})[tab](m);
+  ({jour:viewJour, examen:viewExam, progres:viewProgres, banque:viewBanque, ajout:viewAjout, reglages:viewReglages})[tab](m);
   renderPills();
 }
 
-// ----- Aujourd'hui -----
+// ----- Entraînement -----
 function viewJour(m){
   if(!session) startDaily();
   if(session.pos >= session.ids.length) return viewSessionEnd(m);
@@ -3799,7 +3800,7 @@ function viewSessionEnd(m){
   </section>
   <div class="row">
     ${more?`<button class="btn pri" data-act="more">Encore 10 questions</button>`:""}
-    <button class="btn${more?"":" pri"}" data-go="examen">Examen blanc</button>
+    <button class="btn${more?"":" pri"}" data-go="examen">Épreuve blanche</button>
     <button class="btn" data-go="progres">Progrès</button>
   </div>`;
 }
@@ -3825,7 +3826,7 @@ function persistSession(){
   save();
 }
 
-// ----- Examen blanc -----
+// ----- Épreuves blanches -----
 let tick = null;
 let lastResult = null;
 let xsheet = false; // mobile : feuille de réponse affichée à la place de la question
@@ -3882,7 +3883,7 @@ function viewExam(m){
   const last = S.exams.slice(0,6);
   m.innerHTML = `
   <section class="hero">
-    <h1 class="h-page">Examen blanc</h1>
+    <h1 class="h-page">Épreuves blanches</h1>
   </section>
   <div class="grid" style="--min:260px">
     ${Object.entries(EXAMS).map(([k,E])=>`
@@ -3901,10 +3902,10 @@ function viewExam(m){
       ${[0,0.25,0.33,0.5,1].map(p=>`<button class="mono" data-pen="${p}" aria-pressed="${S.set.pen===p}">−${fmtNum(p)}</button>`).join("")}
     </div>
   </article>
-  ${last.length?`<article class="sheet"><h2 class="h-sec">Derniers examens</h2><div class="tw"><table class="t">
+  ${last.length?`<article class="sheet"><h2 class="h-sec">Dernières épreuves</h2><div class="tw"><table class="t">
     <thead><tr><th>Date</th><th>Module</th><th class="num">Justes</th><th class="num">Fausses</th><th class="num">Ann</th><th class="num hide-sm">Temps / q.</th><th class="num">Note / 20</th></tr></thead>
     <tbody>${last.map(x=>`<tr${x.ids?` class="click" data-xrev="${x.id}" tabindex="0" title="Revoir la copie"`:""}><td>${new Date(x.at).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</td><td>${EXAMS[x.kind].l}</td><td class="num">${x.ok}</td><td class="num">${x.ko}</td><td class="num">${x.ab}</td><td class="num hide-sm">${x.tq?fmtDur(x.tq):"—"}</td><td class="num"><b>${fmtNum(x.note,1)}</b></td></tr>`).join("")}</tbody></table></div>
-    ${last.some(x=>x.ids)?`<p class="small muted">Clique sur un des 5 derniers examens pour revoir la copie.</p>`:""}</article>`:""}`;
+    ${last.some(x=>x.ids)?`<p class="small muted">Clique sur une des 5 dernières épreuves pour revoir la copie.</p>`:""}</article>`:""}`;
 }
 function viewExamRun(m){
   const R = S.run; const E = EXAMS[R.kind];
@@ -3920,7 +3921,7 @@ function viewExamRun(m){
   m.innerHTML = `
   <div class="exambar">
     <div class="stack" style="gap:0">
-      <b>Examen blanc · ${E.l.toLowerCase()}</b>
+      <b>Épreuve blanche · ${E.l.toLowerCase()}</b>
       <small>pénalité −${fmtNum(R.pen)}</small>
     </div>
     <div class="row">
@@ -3982,7 +3983,7 @@ function viewExamResult(m, x){
   const rows = Object.entries(x.by).map(([t,v])=>`<tr><td>${THEMES[t].l}</td><td class="num">${v[1]}/${v[0]}</td><td class="num">${v[2]}</td><td class="num">${v[3]}</td><td class="num">${fmtPct(pct(v[1],v[0]))}</td><td class="num">${THEMES[t].jury?fmtPct(THEMES[t].jury):"—"}</td></tr>`).join("");
   m.innerHTML = `
   <section class="hero">
-    <span class="eyebrow">Résultat · examen ${E.l.toLowerCase()}${x.timeout?" · temps écoulé":""}</span>
+    <span class="eyebrow">Résultat · épreuve ${E.l.toLowerCase()}${x.timeout?" · temps écoulé":""}</span>
     <h1 class="h-page">Note simulée : <mark class="hl">${fmtNum(x.note,1)} / 20</mark></h1>
     <p class="lede">${x.ok} justes − ${fmtNum(x.pen)} × ${x.ko} fausses · ${x.ab} abstentions</p>
   </section>
@@ -4000,7 +4001,7 @@ function viewExamResult(m, x){
       <tbody>${rows}</tbody></table></div>
     <div class="row"><button class="btn" data-act="examhome">Retour</button></div>
   </article>
-  ${x.ids?reviewHtml(x):`<article class="sheet tight"><p class="small muted">Le détail question par question n'est conservé que pour les 5 derniers examens.</p></article>`}`;
+  ${x.ids?reviewHtml(x):`<article class="sheet tight"><p class="small muted">Le détail question par question n'est conservé que pour les 5 dernières épreuves.</p></article>`}`;
 }
 // Revue de la copie : question par question, filtrable, avec le temps passé et les questions signalées.
 let revF = "all";
@@ -4056,7 +4057,7 @@ function viewProgres(m){
   <div class="stats">
     <div class="stat"><span>Réussite en révision</span><b>${fmtPct(pct(totalOk,totalAns))}</b><span>${plural(totalAns,"réponse")}</span></div>
     <div class="stat"><span>Questions vues</span><b>${seen} <small>/ ${tot}</small></b><span>${acq} acquises</span></div>
-    ${x0?`<div class="stat"><span>Dernier examen blanc</span><b>${fmtNum(x0.note,1)} <small>/ 20</small></b>${x1?`<span class="delta ${x0.note>=x1.note?"up":"down"}">${x0.note>=x1.note?"+":"−"}${fmtNum(Math.abs(x0.note-x1.note),1)} pt</span>`:`<span>${EXAMS[x0.kind].l.toLowerCase()}</span>`}</div>`:""}
+    ${x0?`<div class="stat"><span>Dernière épreuve blanche</span><b>${fmtNum(x0.note,1)} <small>/ 20</small></b>${x1?`<span class="delta ${x0.note>=x1.note?"up":"down"}">${x0.note>=x1.note?"+":"−"}${fmtNum(Math.abs(x0.note-x1.note),1)} pt</span>`:`<span>${EXAMS[x0.kind].l.toLowerCase()}</span>`}</div>`:""}
     ${x0&&x0.tq?`<div class="stat"><span>Temps moyen par question</span><b>${fmtDur(x0.tq)}</b><span>dernier examen · ${fmtDur(EXAMS[x0.kind].min*60000/EXAMS[x0.kind].n)} disponibles</span></div>`:""}
   </div>
   ${notesHtml()}
@@ -4105,8 +4106,8 @@ function notesHtml(){
   return `<article class="sheet">
     <div class="row between"><h2 class="h-sec">Évolution des notes · ${EXAMS[k].l.toLowerCase()}</h2>
       ${kinds.length>1?`<div class="chips" role="group" aria-label="Module">${kinds.map(q=>`<button data-notesk="${q}" aria-pressed="${q===k}">${EXAMS[q].l}</button>`).join("")}</div>`:""}</div>
-    ${list.length>1 ? `<div class="chart" id="notes-chart" role="img" aria-label="Notes des ${list.length} derniers examens blancs ${EXAMS[k].l.toLowerCase()}, de ${fmtNum(list[0].note,1)} à ${fmtNum(list[list.length-1].note,1)} sur 20"></div>`
-      : `<p class="small muted">Une seule note pour l'instant (${fmtNum(list[0].note,1)} / 20) : la courbe apparaîtra au deuxième examen blanc.</p>`}
+    ${list.length>1 ? `<div class="chart" id="notes-chart" role="img" aria-label="Notes des ${list.length} dernières épreuves blanches ${EXAMS[k].l.toLowerCase()}, de ${fmtNum(list[0].note,1)} à ${fmtNum(list[list.length-1].note,1)} sur 20"></div>`
+      : `<p class="small muted">Une seule note pour l'instant (${fmtNum(list[0].note,1)} / 20) : la courbe apparaîtra à la deuxième épreuve blanche.</p>`}
     <details><summary class="small">Voir les données</summary><div class="tw"><table class="t">
       <thead><tr><th>Date</th><th class="num">Note / 20</th><th class="num">Justes</th><th class="num">Fausses</th><th class="num">Ann</th><th class="num">Temps / q.</th></tr></thead>
       <tbody>${list.slice().reverse().map(x=>`<tr><td>${day(x.at)}</td><td class="num"><b>${fmtNum(x.note,1)}</b></td><td class="num">${x.ok}</td><td class="num">${x.ko}</td><td class="num">${x.ab}</td><td class="num">${x.tq?fmtDur(x.tq):"—"}</td></tr>`).join("")}</tbody></table></div></details>
@@ -4239,6 +4240,7 @@ function viewReglages(m){
     <h1 class="h-page">Réglages</h1>
   </section>
   <section class="stack" style="gap:var(--s5)">
+    <button type="button" class="sheet tight plus-link" data-go="ajout"><span class="ic">${ico("plus")}</span><b>Cartes perso</b><span>${plural(S.custom.length,"carte")} · en ajouter une</span></button>
     <article class="sheet">
       <label class="f">Module<select id="set-mod">${Object.entries(MODULES).map(([k,v])=>`<option value="${k}" ${s.mod===k?"selected":""}>${v.l} (${v.t.map(t=>THEMES[t].s).join(", ")})</option>`).join("")}</select></label>
       <label class="f">Questions par jour : <b id="size-v">${s.size}</b><input type="range" id="set-size" min="20" max="60" step="5" value="${s.size}"></label>
@@ -4266,23 +4268,6 @@ function viewReglages(m){
   if(window.PrepaSync) PrepaSync.mount($("#acct")); else $("#acct").innerHTML = `<p class="small muted">Synchronisation indisponible : progression enregistrée sur cet appareil.</p>`;
 }
 
-// ----- Plus -----
-function viewPlus(m){
-  m.innerHTML = `
-  <section class="hero">
-    <h1 class="h-page">Cartes perso et réglages</h1>
-  </section>
-  <article class="sheet tight">
-    <div class="row between">
-      <h2 class="h-card">Programme</h2>
-      <div class="seg" role="group" aria-label="Programme">${segHtml()}</div>
-    </div>
-  </article>
-  <div class="grid" style="--min:240px">
-    <button type="button" class="sheet tight plus-link" data-go="ajout"><span class="ic">${ico("plus")}</span><b>Ajouter une carte</b><span>${plural(S.custom.length,"carte")}</span></button>
-    <button type="button" class="sheet tight plus-link" data-go="reglages"><span class="ic">${ico("sliders")}</span><b>Réglages et compte</b><span>Session, pénalité, synchronisation</span></button>
-  </div>`;
-}
 
 // ---------- Événements ----------
 document.addEventListener("click", e => {

@@ -6,7 +6,7 @@
 <link rel="manifest" href="../manifest.webmanifest">
 <meta name="theme-color" content="#0E6871">
 <link rel="apple-touch-icon" href="../icones/icone-180.png">
-<title>Atelier QRC compta</title>
+<title>QRC de comptabilité · Prépa DGFiP 2027</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -556,6 +556,23 @@ table.journal td:nth-child(3), table.journal td:nth-child(4) { text-align: right
 .sync-box { display: flex; flex-direction: column; gap: var(--s3); }
 .sync-err { color: var(--bad); font-weight: 600; }
 
+/* Énoncé toujours visible pendant la saisie */
+.ex-grid { display: flex; flex-direction: column; gap: var(--s5); }
+.ex-work { display: flex; flex-direction: column; gap: var(--s5); min-width: 0; }
+.ex-enonce .h-card { margin-bottom: var(--s3); }
+.enonce-fab { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 25; box-shadow: var(--shadow-lift); }
+.enonce-drawer { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; max-height: 62vh; overflow: auto; padding: var(--s4) max(16px, env(safe-area-inset-right, 0px)) calc(var(--s5) + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); background: var(--surface); border-top: 1px solid var(--line); border-radius: var(--r-lg) var(--r-lg) 0 0; box-shadow: 0 -8px 28px rgba(0, 0, 0, .18); transform: translateY(105%); visibility: hidden; transition: transform .2s ease-out, visibility 0s linear .2s; }
+.enonce-drawer.open { transform: none; visibility: visible; transition: transform .2s ease-out; }
+.enonce-drawer .row { position: sticky; top: calc(var(--s4) * -1); background: var(--surface); padding-block: 4px 8px; margin-bottom: var(--s2); }
+@media (max-width: 719px) { .enonce-fab { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); } }
+@media (min-width: 1200px) {
+  #view.wide { max-width: 1360px; }
+  .ex-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: start; }
+  .ex-enonce { position: sticky; top: calc(var(--hh, 64px) + 16px); max-height: calc(100vh - var(--hh, 64px) - 32px); overflow: auto; border-radius: var(--r-lg); }
+  .enonce-fab, .enonce-drawer { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) { .enonce-drawer, .enonce-drawer.open { transition: none; } }
+
 </style>
 </head>
 <body>
@@ -563,9 +580,9 @@ table.journal td:nth-child(3), table.journal td:nth-child(4) { text-align: right
   <header class="appbar">
     <div class="wrap appbar-in">
       <a class="home-btn" id="home" href="../" aria-label="Accueil" title="Accueil" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg></a>
-      <a class="brand" href="#dash" data-v="dash">
+      <a class="brand" href="#train" data-v="train">
         <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M3 6.5h18M12 6.5V21" stroke-width="2.4"/><path d="M5 11h4.5M5 14.5h3M14.5 11h4.5M14.5 14.5h3M14.5 18h4" stroke-width="1.7"/></svg></span>
-        <span class="brand-t"><b>Atelier QRC compta</b></span>
+        <span class="brand-t"><b>QRC de comptabilité</b></span>
       </a>
       <div class="appbar-r">
         <span class="stamp" id="stamp"></span>
@@ -577,20 +594,22 @@ table.journal td:nth-child(3), table.journal td:nth-child(4) { text-align: right
       </div>
     </div>
     <nav class="wrap tabs" id="tabs" aria-label="Sections">
-      <a href="#dash" data-v="dash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 17a8 8 0 1 1 15 0"/><path d="m12 13 3.5-4"/><circle cx="12" cy="13.5" r="1.2"/></svg>Progression</a>
       <a href="#train" data-v="train"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5.5 18.5 9.5 9 19H5v-4z"/><path d="m12.5 7.5 4 4"/></svg>Entraînement</a>
-      <a href="#exam" data-v="exam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 2M10 3h4M19 6.5l-1.5 1.5"/></svg>Épreuve</a>
+      <a href="#exam" data-v="exam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 2M10 3h4M19 6.5l-1.5 1.5"/></svg>Épreuves</a>
+      <a href="#annales" data-v="annales"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="4" rx="1"/><path d="M5 8.5v10a1.5 1.5 0 0 0 1.5 1.5h11a1.5 1.5 0 0 0 1.5-1.5v-10M10 12.5h4"/></svg>Annales</a>
       <a href="#fiches" data-v="fiches"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 5.5c2.5-1 5-1 7.5.5v13c-2.5-1.5-5-1.5-7.5-.5zM19.5 5.5c-2.5-1-5-1-7.5.5v13c2.5-1.5 5-1.5 7.5-.5z"/></svg>Fiches</a>
-      <a href="#annales" data-v="annales"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="4" rx="1"/><path d="M5 8.5v10a1.5 1.5 0 0 0 1.5 1.5h11a1.5 1.5 0 0 0 1.5-1.5v-10M10 12.5h4"/></svg>Sujets réels</a>
+      <a href="#dash" data-v="dash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 17a8 8 0 1 1 15 0"/><path d="m12 13 3.5-4"/><circle cx="12" cy="13.5" r="1.2"/></svg>Progrès</a>
+      <a href="#reglages" data-v="reglages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Réglages</a>
     </nav>
   </header>
   <main class="wrap page" id="view"></main>
   <nav class="bottomnav" id="bottomnav" aria-label="Sections">
-    <a href="#dash" data-v="dash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 17a8 8 0 1 1 15 0"/><path d="m12 13 3.5-4"/><circle cx="12" cy="13.5" r="1.2"/></svg><span>Progression</span></a>
-    <a href="#train" data-v="train"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5.5 18.5 9.5 9 19H5v-4z"/><path d="m12.5 7.5 4 4"/></svg><span>S’entraîner</span></a>
-    <a href="#exam" data-v="exam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 2M10 3h4M19 6.5l-1.5 1.5"/></svg><span>Épreuve</span></a>
-    <a href="#fiches" data-v="fiches"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 5.5c2.5-1 5-1 7.5.5v13c-2.5-1.5-5-1.5-7.5-.5zM19.5 5.5c-2.5-1-5-1-7.5.5v13c2.5-1.5 5-1.5 7.5-.5z"/></svg><span>Fiches</span></a>
+    <a href="#train" data-v="train"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 5.5 18.5 9.5 9 19H5v-4z"/><path d="m12.5 7.5 4 4"/></svg><span>Entraînement</span></a>
+    <a href="#exam" data-v="exam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 2M10 3h4M19 6.5l-1.5 1.5"/></svg><span>Épreuves</span></a>
     <a href="#annales" data-v="annales"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="4" rx="1"/><path d="M5 8.5v10a1.5 1.5 0 0 0 1.5 1.5h11a1.5 1.5 0 0 0 1.5-1.5v-10M10 12.5h4"/></svg><span>Annales</span></a>
+    <a href="#fiches" data-v="fiches"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 5.5c2.5-1 5-1 7.5.5v13c-2.5-1.5-5-1.5-7.5-.5zM19.5 5.5c-2.5-1-5-1-7.5.5v13c2.5-1.5 5-1.5 7.5-.5z"/></svg><span>Fiches</span></a>
+    <a href="#dash" data-v="dash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 17a8 8 0 1 1 15 0"/><path d="m12 13 3.5-4"/><circle cx="12" cy="13.5" r="1.2"/></svg><span>Progrès</span></a>
+    <a href="#reglages" data-v="reglages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg><span>Réglages</span></a>
   </nav>
 </div>
 <script>
@@ -2758,7 +2777,7 @@ ANNALES = [
     I: { label: 'inspecteur', date: new Date(2026, 11, 7), n: 4, min: 70, txt: '4 exercices en 1 h 10' },
     C: { label: 'contrôleur', date: new Date(2027, 0, 11), n: 3, min: 60, txt: '3 exercices en 1 h' }
   };
-  var S = { prog: blank(), view: 'dash', train: null, trainType: null, annale: null, exam: null, fiche: null, confirmReset: false };
+  var S = { prog: blank(), view: 'train', train: null, trainType: null, annale: null, exam: null, fiche: null, confirmReset: false };
   var uid = 0;
   var COURT = { affectation: 'Affectation', tva_ca3: 'TVA CA3', tva_coef: 'Coef. TVA', tva_regul: 'Régul. TVA', amort: 'Amortissement', derog: 'Dérogatoire', cession: 'Cession', depreciations: 'Dépréciations', regul: 'Régularisations', augcap: 'Capital', seuil: 'Seuil', commande: 'Coût marginal', sig_caf: 'SIG et CAF', bilan_fonc: 'Bilan fonct.', ratios: 'Ratios', is: 'IS', devises: 'Devises' };
   function blank() { return { v: 1, updated: 0, types: {}, epreuves: [], settings: { profil: 'I', pcgOld: false } }; }
@@ -2954,7 +2973,8 @@ ANNALES = [
     if (mode !== 'exam' && mode !== 'review') h += '<span class="clock" title="Temps passé / objectif">' + ico('clock') + '<span id="clock" data-target="' + t.minutes * 60 + '">' + mmss(elapsed(ex)) + ' / ' + t.minutes + ':00</span></span>';
     h += '</section>';
     if (ex.note) h += '<div class="callout warn"><span class="ic">' + ico('flag') + '</span><p>' + esc(ex.note) + '</p></div>';
-    h += '<article class="sheet"><div class="enonce">' + d.enonce + '</div></article>';
+    // Énoncé toujours visible : colonne fixe à gauche sur grand écran, volet à ouvrir sur petit écran
+    h += '<div class="ex-grid"><aside class="ex-enonce"><article class="sheet"><h2 class="h-card">Énoncé</h2><div class="enonce">' + d.enonce + '</div></article></aside><div class="ex-work">';
     if (ex.res) h += scoreHtml(ex);
     h += '<article class="sheet"><h2 class="h-sec">Résultats chiffrés</h2><div class="answers">' + d.questions.map(function (q) { return qHtml(ex, q); }).join('') + '</div></article>';
     h += '<article class="sheet">';
@@ -2973,7 +2993,11 @@ ANNALES = [
     }
     h += '</article>';
     if (ex.corr) h += corrHtml(ex);
-    return h + '</div>';
+    h += '</div></div>';
+    // Bouton et volet hors du bloc animé de l'exercice, pour rester fixés à l'écran
+    var fab = '<button type="button" class="btn pri enonce-fab" data-en="open" aria-controls="drawer' + ex.uid + '" aria-expanded="false">' + ico('book') + 'Énoncé</button>';
+    var drawer = '<div class="enonce-drawer" id="drawer' + ex.uid + '" role="dialog" aria-label="Énoncé"><div class="row between"><h2 class="h-card">Énoncé</h2><button type="button" class="btn sm ghost" data-en="close" aria-label="Fermer l’énoncé">' + ico('cross') + 'Fermer</button></div><div class="enonce">' + d.enonce + '</div></div>';
+    return h + '</div>' + fab + drawer;
   }
   function currentEx() {
     if (S.view === 'train') return S.train;
@@ -3000,8 +3024,13 @@ ANNALES = [
     });
     h += '</tbody></table></div></article>';
     if (ep.length) h += '<article class="sheet"><h2 class="h-sec">Dernières épreuves blanches</h2><div class="tw"><table class="t"><thead><tr><th>Date</th><th class="num">Score</th><th class="num">Durée</th><th class="hide-sm">Exercices</th></tr></thead><tbody>' + ep.slice(0, 6).map(function (e) { return '<tr><td>' + new Date(e.d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) + '</td><td class="num"><b>' + pct(e.s) + '</b></td><td class="num">' + mmss(e.t) + '</td><td class="hide-sm small">' + e.x.map(function (x) { return esc((T[x.id] || { nom: x.id }).nom) + ' (' + pct(x.s) + ')'; }).join(', ') + '</td></tr>'; }).join('') + '</tbody></table></div></article>';
+    return h;
+  }
+  // Réglages : compte, synchronisation et préférences, dans leur propre onglet
+  function viewReglages() {
+    var h = '<section class="hero"><h1 class="h-page">Réglages</h1></section>';
     h += '<article class="sheet"><h2 class="h-sec">Compte et synchronisation</h2><p class="small muted" id="store"></p><div id="acct"></div></article>';
-    h += '<article class="sheet"><h2 class="h-sec">Réglages</h2>';
+    h += '<article class="sheet"><h2 class="h-sec">Préférences</h2>';
     h += '<div class="seg-row"><span>Programme</span><div class="seg" role="group" aria-label="Programme"><button type="button" data-p="I" aria-pressed="' + (profil() === 'I') + '">Inspecteur</button><button type="button" data-p="C" aria-pressed="' + (profil() === 'C') + '">Contrôleur</button></div></div>';
     h += '<div class="seg-row"><span>Comptes affichés dans les corrigés</span><div class="seg" role="group" aria-label="Plan comptable"><button type="button" data-pcg="0" aria-pressed="' + !S.prog.settings.pcgOld + '">PCG 2025 (657, 757)</button><button type="button" data-pcg="1" aria-pressed="' + !!S.prog.settings.pcgOld + '">Ancien PCG (675, 775)</button></div></div>';
     h += S.confirmReset ? '<div class="confirm"><span>Effacer toute la progression ? Cette action est définitive.</span><button type="button" class="btn sm danger" data-act="resetyes">Effacer</button><button type="button" class="btn sm" data-act="resetno">Annuler</button></div>' : '<div class="row"><button type="button" class="btn sm danger" data-act="reset">Effacer ma progression</button></div>';
@@ -3101,13 +3130,21 @@ ANNALES = [
     var cfg = EXAMS[profil()], j = daysTo(cfg.date);
     $('#stamp').innerHTML = '<b>' + (j > 0 ? 'J-' + j : 'Jour J') + '</b>'; $('#stamp').title = 'Écrit ' + cfg.label + ' · ' + dateTxt(cfg.date);
     var v = $('#view');
-    v.innerHTML = S.view === 'dash' ? viewDash() : S.view === 'train' ? viewTrain() : S.view === 'fiches' ? viewFiches() : S.view === 'annales' ? viewAnnales() : viewExam();
+    v.innerHTML = S.view === 'reglages' ? viewReglages() : S.view === 'dash' ? viewDash() : S.view === 'train' ? viewTrain() : S.view === 'fiches' ? viewFiches() : S.view === 'annales' ? viewAnnales() : viewExam();
     document.querySelectorAll('[data-p]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.p === profil())); });
-    if (S.view === 'dash') { status(); if (window.PrepaSync) PrepaSync.mount($('#acct')); }
+    if (S.view === 'reglages') { status(); if (window.PrepaSync) PrepaSync.mount($('#acct')); }
+    v.classList.toggle('wide', !!currentEx());
     measure();
   }
   function measure() { var t = $('.appbar'); if (t) document.documentElement.style.setProperty('--hh', t.offsetHeight + 'px'); }
   function startTrain(id) { S.view = 'train'; S.trainType = id; S.train = makeEx(id); render(); var a = $('#ex' + S.train.uid); if (a) a.scrollIntoView({ block: 'start' }); }
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest && ev.target.closest('[data-en]'); if (!b) return;
+    var dr = document.querySelector('.enonce-drawer'), fab = document.querySelector('.enonce-fab'); if (!dr) return;
+    var open = b.dataset.en === 'open' && !dr.classList.contains('open');
+    dr.classList.toggle('open', open); if (fab) fab.setAttribute('aria-expanded', String(open));
+  });
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { var dr = document.querySelector('.enonce-drawer.open'); if (dr) dr.classList.remove('open'); } });
   function go(v) { S.view = v; S.confirmReset = false; render(); window.scrollTo(0, 0); }
 
   document.addEventListener('click', function (ev) {

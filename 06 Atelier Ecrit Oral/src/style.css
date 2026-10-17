@@ -231,3 +231,9 @@ details.fold:not([open]) { gap: 0; }
 
 /* Titre lu par les lecteurs d’écran, invisible à l’écran */
 .sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+/* Écran de notation : la copie concernée et le retour aux sujets */
+.gradebar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2) var(--s3); padding: var(--s3) var(--s4); border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
+.gradebar b { font-size: var(--t-base); }
+.depst { display: flex; gap: 6px; align-items: center; color: var(--muted); }
+.depst.ok { color: var(--ok); font-weight: 600; }
+.depst svg { width: 16px; height: 16px; flex: none; }
