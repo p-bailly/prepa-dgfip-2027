@@ -64,10 +64,6 @@ svg { flex: none; }
 .nav .qcm .ic { background: var(--qcm); } .nav .qrc .ic { background: var(--qrc); } .nav .ate .ic { background: var(--ate); } .nav .doc .ic { background: var(--doc); }
 .nav .home .ic { color: var(--ink); }
 .nav .n { margin-left: auto; font-size: .8125rem; font-weight: 800; color: var(--muted); }
-.side-inst { display: flex; align-items: center; gap: 12px; min-height: 48px; margin-top: 10px; padding: 0 10px; border: 1.5px solid var(--line-2); border-radius: 14px; background: none; color: var(--ink); font: inherit; font-weight: 800; text-align: left; cursor: pointer; }
-.side-inst:hover { background: var(--surface); border-color: var(--edge); }
-.side-inst .ic { width: 30px; height: 30px; flex: none; display: grid; place-items: center; border-radius: 9px; background: var(--go); color: var(--on-tile); }
-.side-inst .ic svg { width: 17px; height: 17px; }
 .me { margin-top: auto; display: flex; align-items: flex-end; gap: 8px; padding: 14px 4px 0; border-top: 1.5px solid var(--line); }
 .acct { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: .875rem; }
 .acct .who { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -104,15 +100,6 @@ svg { flex: none; }
 .btns { display: flex; flex-wrap: wrap; gap: 10px; }
 .small { font-size: .875rem; } .muted { color: var(--muted); }
 .err { color: var(--err); font-weight: 800; }
-
-/* ---------- Installer le site comme une appli ---------- */
-.install { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 18px; padding: 18px 20px; border: 1.5px solid var(--edge); border-radius: 22px; background: var(--surface); box-shadow: 4px 4px 0 var(--drop); }
-.install .ic { width: 48px; height: 48px; flex: none; display: grid; place-items: center; border: 1.5px solid var(--edge); border-radius: 14px; background: var(--go); color: var(--on-tile); }
-.install .ic svg { width: 24px; height: 24px; }
-.install .txt { flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.install h2 { font-size: 1.125rem; line-height: 1.25; font-weight: 800; }
-.install p { font-size: .875rem; color: var(--muted); }
-.install .how { margin-top: 6px; padding: 10px 12px; border-radius: 12px; background: var(--side); color: var(--ink); }
 
 /* ---------- Cartes du tableau de bord ---------- */
 .today { display: grid; gap: 20px; grid-template-columns: 1.3fr 1fr 1fr; }
@@ -153,7 +140,6 @@ a.card:hover { border-color: var(--edge); }
   .shell { display: block; }
   .side { position: static; width: auto; height: auto; flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; padding: 12px max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px)); border-right: 0; border-bottom: 1.5px solid var(--line); }
   .brand { padding: 0; }
-  .side-inst { display: none; }
   .me { margin: 0; padding: 0; border: 0; align-items: center; }
   .acct .who b { display: none; }
   .nav { position: fixed; z-index: 20; inset: auto 0 0 0; flex-direction: row; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; padding: 6px 4px calc(8px + env(safe-area-inset-bottom, 0px)); background: var(--bg); border-top: 1.5px solid var(--line); }
@@ -167,12 +153,10 @@ a.card:hover { border-color: var(--edge); }
   .main { padding: 20px max(16px, env(safe-area-inset-right, 0px)) calc(96px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); gap: 20px; }
   .today { grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .card { padding: 18px; border-radius: 20px; }
-  .install { padding: 18px; border-radius: 20px; }
-  .install .ic { display: none; }
 }
 @media (min-width: 860px) { .nav .short { display: none; } }
 @media (prefers-reduced-motion: no-preference) {
-  .nav a, .btn, a.card, .theme-btn, .side-inst { transition: background-color .12s, border-color .12s, box-shadow .12s; }
+  .nav a, .btn, a.card, .theme-btn { transition: background-color .12s, border-color .12s, box-shadow .12s; }
 }
 </style>
 </head>
@@ -187,7 +171,6 @@ a.card:hover { border-color: var(--edge); }
       <a class="ate" href="atelier/"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg></span><span class="full">Écrit et oral</span><span class="short">Écrit-oral</span></a>
       <a class="doc" href="docs/"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H10l2 2h6.5A1.5 1.5 0 0 1 20 7.5v11a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5z"/></svg></span><span class="full">Documents</span><span class="short">Docs</span></a>
     </nav>
-    <button type="button" class="side-inst" id="install-side" hidden><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4M12 7v5M9.5 9.5L12 12l2.5-2.5"/></svg></span>Installer l'appli</button>
     <div class="me">
       <div class="acct" id="acct"></div>
       <button type="button" class="theme-btn" id="theme" aria-label="Changer de thème"></button>
@@ -202,16 +185,6 @@ a.card:hover { border-color: var(--edge); }
       </div>
       <span class="count" id="countdown" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M10 2h4"/></svg><span></span></span>
     </div>
-
-    <section class="install" id="install" hidden aria-labelledby="install-t">
-      <span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4M12 7v5M9.5 9.5L12 12l2.5-2.5"/></svg></span>
-      <div class="txt">
-        <h2 id="install-t">Installer Prépa DGFiP sur cet ordinateur</h2>
-        <p id="install-sub">Une icône pour l'ouvrir directement, une fenêtre à part, et les applis restent utilisables hors connexion.</p>
-        <p class="how" id="install-how" aria-live="polite" hidden></p>
-      </div>
-      <div class="btns"><button type="button" class="btn go" id="install-go">Installer l'appli</button><button type="button" class="btn ghost" id="install-later">Plus tard</button></div>
-    </section>
 
     <form class="login" id="login" novalidate hidden aria-label="Connexion au compte">
       <p class="small muted">Avec un compte, ta progression (QCM, atelier QRC, écrit et oral) se synchronise entre tous tes appareils. Première fois : choisis un identifiant et un mot de passe, puis « Créer le compte ».</p>
@@ -354,63 +327,6 @@ a.card:hover { border-color: var(--edge); }
     $("results").innerHTML = results.map(function (x) { return '<li><span class="dot ' + x.k + '" aria-hidden="true"></span><span>' + esc(x.l) + '<small>' + esc(day(x.t)) + '</small></span><b>' + esc(x.v) + '</b></li>'; }).join("");
     $("results").hidden = false; $("results-empty").hidden = true;
   }
-})();
-</script>
-<script>
-// Installer le site comme une appli : « Installer l'appli » ouvre la fenêtre d'installation du navigateur quand il en a une
-// (Chrome, Edge), sinon affiche la marche à suivre (Safari, Firefox…). Rien ne s'affiche dans l'appli installée.
-// « Plus tard » masque l'encadré pendant 14 jours ; le bouton du menu latéral reste.
-(function () {
-  if (!/^https?:$/.test(location.protocol)) return;
-  var KI = "prepa-appli", KL = "prepa-install-plus-tard", ua = navigator.userAgent, deferred = null;
-  function $(id) { return document.getElementById(id); }
-  function get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-  function put(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
-  function mm(q) { return !!(window.matchMedia && matchMedia(q).matches); }
-  if (mm("(display-mode: standalone)") || mm("(display-mode: window-controls-overlay)") || mm("(display-mode: minimal-ui)") || navigator.standalone === true) { put(KI, "1"); return; }
-
-  var box = $("install"), side = $("install-side"), go = $("install-go"), later = $("install-later"), how = $("install-how");
-  var touchMac = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1, ios = /iPhone|iPad|iPod/.test(ua) || touchMac, android = /Android/.test(ua);
-  var where = /iPad/.test(ua) || touchMac || (android && !/Mobile/.test(ua)) ? "cette tablette" : ios || android ? "ce téléphone" : "cet ordinateur";
-  $("install-t").textContent = "Installer Prépa DGFiP sur " + where;
-
-  function steps() {
-    if (ios) return "Touche le bouton Partager (le carré avec une flèche), puis « Sur l'écran d'accueil ».";
-    if (/Firefox\//.test(ua)) return android ? "Menu ⋮ › « Ajouter à l'écran d'accueil »." : "Ouvre plutôt " + location.host + " dans Chrome ou Edge, puis clique sur « Installer l'appli ».";
-    if (/Macintosh/.test(ua) && /Version\/[\d.]+.*Safari/.test(ua)) return "Menu Fichier › « Ajouter au Dock… » (macOS Sonoma ou plus récent).";
-    if (android) return "Menu ⋮ › « Installer l'appli » ou « Ajouter à l'écran d'accueil ».";
-    if (/Edg\//.test(ua)) return "Clique sur l'icône « Application disponible » à droite de la barre d'adresse, ou menu … › Applications › « Installer ce site en tant qu'application ».";
-    if (/Chrome\//.test(ua)) return "Clique sur l'icône d'installation à droite de la barre d'adresse (un écran avec une flèche), ou cherche « Installer » dans le menu ⋮, rubrique « Caster, enregistrer et partager ».";
-    return "Cherche « Installer » ou « Ajouter à l'écran d'accueil » dans le menu du navigateur.";
-  }
-  function refresh() {
-    var known = get(KI) === "1" && !deferred;
-    side.hidden = known;
-    box.hidden = known || Date.now() - (+get(KL) || 0) < 14 * 86400000;
-  }
-  function install() {
-    if (deferred) {
-      var d = deferred; deferred = null;
-      d.prompt();
-      d.userChoice.then(function (c) { if (c.outcome === "accepted") installed(); }, function () {});
-      return;
-    }
-    put(KL, null); box.hidden = false;
-    how.textContent = steps(); how.hidden = false;
-  }
-  function installed() {
-    put(KI, "1"); put(KL, null); deferred = null; side.hidden = true;
-    $("install-t").textContent = "C'est installé";
-    $("install-sub").textContent = "Prépa DGFiP s'ouvre maintenant depuis son icône, dans sa propre fenêtre.";
-    how.hidden = true; go.hidden = true; later.textContent = "Fermer"; box.hidden = false;
-  }
-  // Chrome et Edge ne proposent l'installation que si le site n'est pas déjà installé.
-  window.addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); deferred = e; put(KI, null); refresh(); });
-  window.addEventListener("appinstalled", installed);
-  go.addEventListener("click", install);
-  side.addEventListener("click", install);
-  later.addEventListener("click", function () { box.hidden = true; if (!go.hidden) put(KL, String(Date.now())); });
-  refresh();
 })();
 </script>
 <script src="sync.js"></script>
