@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Prépa DGFiP 2027</title>
 <meta name="description" content="Révision du concours DGFiP 2027 : QCM, atelier QRC de comptabilité, fiches et annales.">
-<link rel="icon" href="qcm.svg" type="image/svg+xml">
+<link rel="icon" href="prepa.svg" type="image/svg+xml">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#F7F5FF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1A1926" media="(prefers-color-scheme: dark)">
@@ -54,7 +54,10 @@ svg { flex: none; }
 .shell { display: flex; min-height: 100vh; min-height: 100dvh; }
 .side { width: 260px; flex: none; position: sticky; top: 0; height: 100vh; height: 100dvh; display: flex; flex-direction: column; gap: 6px; padding: 24px 16px; background: var(--side); border-right: 1.5px solid var(--line); }
 .brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 20px; font-size: 1.125rem; font-weight: 900; }
-.brand i { width: 34px; height: 34px; flex: none; display: grid; place-items: center; border: 1.5px solid var(--edge); border-radius: 10px; background: var(--go); color: var(--on-tile); font-style: normal; font-size: .8125rem; }
+.brand svg { width: 34px; height: 34px; }
+.brand circle { stroke: var(--edge); stroke-width: 3; }
+.brand .drop { fill: var(--drop); stroke: none; }
+.brand path { fill: none; stroke: var(--on-tile); stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; }
 .nav { display: flex; flex-direction: column; gap: 4px; }
 .nav a { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 10px; border: 1.5px solid transparent; border-radius: 14px; font-weight: 800; }
 .nav a:hover { background: var(--surface); }
@@ -162,7 +165,7 @@ a.card:hover { border-color: var(--edge); }
 <body>
 <div class="shell">
   <aside class="side">
-    <span class="brand"><i aria-hidden="true">27</i>Prépa DGFiP</span>
+    <span class="brand"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="16" cy="16" r="11.5" style="fill:var(--qcm)"/><circle cx="16" cy="47" r="11.5" style="fill:var(--ate)"/><circle cx="47" cy="47" r="11.5" style="fill:var(--doc)"/><circle class="drop" cx="50.5" cy="19.5" r="11.5"/><circle cx="47" cy="16" r="11.5" style="fill:var(--qrc)"/><path d="M41.5 16.5l4 4 7.5-8"/></svg>Prépa DGFiP</span>
     <nav class="nav" aria-label="Applis">
       <a class="home" href="./" aria-current="page"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7v9H4z"/></svg></span><span class="full">Aujourd'hui</span><span class="short">Accueil</span></a>
       <a class="qcm" href="qcm/"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg></span><span class="full">QCM</span><span class="short">QCM</span><span class="n" id="nav-qcm"></span></a>

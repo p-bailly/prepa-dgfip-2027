@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Logos Prépa DGFiP</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap">
+<style>
+/* Planche de propositions de logos · charte « Pastille », déclinaison Sage (07 Charte DA/pastille).
+   Une colonne : l'existant, la vue d'ensemble, puis une carte par piste avec ses mises en situation
+   (menu latéral clair et sombre, onglet à 16 px, écran d'accueil). Les logos sont dessinés en SVG par le
+   script en bas de page ; les chiffres « 27 » sont les contours de Nunito Black, pas du texte. */
+:root {
+  --bg: #FFFFFF; --side: #F7F5FF; --surface: #FFFFFF; --line: #ECEAF4; --line-2: #D9D6E8; --ink: #1B1B2F; --muted: #5B5874;
+  --edge: #1B1B2F; --drop: #1B1B2F; --on-tile: #1B1B2F; --go: #7CE0A3; --paper: #FFFFFF;
+  --qcm: #C9C2FF; --qrc: #B8E6C9; --ate: #FFD2C2; --doc: #FFE07A;
+  --qcm-t: #EDEAFB; --qrc-t: #E3F5EA; --ate-t: #FFEDE6; --doc-t: #FFF6D1;
+  /* Couleurs des logos : suivent le thème de la page ; .pal-l et .pal-d les fixent dans les mises en situation */
+  --lg-bg: var(--surface); --lg-paper: var(--paper); --lg-ink: var(--on-tile); --lg-edge: var(--edge); --lg-drop: var(--drop);
+  --lg-go: var(--go); --lg-qcm: var(--qcm); --lg-qrc: var(--qrc); --lg-ate: var(--ate); --lg-doc: var(--doc);
+  --f: "Nunito", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --sys: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15141D; --side: #1A1926; --surface: #1E1C2A; --line: #2A2838; --line-2: #3A3850; --ink: #F2F0FA; --muted: #A9A5BF;
+    --edge: #3A3850; --drop: #000000; --go: #6FD497; --paper: #F2F0FA;
+    --qcm: #B3A9FF; --qrc: #9ED9B5; --ate: #F7B9A5; --doc: #F2D06B;
+    --qcm-t: #2D2948; --qrc-t: #1D3328; --ate-t: #3A2620; --doc-t: #352E17;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15141D; --side: #1A1926; --surface: #1E1C2A; --line: #2A2838; --line-2: #3A3850; --ink: #F2F0FA; --muted: #A9A5BF;
+  --edge: #3A3850; --drop: #000000; --go: #6FD497; --paper: #F2F0FA;
+  --qcm: #B3A9FF; --qrc: #9ED9B5; --ate: #F7B9A5; --doc: #F2D06B;
+  --qcm-t: #2D2948; --qrc-t: #1D3328; --ate-t: #3A2620; --doc-t: #352E17;
+  color-scheme: dark;
+}
+.pal-l {
+  --lg-paper: #FFFFFF; --lg-ink: #1B1B2F; --lg-edge: #1B1B2F; --lg-drop: #1B1B2F;
+  --lg-go: #7CE0A3; --lg-qcm: #C9C2FF; --lg-qrc: #B8E6C9; --lg-ate: #FFD2C2; --lg-doc: #FFE07A;
+  --m-bg: #F7F5FF; --m-ink: #1B1B2F; --m-muted: #5B5874; --m-surface: #FFFFFF; --m-edge: #1B1B2F; --m-drop: #1B1B2F; --m-line: #ECEAF4; --m-tint: #EDEAFB;
+  --m-strip: #E4E2EE; --m-pill: #F2F1F7; --m-wall: linear-gradient(165deg, #F1EEFF, #DCEBF4);
+  --lg-bg: var(--m-bg);
+}
+.pal-d {
+  --lg-paper: #F2F0FA; --lg-ink: #1B1B2F; --lg-edge: #3A3850; --lg-drop: #000000;
+  --lg-go: #6FD497; --lg-qcm: #B3A9FF; --lg-qrc: #9ED9B5; --lg-ate: #F7B9A5; --lg-doc: #F2D06B;
+  --m-bg: #1A1926; --m-ink: #F2F0FA; --m-muted: #A9A5BF; --m-surface: #1E1C2A; --m-edge: #3A3850; --m-drop: #000000; --m-line: #2A2838; --m-tint: #2D2948;
+  --m-strip: #0E0D14; --m-pill: #1A1926; --m-wall: linear-gradient(165deg, #2A2640, #121119);
+  --lg-bg: var(--m-bg);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { background: var(--bg); -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f); font-size: 1rem; font-weight: 600; line-height: 1.5; }
+h1, h2, h3 { margin: 0; letter-spacing: -.02em; text-wrap: balance; }
+p, ul, ol, figure { margin: 0; }
+a { color: inherit; text-decoration: none; }
+code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: .875em; padding: 1px 5px; border-radius: 6px; background: var(--side); }
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; border-radius: 6px; }
+svg { display: block; flex: none; }
+
+.wrap { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px;
+  padding-block: 40px 64px; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+
+.tag { align-self: flex-start; padding: 3px 10px; border-radius: 999px; background: var(--qcm); color: var(--on-tile); font-size: .8125rem; font-weight: 800; }
+.tag.go { background: var(--go); }
+
+/* ---------- En-tête ---------- */
+.top { display: flex; flex-direction: column; gap: 12px; max-width: 760px; }
+.top h1 { font-size: clamp(1.875rem, 4.6vw, 2.75rem); line-height: 1.08; font-weight: 900; }
+.lead { font-size: 1.0625rem; color: var(--muted); max-width: 66ch; }
+
+/* ---------- L'existant ---------- */
+.now { display: flex; align-items: center; gap: 20px; padding: 18px 20px; border-radius: 22px; background: var(--side); }
+.now-ic { display: flex; align-items: center; gap: 12px; flex: none; }
+.now p { min-width: 0; font-size: .9375rem; color: var(--muted); }
+.now p b { color: var(--ink); font-weight: 900; }
+
+/* ---------- Vue d'ensemble ---------- */
+.sec-t { font-size: 1.25rem; font-weight: 900; }
+.glance { display: flex; flex-direction: column; gap: 14px; }
+.grid6 { list-style: none; padding: 0; display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 560px) { .grid6 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1000px) { .grid6 { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.grid6 a { height: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 18px 10px 14px; border: 1.5px solid var(--line); border-radius: 22px; background: var(--surface); text-align: center; }
+.grid6 a:hover { border-color: var(--edge); }
+.grid6 .sizes { display: flex; align-items: center; gap: 12px; padding: 6px 12px; border-radius: 999px; background: var(--side); --lg-bg: var(--side); }
+.grid6 b { font-size: .9375rem; font-weight: 900; line-height: 1.2; }
+.n { display: inline-grid; place-items: center; width: 22px; height: 22px; margin-right: 6px; border-radius: 999px; background: var(--ink); color: var(--bg); font-size: .75rem; font-weight: 900; font-style: normal; vertical-align: 1px; }
+.ai { display: block; flex: none; overflow: hidden; border-radius: 22.37%; }
+
+/* ---------- Une carte par piste ---------- */
+.piste { display: flex; flex-direction: column; gap: 22px; padding: 24px; border: 1.5px solid var(--line); border-radius: 22px; background: var(--surface); scroll-margin-top: 16px; }
+.piste-head { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 28px; align-items: start; }
+.stage { display: grid; place-items: center; aspect-ratio: 1; max-width: 100%; border-radius: 18px; background: var(--side); --lg-bg: var(--side); }
+.txt { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.txt .k { font-size: .8125rem; font-weight: 800; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+.txt h2 { font-size: 1.625rem; line-height: 1.15; font-weight: 900; }
+.txt > p { max-width: 62ch; }
+.pc { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 24px; margin-top: 4px; }
+.pc h3 { font-size: .875rem; font-weight: 900; margin-bottom: 4px; }
+.pc ul { padding-left: 18px; font-size: .875rem; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+.pc .plus h3::before { content: "+ "; }
+.pc .moins h3::before { content: "− "; }
+
+.mocks { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr); gap: 18px; padding-top: 20px; border-top: 1.5px solid var(--line); }
+.mock { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.mock figcaption { font-size: .8125rem; font-weight: 800; color: var(--muted); }
+.pair { display: flex; gap: 10px; min-width: 0; }
+.col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+
+/* Menu latéral miniature */
+.sb { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 4px; padding: 16px 10px 12px; border: 1.5px solid var(--m-line); border-radius: 16px; background: var(--m-bg); color: var(--m-ink); }
+.sb-b { display: flex; align-items: center; gap: 9px; padding: 0 4px 12px; font-size: 1.0625rem; font-weight: 900; white-space: nowrap; overflow: hidden; }
+.sb-i { display: flex; align-items: center; gap: 9px; min-height: 40px; padding: 0 8px; border: 1.5px solid transparent; border-radius: 12px; font-size: .875rem; font-weight: 800; white-space: nowrap; }
+.sb-i.cur { background: var(--m-surface); border-color: var(--m-edge); box-shadow: 3px 3px 0 var(--m-drop); font-weight: 900; }
+.sb-i .ic { width: 26px; height: 26px; flex: none; display: grid; place-items: center; border-radius: 8px; background: var(--m-tint); color: var(--m-ink); }
+.sb-i .ic.q { background: var(--lg-qcm); color: #1B1B2F; }
+.sb-i .ic svg { width: 15px; height: 15px; }
+
+/* Onglet de navigateur */
+.br { border-radius: 12px; overflow: hidden; background: var(--m-surface); color: var(--m-ink); font-family: var(--sys); border: 1.5px solid var(--m-line); }
+.br-strip { display: flex; padding: 7px 8px 0; background: var(--m-strip); }
+.br-tab { display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 220px; height: 32px; padding: 0 10px; border-radius: 9px 9px 0 0; background: var(--m-surface); font-size: 12px; font-weight: 500; --lg-bg: var(--m-surface); }
+.br-tab span { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.br-tab .x { flex: none; color: var(--m-muted); }
+.br-bar { padding: 6px 8px 8px; }
+.br-bar span { display: block; padding: 4px 10px; border-radius: 999px; background: var(--m-pill); color: var(--m-muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Écran d'accueil */
+.hs { flex: 1 1 0; min-width: 0; display: flex; justify-content: center; padding: 18px 8px 12px; border-radius: 16px; background: var(--m-wall); }
+.hs figure { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.hs figcaption { font-family: var(--sys); font-size: 11px; font-weight: 500; color: var(--m-ink); white-space: nowrap; }
+
+/* ---------- Recommandation et suite ---------- */
+.reco { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 24px; align-items: center; padding: 24px; border: 1.5px solid var(--edge); border-radius: 22px; background: var(--surface); box-shadow: 4px 4px 0 var(--drop); }
+.reco .txt h2 { font-size: 1.5rem; }
+.reco-ic { display: flex; align-items: flex-end; gap: 14px; }
+.next { display: flex; flex-direction: column; gap: 10px; padding: 22px 24px; border-radius: 22px; background: var(--side); }
+.next ul { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: .9375rem; }
+.next p { font-size: .875rem; color: var(--muted); }
+
+@media (max-width: 899px) {
+  .mocks { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .mocks .m-sb { grid-column: 1 / -1; }
+}
+@media (max-width: 699px) {
+  .wrap { padding-block: 24px 48px; gap: 22px; }
+  .piste { padding: 18px; }
+  .piste-head { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .stage { width: 180px; justify-self: start; }
+  .pc { grid-template-columns: minmax(0, 1fr); }
+  .mocks { grid-template-columns: minmax(0, 1fr); }
+  .m-sb .pair { flex-direction: column; }
+  .now { flex-direction: column; align-items: flex-start; }
+  .reco { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .grid6 a { transition: border-color .12s; }
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+
+  <header class="top">
+    <span class="tag">Charte «&nbsp;Pastille&nbsp;» · logos</span>
+    <h1>Six pistes de logo pour Prépa DGFiP</h1>
+    <p class="lead">Chaque piste est montrée là où le logo vivra&nbsp;: dans le menu latéral en clair et en sombre, dans l'onglet du navigateur à 16&nbsp;pixels et sur l'écran d'accueil du téléphone une fois l'appli installée. Toutes reprennent la charte en service&nbsp;: Nunito Black, encre presque noire, un pastel par appli, trait épais et ombre décalée pleine.</p>
+  </header>
+
+  <section class="now" aria-label="Logo actuel">
+    <div class="now-ic">
+      <span class="ai" id="now-icon"></span>
+      <span id="now-tile"></span>
+    </div>
+    <p><b>Aujourd'hui</b>, le menu de l'accueil affiche une pastille menthe «&nbsp;27&nbsp;», mais l'icône de l'appli installée et le favicon sont encore la grille bleue de l'ancienne charte «&nbsp;Copie double&nbsp;». La piste retenue remplacera les deux.</p>
+  </section>
+
+  <section class="glance" aria-labelledby="g-t">
+    <h2 class="sec-t" id="g-t">En un coup d'œil</h2>
+    <ol class="grid6" id="glance"></ol>
+  </section>
+
+  <article class="piste" id="pastille">
+    <div class="piste-head">
+      <div class="stage" data-l="pastille" data-k="sym" data-s="150"></div>
+      <div class="txt">
+        <span class="k">Piste 1 · continuité</span>
+        <h2>Pastille 27</h2>
+        <p>La pastille menthe du menu actuel, redessinée pour tenir seule&nbsp;: «&nbsp;27&nbsp;» en Nunito Black, contour d'encre et ombre décalée. Installée sur le téléphone, l'icône devient un simple aplat menthe frappé du millésime.</p>
+        <div class="pc">
+          <div class="plus"><h3>Pour</h3><ul><li>Aucune rupture avec ce que l'accueil montre déjà.</li><li>Le chiffre reste net à 16&nbsp;px.</li><li>L'aplat menthe se repère vite sur un écran d'accueil.</li></ul></div>
+          <div class="moins"><h3>Limites</h3><ul><li>Dit l'année, pas la révision ni le concours.</li><li>À redessiner pour la session 2028.</li></ul></div>
+        </div>
+      </div>
+    </div>
+    <div class="mocks" data-l="pastille"></div>
+  </article>
+
+  <article class="piste" id="abcd">
+    <div class="piste-head">
+      <div class="stage" data-l="abcd" data-k="sym" data-s="150"></div>
+      <div class="txt">
+        <span class="k">Piste 2 · le système</span>
+        <h2>Quatre pastilles</h2>
+        <p>Une pastille par outil, dans l'ordre du menu&nbsp;: QCM en lilas, QRC en menthe, écrit et oral en corail, documents en soleil. On y lit aussi les cases A, B, C, D d'une feuille de QCM&nbsp;: la réponse cochée est la seule en relief, comme l'entrée courante du menu.</p>
+        <div class="pc">
+          <div class="plus"><h3>Pour</h3><ul><li>Reprend tel quel le code couleur des applis.</li><li>Sans millésime, il sert aussi en 2028.</li><li>Évoque le QCM sans l'écrire.</li></ul></div>
+          <div class="moins"><h3>Limites</h3><ul><li>À 16&nbsp;px, la coche disparaît&nbsp;: il reste quatre points de couleur.</li><li>Le motif «&nbsp;quatre formes de couleur&nbsp;» est répandu.</li></ul></div>
+        </div>
+      </div>
+    </div>
+    <div class="mocks" data-l="abcd"></div>
+  </article>
+
+  <article class="piste" id="coche">
+    <div class="piste-head">
+      <div class="stage" data-l="coche" data-k="sym" data-s="150"></div>
+      <div class="txt">
+        <span class="k">Piste 3 · la réussite</span>
+        <h2>Case cochée</h2>
+        <p>La case qu'on coche quand on a juste. La coche d'encre déborde du cadre lilas et entaille son contour, comme un trait de stylo appuyé.</p>
+        <div class="pc">
+          <div class="plus"><h3>Pour</h3><ul><li>Compris au premier regard.</li><li>Tient à toutes les tailles, favicon compris.</li><li>Sans millésime.</li></ul></div>
+          <div class="moins"><h3>Limites</h3><ul><li>Symbole courant (listes de tâches, sondages).</li><li>Parle du QCM plus que de l'écrit et de l'oral.</li></ul></div>
+        </div>
+      </div>
+    </div>
+    <div class="mocks" data-l="coche"></div>
+  </article>
+
+  <article class="piste" id="macaron">
+    <div class="piste-head">
+      <div class="stage" data-l="macaron" data-k="sym" data-s="150"></div>
+      <div class="txt">
+        <span class="k">Piste 4 · le sceau</span>
+        <h2>Macaron</h2>
+        <p>Un sceau dentelé jaune soleil frappé du «&nbsp;27&nbsp;»&nbsp;: à la fois le tampon de l'administration et la rosette du lauréat. Sur le téléphone, il se détache sur un fond d'encre.</p>
+        <div class="pc">
+          <div class="plus"><h3>Pour</h3><ul><li>Silhouette unique, reconnaissable même floue.</li><li>L'icône la plus visible des six sur un écran d'accueil.</li></ul></div>
+          <div class="moins"><h3>Limites</h3><ul><li>Millésimé, comme la piste 1.</li><li>Le soleil est déjà la couleur des documents.</li></ul></div>
+        </div>
+      </div>
+    </div>
+    <div class="mocks" data-l="macaron"></div>
+  </article>
+
+  <article class="piste" id="ephemeride">
+    <div class="piste-head">
+      <div class="stage" data-l="ephemeride" data-k="sym" data-s="150"></div>
+      <div class="txt">
+        <span class="k">Piste 5 · le jour J</span>
+        <h2>Éphéméride</h2>
+        <p>La page de calendrier du jour, bandeau corail et anneaux d'encre&nbsp;: la révision quotidienne et le compte à rebours jusqu'aux épreuves de 2027.</p>
+        <div class="pc">
+          <div class="plus"><h3>Pour</h3><ul><li>Fait écho au tableau de bord «&nbsp;Aujourd'hui&nbsp;» et au compte à rebours de l'accueil.</li><li>Très lisible à toutes les tailles.</li></ul></div>
+          <div class="moins"><h3>Limites</h3><ul><li>Peut passer pour une appli d'agenda sur l'écran d'accueil.</li><li>Millésimé.</li></ul></div>
+        </div>
+      </div>
+    </div>
+    <div class="mocks" data-l="ephemeride"></div>
+  </article>
+
+  <article class="piste" id="fiches">
+    <div class="piste-head">
+      <div class="stage" data-l="fiches" data-k="sym" data-s="150"></div>
+      <div class="txt">
+        <span class="k">Piste 6 · la méthode</span>
+        <h2>Fiches</h2>
+        <p>Une pile de fiches bristol décalées comme l'ombre de la charte&nbsp;: la fiche du dessus avec son titre et ses lignes, puis la menthe et le lilas des applis.</p>
+        <div class="pc">
+          <div class="plus"><h3>Pour</h3><ul><li>Dit «&nbsp;révision&nbsp;» sans détour.</li><li>Fait du relief décalé, signature de la charte, le sujet même du logo.</li></ul></div>
+          <div class="moins"><h3>Limites</h3><ul><li>Les lignes se perdent en favicon.</li><li>Le plus chargé des six.</li></ul></div>
+        </div>
+      </div>
+    </div>
+    <div class="mocks" data-l="fiches"></div>
+  </article>
+
+  <section class="reco" aria-labelledby="r-t">
+    <div class="reco-ic"><span class="ai" data-l="abcd" data-k="icon" data-s="88"></span><span data-l="abcd" data-k="sym" data-s="34"></span></div>
+    <div class="txt">
+      <span class="tag go">Piste retenue</span>
+      <h2 id="r-t">Piste 2, Quatre pastilles</h2>
+      <p>C'est la seule piste qui raconte tout le site&nbsp;: quatre outils, quatre couleurs, déjà en place dans le menu. Elle évoque le QCM sans être enfermée dedans, ne vieillit pas avec la session et reste propre de 16 à 512&nbsp;pixels. Pour une marque plus voyante, le Macaron (piste 4) est le plus reconnaissable sur un écran d'accueil.</p>
+    </div>
+  </section>
+
+  <section class="next" aria-labelledby="s-t">
+    <h2 class="sec-t" id="s-t">Mise en place</h2>
+    <ul>
+      <li>Icônes de l'appli installable dans <code>site/icones/</code>&nbsp;: 180, 192 et 512&nbsp;px, plus la version «&nbsp;maskable&nbsp;» qui garde le dessin dans le cercle central. Source&nbsp;: <code>logos/prepa-icone.svg</code>.</li>
+      <li>Favicon <code>prepa.svg</code> à la place de <code>qcm.svg</code> sur l'accueil et la page Documents.</li>
+      <li>Couleurs du manifeste (<code>theme_color</code>, <code>background_color</code>) passées à la charte «&nbsp;Pastille&nbsp;».</li>
+      <li>Pastille de marque du menu latéral de l'accueil (<code>.brand</code>).</li>
+    </ul>
+    <p>Les logos des trois applis (grille du QCM, journal des QRC) restent dans leur barre d'en-tête&nbsp;; seul le logo du site change.</p>
+  </section>
+
+</main>
+
+<script>
+/* Logos dessinés dans une boîte de 64 × 64. P donne les couleurs : des var(--lg-…) pour suivre le thème,
+   ou des valeurs fixes pour les icônes d'appli, qui sont des images posées sur leur propre fond. */
+(function () {
+  var D27 = 'M-46.28 35.35Q-50.68 35.35 -52.63 33.3Q-54.58 31.25 -54.58 27.25Q-54.58 24.45 -53.33 22.25Q-52.08 20.05 -50.08 17.95L-32.58 -0.35Q-28.68 -4.55 -27.03 -7.55Q-25.38 -10.55 -25.38 -13.55Q-25.38 -17.35 -27.88 -19.25Q-30.38 -21.15 -35.08 -21.15Q-37.48 -21.15 -40.18 -20.5Q-42.88 -19.85 -45.98 -18.25Q-48.68 -17.05 -50.83 -17.55Q-52.98 -18.05 -54.43 -19.75Q-55.88 -21.45 -56.23 -23.65Q-56.58 -25.85 -55.58 -28Q-54.58 -30.15 -51.98 -31.55Q-47.38 -34.05 -42.43 -35.15Q-37.48 -36.25 -32.48 -36.25Q-24.28 -36.25 -18.73 -33.85Q-13.18 -31.45 -10.28 -26.9Q-7.38 -22.35 -7.38 -15.65Q-7.38 -11.45 -8.63 -7.45Q-9.88 -3.45 -12.63 0.55Q-15.38 4.55 -19.98 9.05L-36.18 25.05V20.45H-11.48Q-7.78 20.45 -5.83 22.35Q-3.88 24.25 -3.88 27.85Q-3.88 31.45 -5.83 33.4Q-7.78 35.35 -11.48 35.35ZM17.02 36.25Q13.62 36.25 11.52 34.7Q9.42 33.15 9.12 30.55Q8.82 27.95 10.52 24.85L38.22 -25.45V-20.15H10.12Q6.42 -20.15 4.37 -22.05Q2.32 -23.95 2.32 -27.65Q2.32 -31.35 4.37 -33.25Q6.42 -35.15 10.12 -35.15H47.72Q51.42 -35.15 53.87 -33.15Q56.32 -31.15 56.32 -27.45Q56.32 -24.25 55.37 -21.9Q54.42 -19.55 53.02 -16.95L27.42 30.45Q25.82 33.55 23.37 34.9Q20.92 36.25 17.02 36.25Z';
+  var V = function (n) { return 'var(--lg-' + n + ')'; };
+  var PV = { bg: V('bg'), paper: V('paper'), ink: V('ink'), edge: V('edge'), drop: V('drop'), go: V('go'), qcm: V('qcm'), qrc: V('qrc'), ate: V('ate'), doc: V('doc') };
+  var PL = { bg: '#FFFFFF', paper: '#FFFFFF', ink: '#1B1B2F', edge: '#1B1B2F', drop: '#1B1B2F', go: '#7CE0A3', qcm: '#C9C2FF', qrc: '#B8E6C9', ate: '#FFD2C2', doc: '#FFE07A' };
+
+  function st(o) { var s = []; for (var k in o) if (o[k] != null) s.push(k + ':' + o[k]); return ' style="' + s.join(';') + '"'; }
+  function n27(cx, cy, k, fill) { return '<path d="' + D27 + '" transform="translate(' + cx + ' ' + cy + ') scale(' + k + ')"' + st({ fill: fill }) + '/>'; }
+  function rect(x, y, w, h, r, fill, stroke) { return '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + r + '"' + st({ fill: fill || 'none', stroke: stroke, 'stroke-width': stroke ? 3 : null }) + '/>'; }
+  function circ(cx, cy, r, fill, stroke) { return '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '"' + st({ fill: fill || 'none', stroke: stroke, 'stroke-width': stroke ? 3 : null }) + '/>'; }
+  function line(d, stroke, sw) { return '<path d="' + d + '"' + st({ fill: 'none', stroke: stroke, 'stroke-width': sw, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }) + '/>'; }
+  function shape(d, fill, stroke) { return '<path d="' + d + '"' + st({ fill: fill || 'none', stroke: stroke, 'stroke-width': stroke ? 3 : null, 'stroke-linejoin': 'round' }) + '/>'; }
+  function place(inner, k) { return '<g transform="translate(32 32) scale(' + k + ') translate(-32 -32)">' + inner + '</g>'; }
+  /* Sceau : n festons, arcs de cercle bombés vers l'extérieur entre n points du cercle de rayon R */
+  function scallop(cx, cy, R, n) {
+    var q = function (v) { return Math.round(v * 100) / 100; }, r = q(R * Math.sin(Math.PI / n) * 1.25), d = '';
+    for (var i = 0; i <= n; i++) {
+      var a = -Math.PI / 2 + i * 2 * Math.PI / n, x = q(cx + R * Math.cos(a)), y = q(cy + R * Math.sin(a));
+      d += i ? 'A' + r + ' ' + r + ' 0 0 1 ' + x + ' ' + y : 'M' + x + ' ' + y;
+    }
+    return d + 'Z';
+  }
+
+  var LOGOS = {
+    pastille: {
+      name: 'Pastille 27',
+      sym: function (P) { return rect(8, 8, 53, 53, 16, P.drop) + rect(3, 3, 53, 53, 16, P.go, P.edge) + n27(29.5, 29.5, .3, P.ink); },
+      icon: function (P) { return rect(0, 0, 64, 64, 0, P.go) + n27(32, 32, .34, P.ink); }
+    },
+    abcd: {
+      name: 'Quatre pastilles',
+      sym: function (P) {
+        return circ(16, 16, 11.5, P.qcm, P.edge) + circ(16, 47, 11.5, P.ate, P.edge) + circ(47, 47, 11.5, P.doc, P.edge)
+          + circ(50.5, 19.5, 11.5, P.drop) + circ(47, 16, 11.5, P.qrc, P.edge) + line('M41.5 16.5l4 4 7.5-8', P.ink, 3.4);
+      },
+      icon: function (P) { return rect(0, 0, 64, 64, 0, '#F7F5FF') + place(this.sym(P), .62); }
+    },
+    coche: {
+      name: 'Case cochée',
+      /* La coche, cernée de la couleur du fond, entaille le contour ; dans la case, le lilas est repeint par-dessus la cerne. */
+      sym: function (P) {
+        var c = 'M15 33L25 43L52 10';
+        return rect(10, 19, 40, 40, 11, P.drop) + rect(5, 14, 40, 40, 11, P.qcm, P.edge) + line(c, P.bg, 14)
+          + rect(6.5, 15.5, 37, 37, 9.5, P.qcm) + line(c, P.ink, 7);
+      },
+      icon: function (P) { return rect(0, 0, 64, 64, 0, '#EDEAFB') + place(this.sym(Object.assign({}, P, { bg: '#EDEAFB' })), .62); }
+    },
+    macaron: {
+      name: 'Macaron',
+      sym: function (P) { return shape(scallop(33.5, 33.5, 25, 12), P.drop) + shape(scallop(29.5, 29.5, 25, 12), P.doc, P.edge) + n27(29.5, 29.5, .26, P.ink); },
+      icon: function (P) { return rect(0, 0, 64, 64, 0, '#1B1B2F') + shape(scallop(32, 32, 20, 12), P.doc) + n27(32, 32, .22, P.ink); }
+    },
+    ephemeride: {
+      name: 'Éphéméride',
+      sym: function (P) {
+        return rect(10, 13, 50, 46, 12, P.drop) + rect(5, 8, 50, 46, 12, P.paper)
+          + shape('M5 24V20A12 12 0 0 1 17 8H43A12 12 0 0 1 55 20V24Z', P.ate) + line('M5 24H55', P.edge, 3) + rect(5, 8, 50, 46, 12, null, P.edge)
+          + rect(16.5, 3, 7, 12, 3.5, P.ink) + rect(36.5, 3, 7, 12, 3.5, P.ink) + n27(30, 39.5, .25, P.ink);
+      },
+      icon: function (P) { return rect(0, 0, 64, 64, 0, P.qcm) + place(this.sym(P), .62); }
+    },
+    fiches: {
+      name: 'Fiches',
+      sym: function (P) {
+        return rect(20, 26, 38, 28, 7, P.qcm, P.edge) + rect(13, 18, 38, 28, 7, P.go, P.edge) + rect(6, 10, 38, 28, 7, P.paper, P.edge)
+          + line('M13 19h11', P.ink, 3.6) + line('M13 25.5h24M13 31h17', P.ate, 3);
+      },
+      icon: function (P) { return rect(0, 0, 64, 64, 0, P.doc) + place(this.sym(P), .64); }
+    }
+  };
+  var ORDER = ['pastille', 'abcd', 'coche', 'macaron', 'ephemeride', 'fiches'];
+
+  function svg(inner, size, label) {
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="' + size + '" height="' + size + '"'
+      + (label ? ' role="img" aria-label="' + label + '"' : ' aria-hidden="true"') + '>' + inner + '</svg>';
+  }
+  function draw(id, kind, size, label) {
+    var L = LOGOS[id];
+    return svg(kind === 'icon' ? L.icon(PL) : L.sym(PV), size, label);
+  }
+
+  /* Mises en situation, sur des palettes fixes claire et sombre */
+  var HOME = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7v9H4z"/></svg>';
+  var QCM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg>';
+  function sidebar(id, t) {
+    return '<div class="sb pal-' + t + '"><div class="sb-b">' + draw(id, 'sym', 34) + '<span>Prépa DGFiP</span></div>'
+      + '<div class="sb-i cur"><span class="ic">' + HOME + '</span>Aujourd\'hui</div>'
+      + '<div class="sb-i"><span class="ic q">' + QCM + '</span>QCM</div></div>';
+  }
+  function tab(id, t) {
+    return '<div class="br pal-' + t + '"><div class="br-strip"><div class="br-tab">' + draw(id, 'sym', 16)
+      + '<span>Prépa DGFiP 2027</span><b class="x" aria-hidden="true">×</b></div></div><div class="br-bar"><span>prepa.pbailly.fr</span></div></div>';
+  }
+  function home(id, t) {
+    return '<div class="hs pal-' + t + '"><figure><span class="ai">' + draw(id, 'icon', 58) + '</span><figcaption>Prépa DGFiP</figcaption></figure></div>';
+  }
+
+  document.querySelectorAll('.mocks').forEach(function (m) {
+    var id = m.getAttribute('data-l');
+    m.innerHTML = '<figure class="mock m-sb"><div class="pair">' + sidebar(id, 'l') + sidebar(id, 'd') + '</div><figcaption>Menu latéral, clair et sombre</figcaption></figure>'
+      + '<figure class="mock"><div class="col">' + tab(id, 'l') + tab(id, 'd') + '</div><figcaption>Onglet du navigateur, 16 px</figcaption></figure>'
+      + '<figure class="mock"><div class="pair">' + home(id, 'l') + home(id, 'd') + '</div><figcaption>Écran d\'accueil</figcaption></figure>';
+  });
+  document.querySelectorAll('[data-k]').forEach(function (el) {
+    var id = el.getAttribute('data-l');
+    el.innerHTML = draw(id, el.getAttribute('data-k'), +el.getAttribute('data-s'), el.classList.contains('stage') ? LOGOS[id].name : '');
+  });
+  document.getElementById('glance').innerHTML = ORDER.map(function (id, i) {
+    return '<li><a href="#' + id + '"><span class="ai">' + draw(id, 'icon', 64) + '</span>'
+      + '<span class="sizes">' + draw(id, 'sym', 32) + draw(id, 'sym', 16) + '</span>'
+      + '<b><i class="n">' + (i + 1) + '</i>' + LOGOS[id].name + '</b></a></li>';
+  }).join('');
+
+  /* L'existant : icône de l'ancienne charte (logos/qcm.svg) et pastille du menu de l'accueil */
+  document.getElementById('now-icon').innerHTML = svg('<rect width="64" height="64" fill="#2A44C7"/><g transform="translate(12 12) scale(1.6667)" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6" fill="#fff"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></g>', 56, 'Icône actuelle');
+  document.getElementById('now-tile').innerHTML = svg(rect(1.5, 1.5, 61, 61, 18, 'var(--go)', 'var(--edge)') + n27(32, 32, .24, 'var(--on-tile)'), 34, 'Pastille actuelle du menu');
+})();
+</script>
+</body>
+</html>
