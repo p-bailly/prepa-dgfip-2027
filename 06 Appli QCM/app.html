@@ -61,6 +61,16 @@
 .chart .cross { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 3; }
 .chart .tip { position: absolute; transform: translate(-50%, calc(-100% - 12px)); pointer-events: none; background: var(--surface); color: var(--ink); border: var(--bw) solid var(--edge); box-shadow: var(--lift-sm); border-radius: 10px; padding: 6px 10px; font-size: var(--t-xs); font-weight: 700; line-height: 1.45; white-space: nowrap; z-index: 2; }
 .chips button:disabled { opacity: .45; cursor: default; }
+/* Repères : règles, programme et résultats du jury, sources en petit */
+.rep-l { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 8px; }
+.rep-l li::marker { color: var(--muted); }
+.rep-src { font-size: var(--t-xs); color: var(--muted); font-weight: 700; }
+.rep-th { display: flex; flex-direction: column; gap: 4px; padding: var(--s3) 0; border-bottom: var(--bw) solid var(--line); }
+.rep-th:last-child { border-bottom: 0; padding-bottom: 0; }
+.rep-th .row { gap: 6px; }
+.rep-th p { color: var(--muted); font-size: var(--t-sm); }
+.rep-docs { display: flex; flex-wrap: wrap; gap: 8px; }
+.rep-docs a svg { width: 16px; height: 16px; }
 /* Revue de copie : feuille de numéros colorés par thème, pastille juste / fausse / abstention, la question choisie à côté */
 :root { --th-sky: #BFDDFB; --th-pink: #F6C5E0; --th-teal: #BDEBE7; --th-sand: #E6D6C2; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --th-sky: #A3C7EE; --th-pink: #E9AACB; --th-teal: #9ED8D2; --th-sand: #D2BFA6; } }
@@ -256,6 +266,7 @@ const ICO = {
   today:'<path d="M4 7.5h16M8 3.5v3M16 3.5v3"/><rect x="4" y="5" width="16" height="15.5" rx="2.5"/><path d="m9 14 2 2 4-4.5"/>',
   exam:'<circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 2M10 3h4M19 6.5l-1.5 1.5"/>',
   chart:'<path d="M4 20h16M7 16.5v-5M12 16.5V6.5M17 16.5v-8"/>',
+  book:'<path d="M4.5 5.5c2.5-1 5-1 7.5.5v13c-2.5-1.5-5-1.5-7.5-.5zM19.5 5.5c-2.5-1-5-1-7.5.5v13c2.5-1.5 5-1.5 7.5-.5z"/>',
   bank:'<path d="M4 7.5 12 4l8 3.5-8 3.5z"/><path d="m4 12 8 3.5 8-3.5M4 16.5 12 20l8-3.5"/>',
   more:'<circle cx="5.5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18.5" cy="12" r="1.3"/>',
   check:'<path d="m5 12.5 4.5 4.5L19 7.5"/>',
@@ -436,8 +447,8 @@ function startExtra(ids, label){
 function permFor(id, salt){ return shuffle([0,1,2,3], rng(hash(id+"|"+salt))); }
 
 // ---------- Rendu ----------
-// Cinq destinations ; « Réglages » donne aussi accès aux cartes perso. [clé, onglet, pictogramme, libellé de la barre du bas]
-const TABS = [["jour","Entraînement","today","Entraînement"],["examen","Épreuves","exam","Épreuves"],["progres","Progrès","chart","Progrès"],["banque","Banque","bank","Banque"],["reglages","Réglages","sliders","Réglages"]];
+// Six destinations ; « Réglages » donne aussi accès aux questions perso. [clé, onglet, pictogramme, libellé de la barre du bas]
+const TABS = [["jour","Entraînement","today","Entraînement"],["examen","Épreuves","exam","Épreuves"],["progres","Progrès","chart","Progrès"],["banque","Banque","bank","Banque"],["reperes","Repères","book","Repères"],["reglages","Réglages","sliders","Réglages"]];
 // Pages rattachées à l'onglet Réglages
 const IN_PLUS = ["ajout"];
 let tab = "jour";
@@ -467,7 +478,7 @@ function render(){
   const m = $("#main");
   m.classList.toggle("fit", tab==="jour" || (tab==="examen" && !!S.run));
   document.body.classList.toggle("xrun", tab==="examen" && !!S.run);
-  ({jour:viewJour, examen:viewExam, progres:viewProgres, banque:viewBanque, ajout:viewAjout, reglages:viewReglages})[tab](m);
+  ({jour:viewJour, examen:viewExam, progres:viewProgres, banque:viewBanque, reperes:viewReperes, ajout:viewAjout, reglages:viewReglages})[tab](m);
   renderPills();
 }
 
@@ -500,7 +511,7 @@ function viewJour(m){
         <div class="row" style="gap:6px">
           <span class="badge acc">${esc(THEMES[c.t].l)}</span>
           ${c.act?'<span class="badge warn">Actualité datée</span>':''}
-          ${c.mine?'<span class="badge ok">Ma carte</span>':''}
+          ${c.mine?'<span class="badge ok">Ma question</span>':''}
         </div>
         <span class="badge mono out">${Math.min(session.pos+1,total)} / ${total}</span>
       </div>
@@ -943,7 +954,7 @@ function viewBanque(m){
     <p class="note">${list.length} résultat${list.length>1?"s":""}</p>
     <div class="stack" id="bq-list" style="gap:var(--s2)">
       ${list.slice(0,bq.lim).map(c=>{ const st=status(c.id); return `<div class="item">
-        <button class="head" data-toggle><span class="badge acc">${THEMES[c.t].s}</span>${c.d?'<span class="badge bad">Douteuse</span>':''}${c.act?'<span class="badge warn">Actu</span>':''}${c.mine?'<span class="badge ok">Ma carte</span>':''}<span class="badge ${st==="acquise"?"ok":"out"}">${st}</span><br>${esc(c.q)}</button>
+        <button class="head" data-toggle><span class="badge acc">${THEMES[c.t].s}</span>${c.d?'<span class="badge bad">Douteuse</span>':''}${c.act?'<span class="badge warn">Actu</span>':''}${c.mine?'<span class="badge ok">Ma question</span>':''}<span class="badge ${st==="acquise"?"ok":"out"}">${st}</span><br>${esc(c.q)}</button>
         <div class="body" hidden><ol>${c.o.map((o,i)=>`<li class="${i===c.a?"good":""}">${esc(o)}${i===c.a?' <span class="badge ok">Bonne réponse</span>':""}</li>`).join("")}</ol>${explHtml(c, c.d?"warn":"")}
         ${c.mine?`<div class="row"><span id="del-${c.id}"><button class="btn sm danger" data-delask="${c.id}">Supprimer cette carte</button></span></div>`:""}</div></div>`; }).join("") || '<div class="empty">Aucune question ne correspond.</div>'}
     </div>
@@ -956,7 +967,7 @@ function viewAjout(m){
   const mine = S.custom.slice().reverse();
   m.innerHTML = `
   <section class="hero">
-    <h1 class="h-page">Ajouter une carte d'actualité</h1>
+    <h1 class="h-page">Ajouter une question d'actualité</h1>
   </section>
   <section class="stack" style="gap:var(--s5)">
     <form class="sheet" id="addform" novalidate>
@@ -972,11 +983,11 @@ function viewAjout(m){
       <label class="f">Explication<textarea id="add-e"></textarea></label>
       <label class="f">Lien (facultatif)<input type="text" id="add-u" inputmode="url"></label>
       <label class="row" style="font-size:var(--t-md)"><input type="checkbox" id="add-act" checked> Actualité datée</label>
-      <div class="row"><button class="btn pri" type="submit">${ico("plus")}Ajouter la carte</button><span id="add-msg" class="note" role="status"></span></div>
+      <div class="row"><button class="btn pri" type="submit">${ico("plus")}Ajouter la question</button><span id="add-msg" class="note" role="status"></span></div>
     </form>
     <article class="sheet">
-      <div class="row between"><h2 class="h-sec">Mes cartes</h2><span class="badge mono out">${mine.length}</span></div>
-      ${mine.length?`<div class="stack" style="gap:var(--s2)">${mine.map(c=>`<div class="item"><button class="head" data-toggle><span class="badge acc">${THEMES[c.t].s}</span> ${esc(c.q)}</button><div class="body" hidden><ol>${c.o.map((o,i)=>`<li class="${i===c.a?"good":""}">${esc(o)}${i===c.a?' <span class="badge ok">Bonne réponse</span>':""}</li>`).join("")}</ol>${explHtml(c)}<div class="row"><span id="del-${c.id}"><button class="btn sm danger" data-delask="${c.id}">Supprimer</button></span></div></div></div>`).join("")}</div>`:`<div class="empty">Aucune carte pour l'instant.</div>`}
+      <div class="row between"><h2 class="h-sec">Mes questions</h2><span class="badge mono out">${mine.length}</span></div>
+      ${mine.length?`<div class="stack" style="gap:var(--s2)">${mine.map(c=>`<div class="item"><button class="head" data-toggle><span class="badge acc">${THEMES[c.t].s}</span> ${esc(c.q)}</button><div class="body" hidden><ol>${c.o.map((o,i)=>`<li class="${i===c.a?"good":""}">${esc(o)}${i===c.a?' <span class="badge ok">Bonne réponse</span>':""}</li>`).join("")}</ol>${explHtml(c)}<div class="row"><span id="del-${c.id}"><button class="btn sm danger" data-delask="${c.id}">Supprimer</button></span></div></div></div>`).join("")}</div>`:`<div class="empty">Aucune question pour l'instant.</div>`}
     </article>
   </section>`;
 }
@@ -990,17 +1001,88 @@ function addCard(){
   if(o.some(x=>!x)){ msg.textContent = "Remplis les quatre propositions."; $("#add-o"+o.findIndex(x=>!x)).focus(); return; }
   if(new Set(o.map(x=>x.toLowerCase())).size<4){ msg.textContent = "Les quatre propositions doivent être différentes."; return; }
   if(u && !/^https:\/\/\S+$/.test(u)){ msg.textContent = "Le lien doit commencer par https://"; $("#add-u").focus(); return; }
-  const c = {id:"u-"+Date.now().toString(36), t:$("#add-t").value, q, o, a, e:$("#add-e").value.trim()||"Carte personnelle.", s:$("#add-s").value.trim()||"Ma carte", act:$("#add-act").checked?1:0, at:Date.now()};
+  const c = {id:"u-"+Date.now().toString(36), t:$("#add-t").value, q, o, a, e:$("#add-e").value.trim()||"Question personnelle.", s:$("#add-s").value.trim()||"Ma question", act:$("#add-act").checked?1:0, at:Date.now()};
   if(u) c.u = [u];
   S.custom.push(c); save(); invalidate();
-  toast("Carte ajoutée.");
+  toast("Question ajoutée.");
   render();
 }
 function delCard(id){
   S.custom = S.custom.filter(c=>c.id!==id); S.del.push(id); delete S.cards[id];
   if(S.daily && S.daily.ids) S.daily.ids = S.daily.ids.filter(x=>x!==id);
   if(session){ session.ids = session.ids.filter((x,k)=>x!==id||k<session.pos); }
-  save(); invalidate(); toast("Carte supprimée."); render();
+  save(); invalidate(); toast("Question supprimée."); render();
+}
+
+// ----- Repères -----
+// Ce que disent les documents officiels de la partie QCM de l'épreuve 2, pour chaque concours.
+// Sources : guides ENFiP QCM-QRC (mars 2025), programmes de l'épreuve 2 (arrêté du 1er juillet 2024), rapports du jury 2026.
+const REP = {
+  insp:{ l:"Inspecteur", guide:"Guide_ENFiP_Inspecteur_QCM-QRC.pdf", prog:"Programme_officiel_Inspecteur_Epreuve2_QCM-QRC.pdf", rapport:"Rapport_jury_Inspecteur_2026.pdf",
+    tiles:[["Épreuve 2","2 h 30","coefficient 3"],["QCM","≈ 40","questions · 1 h 20 au plus"],["Note éliminatoire","< 5 / 20","QCM et QRC ensemble"],["Moyenne 2026","8,58 / 20","7,62 en 2025"]],
+    regles:[["Un QCM commun à tous les candidats, puis 3 à 4 QRC sur l'option choisie parmi neuf.","guide p. 4 et 7"],
+      ["Quatre propositions par question, une seule réponse : plusieurs cases cochées comptent comme une réponse fausse.","guide p. 8"],
+      ["Pour t'abstenir, coche « Ann » ou ne coche rien. Une omission pénalise moins qu'une réponse fausse.","guide p. 8 et 9"],
+      ["Une réponse fausse retire des points, mais la valeur exacte n'est pas publiée.","guide p. 8"],
+      ["Une seule note pour le QCM et les QRC, sans pondération publiée entre les deux.","guide p. 4"]],
+    temps:[["Commence par le QCM : 2 minutes par question au plus, soit 1 h 20 relecture comprise.","guide p. 8"],
+      ["Réponds d'abord aux questions sûres, reviens ensuite sur celles qui te font hésiter.","guide p. 8"],
+      ["Garde au moins 1 heure pour les QRC et 5 minutes de relecture finale.","guide p. 9"],
+      ["Dans le doute, élimine des propositions avant de prendre le risque de répondre.","guide p. 9"]],
+    themes:[["admin","Environnement administratif, économique et financier","Institutions françaises, organisation administrative, collectivités territoriales, budget de l'État (LOLF, lois de finances, déficit, dette). France seulement."],
+      ["ue","Union européenne","Construction et traités, élargissements, institutions et décision, budget de l'UE, grandes politiques, droits fondamentaux (Charte, CJUE, CEDH)."],
+      ["num","Culture numérique","Socle de compétences numériques, administration numérique (open data, cloud, IA, dématérialisation), RGPD et loi Informatique et libertés."],
+      ["log","Raisonnement logique","Analyser des données et conduire un raisonnement déductif."],
+      ["ang","Anglais","Niveau B1 : orthographe, grammaire, conjugaison, vocabulaire."]],
+    jury:[["6 809 candidats présents aux deux écrits, 1 710 admissibles pour 853 places.","rapport p. 4-5"],
+      ["Épreuve 2 : 8,58 / 20 de moyenne, 30 % des copies à 10 ou plus, 10,8 % de notes éliminatoires (25,3 % en 2025).","rapport p. 7"],
+      ["Bien mieux réussis : logique, numérique et anglais. À travailler en priorité : l'environnement administratif et financier, et l'Union européenne.","rapport p. 9"]] },
+  ctrl:{ l:"Contrôleur", guide:"Guide_ENFiP_Controleur_QCM-QRC.pdf", prog:"Programme_officiel_Controleur_Epreuve2_QCM-QRC.pdf", rapport:"Rapport_jury_Controleur_2026.pdf",
+    tiles:[["Épreuve 2","2 h","coefficient 2"],["QCM","≈ 30","questions · 1 h au plus"],["Note éliminatoire","< 5 / 20","QCM et QRC ensemble"],["Moyenne 2026","8,56 / 20","7,26 en 2025"]],
+    regles:[["Un QCM commun à tous les candidats, puis 3 à 4 QRC sur l'option choisie parmi cinq.","guide p. 4 et 6"],
+      ["Quatre propositions par question, une seule réponse : plusieurs cases cochées comptent comme une réponse fausse.","guide p. 7"],
+      ["Pour t'abstenir, coche « Ann » ou ne coche rien.","guide p. 7"],
+      ["Une réponse fausse retire des points, mais la valeur exacte n'est pas publiée.","guide p. 7"],
+      ["Une seule note pour le QCM et les QRC, sans pondération publiée entre les deux.","guide p. 4"]],
+    temps:[["Commence par le QCM : 2 minutes par question au plus, soit 1 h relecture comprise.","guide p. 7"],
+      ["Garde au moins 1 heure pour les QRC et 5 minutes de relecture : l'épreuve ne laisse aucune marge.","guide p. 8"],
+      ["Dans le doute, élimine des propositions avant de prendre le risque de répondre.","guide p. 8"]],
+    themes:[["cg","Connaissances générales","Histoire et géographie de la France, institutions françaises, institutions et construction de l'Union européenne, socle de culture numérique."],
+      ["fr","Français","Grammaire, orthographe, vocabulaire."],
+      ["math","Mathématiques","Nombres, fractions, puissances, proportionnalité, pourcentages, intérêts simples, prix et bénéfices ; calcul littéral, équations et systèmes du premier degré."],
+      ["log","Raisonnement logique","Analyser des données et conduire un raisonnement déductif."]],
+    jury:[["8 731 candidats présents aux écrits, 2 607 admissibles sur la liste nationale.","rapport p. 3-4"],
+      ["Épreuve 2 : 8,56 / 20 de moyenne (+1,3 point), 31 % des copies à 10 ou plus, 14,9 % de notes éliminatoires.","rapport p. 5-6"],
+      ["Le rapport ne publie aucun chiffre propre au QCM : ses remarques portent sur les options de QRC.","rapport p. 6-9"]] }
+};
+let repK = null;
+function viewReperes(m){
+  const k = repK || (S.set.mod==="ctrl" ? "ctrl" : "insp"), R = REP[k];
+  const li = l => `<ol class="rep-l">${l.map(([t,src])=>`<li>${esc(t)} <span class="rep-src">(${esc(src)})</span></li>`).join("")}</ol>`;
+  const cg = ["admin","ue","num","hg"];
+  const mine = t => { const ts = t==="cg" ? cg : [t]; let n=0, ok=0; ts.forEach(x=>{ const v=themeStats(x); n+=v.n; ok+=v.ok; }); return n ? pct(ok,n) : null; };
+  const doc = (f,l) => `<a class="btn sm" href="../docs/officiel/${f}" target="_blank" rel="noopener">${ico("link")}${l}</a>`;
+  m.innerHTML = `
+  <section class="hero">
+    <h1 class="h-page">Repères</h1>
+  </section>
+  <div class="chips" role="group" aria-label="Concours">${Object.entries(REP).map(([kk,r])=>`<button data-repk="${kk}" aria-pressed="${k===kk}">${r.l}</button>`).join("")}</div>
+  <div class="stats">${R.tiles.map(([a,b,c])=>`<div class="stat"><span>${a}</span><b>${b}</b><span>${c}</span></div>`).join("")}</div>
+  <div class="grid" style="--min:320px">
+    <article class="sheet"><h2 class="h-sec">Règles du QCM</h2>${li(R.regles)}
+      <p class="small muted">Ta pénalité d'entraînement : −${fmtNum(S.set.pen)} point par réponse fausse, à changer dans Réglages.</p></article>
+    <article class="sheet"><h2 class="h-sec">Gérer le temps</h2>${li(R.temps)}</article>
+  </div>
+  <article class="sheet">
+    <div class="row between"><h2 class="h-sec">Programme du QCM</h2><span class="small muted">aucun nombre de questions par thème n'est fixé</span></div>
+    <div>${R.themes.map(([t,l,d])=>{ const j = k==="insp" && THEMES[t] && THEMES[t].jury, me = mine(t); return `<div class="rep-th"><div class="row"><b>${esc(l)}</b>${j?`<span class="badge out mono">jury 2026 · ${fmtPct(j)}</span>`:""}${me!=null?`<span class="badge acc mono">toi · ${fmtPct(me)}</span>`:""}</div><p>${esc(d)}</p></div>`; }).join("")}</div>
+    <span class="rep-src">Programme de l'épreuve 2 (arrêté du 1er juillet 2024)${k==="insp"?" · taux de bonnes réponses au QCM 2026 : rapport du jury p. 9":""}</span>
+  </article>
+  <article class="sheet"><h2 class="h-sec">Le jury 2026</h2>${li(R.jury)}</article>
+  <article class="sheet tight">
+    <h2 class="h-card">Documents officiels</h2>
+    <div class="rep-docs">${doc(R.guide,"Guide ENFiP")}${doc(R.prog,"Programme")}${doc(R.rapport,"Rapport du jury 2026")}</div>
+  </article>`;
 }
 
 // ----- Réglages -----
@@ -1011,7 +1093,7 @@ function viewReglages(m){
     <h1 class="h-page">Réglages</h1>
   </section>
   <section class="stack" style="gap:var(--s5)">
-    <button type="button" class="sheet tight plus-link" data-go="ajout"><span class="ic">${ico("plus")}</span><b>Cartes perso</b><span>${plural(S.custom.length,"carte")} · en ajouter une</span></button>
+    <button type="button" class="sheet tight plus-link" data-go="ajout"><span class="ic">${ico("plus")}</span><b>Questions perso</b><span>${plural(S.custom.length,"question")} · en ajouter une</span></button>
     <article class="sheet">
       <label class="f">Module<select id="set-mod">${Object.entries(MODULES).map(([k,v])=>`<option value="${k}" ${s.mod===k?"selected":""}>${v.l} (${v.t.map(t=>THEMES[t].s).join(", ")})</option>`).join("")}</select></label>
       <label class="f">Questions par jour : <b id="size-v">${s.size}</b><input type="range" id="set-size" min="20" max="60" step="5" value="${s.size}"></label>
@@ -1053,6 +1135,7 @@ document.addEventListener("click", e => {
     return; }
   if(d.xdel){ delExam(d.xdel); return; }
   if(d.notesk){ notesK = d.notesk; render(); return; }
+  if(d.repk){ repK = d.repk; render(); return; }
   if(d.tab){ e.preventDefault(); go(d.tab); return; }
   if(d.mod){ if(S.set.mod!==d.mod){ S.set.mod=d.mod; S.daily=null; session=null; save(); render(); toast("Module : "+MODULES[d.mod].l+"."); } return; }
   if(d.go){ go(d.go); return; }
@@ -1080,7 +1163,7 @@ document.addEventListener("click", e => {
     case "newday": S.daily=null; session=null; save(); toast("Session du jour recomposée."); go("jour"); break;
     case "copy": { const t=$("#exp"); try{ navigator.clipboard.writeText(t.value).then(()=>toast("Sauvegarde copiée."),()=>{ t.select(); toast("Texte sélectionné."); }); }catch(err){ t.select(); toast("Texte sélectionné."); } break; }
     case "import": { try{ const v=JSON.parse($("#imp").value); S = merge(S, normalize(v)); save(); invalidate(); session=null; toast("Sauvegarde importée."); render(); }catch(err){ toast("Texte illisible : colle une sauvegarde complète."); } break; }
-    case "resetask": $("#resetbox").innerHTML = `<div class="confirm">Toutes tes réponses, examens et cartes perso seront effacés. <button class="btn danger" data-act="reset">Oui, tout effacer</button><button class="btn" data-act="rerender">Annuler</button></div>`; break;
+    case "resetask": $("#resetbox").innerHTML = `<div class="confirm">Toutes tes réponses, examens et questions perso seront effacés. <button class="btn danger" data-act="reset">Oui, tout effacer</button><button class="btn" data-act="rerender">Annuler</button></div>`; break;
     case "reset": { const set=S.set; S = blank(); S.set=set; session=null; lastResult=null; save(); toast("Progression effacée."); go("jour"); break; }
   }
 });

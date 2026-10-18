@@ -3,9 +3,9 @@
   'use strict';
   var C = CORE, D = DATA;
   var KEY = 'atelier-ecrit-oral-v1', UIKEY = 'atelier-ecrit-oral-ui', TITLE = document.title || 'Atelier écrit et oral';
-  var VIEWS = ['ecrit', 'oral', 'progres', 'reperes', 'reglages'];
+  var VIEWS = ['ecrit', 'oral', 'banque', 'progres', 'reperes', 'reglages'];
   var S = C.blank();                                    // état synchronisable
-  var UI = { view: 'ecrit', cat: 'all', dur: 180, hist: '', sujet: {}, libre: '', oq: '', recent: [], trans: true, rep: '', park: '' }; // préférences de cet appareil
+  var UI = { view: 'ecrit', cat: 'all', dur: 180, hist: '', sujet: {}, libre: '', oq: '', recent: [], trans: true, rep: '', park: '', bcat: 'all' }; // préférences de cet appareil
   var T = { open: {}, confirm: null, saved: null, lastPhase: null, over: false, oral: null, att: null, rec: null, micErr: null,
     oscores: {}, ocomment: '', oeval: false, osaved: null, olimitHit: false, pending: false, more: 0, trans: '', interim: '', tr: null, trErr: null };
   var QBY = {}; D.Q.forEach(function (q) { QBY[q.id] = q; });
@@ -280,7 +280,7 @@
     st.title = 'Écrit ' + ex.label + ' · ' + d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
     document.querySelectorAll('#profil [data-p]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.p === profil())); });
     var v = $('#view');
-    v.innerHTML = UI.view === 'oral' ? viewOral() : UI.view === 'progres' ? viewProgres() : UI.view === 'reperes' ? viewReperes() : UI.view === 'reglages' ? viewReglages() : viewEcrit();
+    v.innerHTML = UI.view === 'oral' ? viewOral() : UI.view === 'banque' ? viewBanque() : UI.view === 'progres' ? viewProgres() : UI.view === 'reperes' ? viewReperes() : UI.view === 'reglages' ? viewReglages() : viewEcrit();
     measure();
     if (UI.view === 'oral') { refreshRecs(); updRec(); }
     if (UI.view === 'progres') { drawChart(); fillAnswerRecs(); }
@@ -665,6 +665,31 @@
     var o = T.oral; if (!o || !o.start) return 'idle';
     if (o.endedAt) return 'done'; if (o.pausedAt) return 'paused'; return 'run';
   }
+  /* ===== Banque ===== */
+  // Banque : toutes les questions de l’oral par catégorie, avec leurs pistes au dépli ; « S’entraîner » ouvre la question dans l’onglet Oral.
+  function fold(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+  function viewBanque() {
+    var all = D.Q, list = all.filter(function (q) { return UI.bcat === 'all' || q.c === UI.bcat; }), cnt = counts(), last = {};
+    C.live(S.oraux).forEach(function (e) { if (typeof e.note === 'number' && (!last[e.qid] || (e.date || 0) > (last[e.qid].date || 0))) last[e.qid] = e; });
+    var h = '<h1 class="sr">Banque des questions de l’oral</h1><article class="sheet">';
+    h += '<div class="chips" role="group" aria-label="Catégorie"><button type="button" data-bcat="all" aria-pressed="' + (UI.bcat === 'all') + '">Toutes <span class="mono small">' + all.length + '</span></button>';
+    D.CATS.forEach(function (c) { h += '<button type="button" data-bcat="' + c.id + '" aria-pressed="' + (UI.bcat === c.id) + '">' + tx(c.t) + ' <span class="mono small">' + all.filter(function (q) { return q.c === c.id; }).length + '</span></button>'; });
+    h += '</div><div class="bqtools"><input type="search" class="input" id="bq-search" placeholder="Rechercher une question" aria-label="Rechercher une question" value="' + esc(T.bq || '') + '"><span class="small muted" id="bq-n"></span></div>';
+    h += '<div class="bqlist" id="bqlist">' + list.map(function (q) {
+      var n = cnt[q.id] || 0, l = last[q.id];
+      return '<details class="pistes bq" data-text="' + esc(fold(q.q + ' ' + q.p.join(' '))) + '"><summary><span class="bq-h"><span class="row"><span class="badge acc">' + tx(CATBY[q.c].court) + '</span>' + (q.s ? '<span class="badge out">' + tx(D.SUBS[q.s]) + '</span>' : '') + (n ? '<span class="badge">' + n + ' réponse' + (n > 1 ? 's' : '') + (l ? ' · ' + C.dec(l.note) + '/20' : '') + '</span>' : '') + '</span><span class="bq-q">' + tx(q.q) + '</span></span></summary>'
+        + '<div class="body"><span class="eyebrow">Pistes et points attendus</span><ul class="plain">' + q.p.map(function (x) { return '<li>' + tx(x) + '</li>'; }).join('') + '</ul><div class="row"><button type="button" class="btn sm pri" data-act="btrain" data-q="' + q.id + '">' + ico('mic') + 'S’entraîner sur cette question</button></div></div></details>';
+    }).join('') + '</div><p class="empty" id="bq-empty" hidden>Aucune question ne correspond.</p></article>';
+    h += '<p class="small muted">' + tx('Les pistes sont des repères de préparation, pas des corrigés officiels.') + '</p>';
+    setTimeout(bankFilter, 0);
+    return h;
+  }
+  function bankFilter() {
+    var words = fold(T.bq).split(/\s+/).filter(Boolean), shown = 0;
+    document.querySelectorAll('#bqlist > details').forEach(function (d) { var ok = words.every(function (w) { return d.dataset.text.indexOf(w) >= 0; }); d.hidden = !ok; if (ok) shown++; });
+    var n = $('#bq-n'), e = $('#bq-empty'); if (n) n.textContent = shown + ' question' + (shown > 1 ? 's' : ''); if (e) e.hidden = shown > 0;
+  }
+
   // Oral : tirage, question, chrono, pistes, auto-évaluation. Le déroulé et les attentes du jury sont dans Repères.
   function viewOral() {
     var p = profil(), O = D.ORAL[p], q = curQ(), cnt = counts();
@@ -1004,6 +1029,7 @@
       case 'newrun': T.saved = null; render(); return window.scrollTo(0, 0);
       // Oral
       case 'draw': return drawQ();
+      case 'btrain': { var tq = QBY[b.dataset.q]; if (!tq) return; T.oral = null; newAttempt(tq, tq.pres ? 300 : UI.dur); return go('oral'); }
       case 'pres': newAttempt(QBY.pres, 300); render(); var qb = $('#qbox'); if (qb) qb.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); return;
       case 'dminus': case 'dplus': case 'd3': case 'd5':
         UI.dur = a === 'd3' ? 180 : a === 'd5' ? 300 : Math.min(900, Math.max(30, UI.dur + (a === 'dplus' ? 30 : -30)));
@@ -1057,7 +1083,7 @@
   }
 
   document.addEventListener('click', function (ev) {
-    var b = ev.target.closest('[data-v], [data-act], [data-p], [data-sujet], [data-crit], [data-ocrit], [data-cat], [data-open], [data-play], [data-rdel], [data-rdelyes], [data-rdelno], [data-hist], [data-dopen], [data-rep]');
+    var b = ev.target.closest('[data-v], [data-act], [data-p], [data-sujet], [data-crit], [data-ocrit], [data-cat], [data-open], [data-play], [data-rdel], [data-rdelyes], [data-rdelno], [data-hist], [data-dopen], [data-rep], [data-bcat]');
     if (!b) return;
     var ds = b.dataset;
     if (ds.v) { ev.preventDefault(); return go(ds.v); }
@@ -1074,6 +1100,7 @@
     if (ds.hist) { UI.hist = ds.hist; Store.saveUI(); return render(); }
     if (ds.open) { T.open[ds.open] = !T.open[ds.open]; T.confirm = null; return render(); }
     if (ds.rep) { UI.rep = ds.rep; Store.saveUI(); return render(); }
+    if (ds.bcat) { UI.bcat = ds.bcat; Store.saveUI(); return render(); }
     if (ds.dopen) { DEP.open[ds.dopen] = !DEP.open[ds.dopen]; T.confirm = null; return render(); }
     if (ds.play) return play(ds.play, b);
     if (ds.rdel) { var sp = b.parentNode; sp.innerHTML = '<span class="small">Supprimer ?</span><button type="button" class="btn sm danger" data-rdelyes="' + esc(ds.rdel) + '">Oui</button><button type="button" class="btn sm" data-rdelno="' + esc(ds.rdel) + '">Non</button>'; return; }
@@ -1085,6 +1112,7 @@
   function onInput(ev) {
     var t = ev.target, run = S.cur.run;
     if (t.id === 'libre-t') { UI.libre = t.value; Store.saveUI(); return; }
+    if (t.id === 'bq-search') { T.bq = t.value; return bankFilter(); }
     if (t.id === 'o-comment') { T.ocomment = t.value; return; }
     if (t.id === 'o-trans') { T.trans = t.value; return; }
     if (t.id === 'dep-in' && ev.type === 'change') { depAdd(t.files); t.value = ''; return; }

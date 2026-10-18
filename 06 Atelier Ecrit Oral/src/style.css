@@ -134,6 +134,15 @@ details.pistes summary::-webkit-details-marker { display: none; }
 details.pistes summary::before { content: ""; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); flex: none; }
 details.pistes[open] summary::before { transform: rotate(45deg); }
 details.pistes .body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: var(--s3); }
+/* Banque de l’oral : une question par ligne, pistes au dépli */
+.bqlist { display: flex; flex-direction: column; gap: var(--s2); }
+details.bq summary { align-items: flex-start; padding-block: 12px; }
+details.bq summary::before { margin-top: 9px; }
+.bq-h { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.bq-h .row { gap: 6px; }
+.bq-q { font-weight: 700; line-height: 1.45; }
+.bqtools { display: flex; flex-wrap: wrap; gap: var(--s3); align-items: center; justify-content: space-between; }
+.bqtools .input { max-width: 340px; }
 .recs { display: flex; flex-direction: column; gap: 6px; }
 .recs .r { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: var(--surface); border: var(--bw) solid var(--line); }
 .recs .r .meta { flex: 1 1 150px; font-size: var(--t-sm); min-width: 0; }
