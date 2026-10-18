@@ -61,6 +61,30 @@
 .chart .cross { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 3; }
 .chart .tip { position: absolute; transform: translate(-50%, calc(-100% - 12px)); pointer-events: none; background: var(--surface); color: var(--ink); border: var(--bw) solid var(--edge); box-shadow: var(--lift-sm); border-radius: 10px; padding: 6px 10px; font-size: var(--t-xs); font-weight: 700; line-height: 1.45; white-space: nowrap; z-index: 2; }
 .chips button:disabled { opacity: .45; cursor: default; }
+/* Revue de copie : feuille de numéros colorés par thème, pastille juste / fausse / abstention, la question choisie à côté */
+:root { --th-sky: #BFDDFB; --th-pink: #F6C5E0; --th-teal: #BDEBE7; --th-sand: #E6D6C2; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --th-sky: #A3C7EE; --th-pink: #E9AACB; --th-teal: #9ED8D2; --th-sand: #D2BFA6; } }
+:root[data-theme="dark"] { --th-sky: #A3C7EE; --th-pink: #E9AACB; --th-teal: #9ED8D2; --th-sand: #D2BFA6; }
+.th-admin { --th: var(--qcm); } .th-ue { --th: var(--th-sky); } .th-num { --th: var(--qrc); } .th-log { --th: var(--doc); }
+.th-ang { --th: var(--ate); } .th-fr { --th: var(--th-pink); } .th-math { --th: var(--th-teal); } .th-hg { --th: var(--th-sand); }
+.rev { display: grid; gap: var(--s5); grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 1280px) { .rev { grid-template-columns: 320px minmax(0, 1fr); } }
+.rsheet { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 8px; }
+.rsheet button { position: relative; height: 38px; border: var(--bw) solid transparent; border-radius: 10px; background: var(--th); color: var(--on-tile); font-size: var(--t-xs); font-weight: 900; font-variant-numeric: tabular-nums; cursor: pointer; }
+.rsheet button:hover { border-color: var(--edge); }
+.rsheet button.cur { border-color: var(--edge); box-shadow: var(--lift-sm); }
+.rsheet button::after { position: absolute; top: -6px; right: -6px; width: 16px; height: 16px; display: grid; place-items: center; border: 2px solid var(--surface); border-radius: 999px; color: var(--surface); font-size: 9px; font-weight: 900; line-height: 1; }
+.rsheet button.ok::after { content: "✓"; background: var(--ok); }
+.rsheet button.ko::after { content: "✕"; background: var(--bad); }
+.rsheet button.abst::after { content: "–"; background: var(--muted); }
+.legend i[class^="th-"] { background: var(--th); border-color: transparent; }
+.legend i.mk { border-radius: 999px; border: 0; }
+.legend i.mk.ok { background: var(--ok); } .legend i.mk.ko { background: var(--bad); } .legend i.mk.abst { background: var(--muted); }
+.revq .opt { cursor: default; }
+.revq .opt:hover { border-color: var(--line-2); }
+.revq .opt.right:hover { border-color: var(--ok); } .revq .opt.wrong:hover { border-color: var(--bad); }
+.xdel { min-height: 32px; padding: 0 6px; }
+.xdel svg { width: 16px; height: 16px; }
 .item .head .badge svg { width: 12px; height: 12px; }
 /* Examen en cours : tient dans l'écran, cocher une case passe à la question suivante */
 .page.fit .exambar { position: static; padding: 6px 8px 6px 14px; }
@@ -242,6 +266,7 @@ const ICO = {
   clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
   flag:'<path d="M5.5 21V4.5M5.5 4.5h11.5l-2.2 4 2.2 4H5.5"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
+  trash:'<path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5"/>',
   info:'<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.8v.2"/>',
   sliders:'<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>'
 };
@@ -255,7 +280,7 @@ function explHtml(c, cls, title){
 
 // ---------- État ----------
 const DEFAULT_SET = {mod:"insp",size:30,newMax:20,pen:0.25,act:true};
-function blank(){ return {v:2,u:0,cards:{},exams:[],custom:[],del:[],daily:null,run:null,seen:null,set:{...DEFAULT_SET}}; }
+function blank(){ return {v:2,u:0,cards:{},exams:[],custom:[],del:[],xdel:[],daily:null,run:null,seen:null,set:{...DEFAULT_SET}}; }
 let S = load();
 function load(){
   try { const raw = localStorage.getItem(KEY); if(raw){ return normalize(JSON.parse(raw)); } } catch(e){}
@@ -274,7 +299,7 @@ function normalize(s){
   if(!s || !s.v || s.v<2){ o.set.size = 30; o.set.newMax = Math.max(o.set.newMax||0, 20); o.daily = null; }
   o.v = 2;
   const cards = {}; for(const [id,r] of Object.entries(o.cards||{})) cards[id] = unpackRec(r);
-  o.cards = cards; o.exams = o.exams||[]; o.custom = o.custom||[]; o.del = o.del||[];
+  o.cards = cards; o.exams = o.exams||[]; o.custom = o.custom||[]; o.del = o.del||[]; o.xdel = o.xdel||[];
   return o;
 }
 function serialize(){
@@ -291,14 +316,15 @@ function save(remoteToo=true){
   try { localStorage.setItem(KEY, serialize()); } catch(e){}
   if(remoteToo && window.PrepaSync) PrepaSync.changed("qcm");
 }
-// Fusion appareil / compte : carte par carte (révision la plus récente), examens et cartes perso par identifiant.
+// Fusion appareil / compte : carte par carte (révision la plus récente), examens et cartes perso par identifiant (hors supprimés).
 function merge(a, b){
   const newer = a.u >= b.u ? a : b, other = newer===a ? b : a;
   const out = normalize(JSON.parse(JSON.stringify({...newer, cards:{}})));
   out.cards = {...newer.cards};
   for(const [id, c] of Object.entries(other.cards||{})){ const m=out.cards[id]; if(!m || (c.l||0) > (m.l||0)) out.cards[id]=c; }
   const ex = new Map(); [...(other.exams||[]), ...(newer.exams||[])].forEach(e=>ex.set(e.id,e));
-  out.exams = [...ex.values()].sort((x,y)=>y.at-x.at).slice(0,40);
+  out.xdel = [...new Set([...(newer.xdel||[]), ...(other.xdel||[])])];
+  out.exams = [...ex.values()].filter(e=>!out.xdel.includes(e.id)).sort((x,y)=>y.at-x.at).slice(0,40);
   out.del = [...new Set([...(newer.del||[]), ...(other.del||[])])];
   const cu = new Map(); [...(other.custom||[]), ...(newer.custom||[])].forEach(c=>cu.set(c.id,c));
   out.custom = [...cu.values()].filter(c=>!out.del.includes(c.id));
@@ -416,7 +442,7 @@ const TABS = [["jour","Entraînement","today","Entraînement"],["examen","Épreu
 const IN_PLUS = ["ajout"];
 let tab = "jour";
 try { const h = location.hash.replace("#","").replace(/^plus$/,"reglages"); if(TABS.some(t=>t[0]===h) || IN_PLUS.includes(h)) tab=h; } catch(e){}
-function go(t){ tab=t; render(); window.scrollTo({top:0}); }
+function go(t){ closeResult(); tab=t; render(); window.scrollTo({top:0}); }
 function renderTabs(){
   const cur = IN_PLUS.includes(tab) ? "reglages" : tab;
   const due = allCards().filter(c=>eligible(c) && rec(c.id) && rec(c.id).l && rec(c.id).d<=dayNum()).length;
@@ -583,12 +609,13 @@ function xFlag(){
   if(R.flag[id]) delete R.flag[id]; else R.flag[id] = 1;
   save(); render();
 }
+const fmtDay = t => new Date(t).toLocaleDateString("fr-FR",{day:"numeric",month:"short"});
 function fmtClock(ms){ ms=Math.max(0,ms); const s=Math.floor(ms/1000); const h=Math.floor(s/3600), mi=Math.floor((s%3600)/60), se=s%60; return (h?h+" h ":"")+String(mi).padStart(2,"0")+" min "+String(se).padStart(2,"0"); }
 function viewExam(m){
   clearInterval(tick);
   if(S.run) return viewExamRun(m);
   if(lastResult) return viewExamResult(m, lastResult);
-  const last = S.exams.slice(0,6);
+  const last = S.exams;
   m.innerHTML = `
   <section class="hero">
     <h1 class="h-page">Épreuves blanches</h1>
@@ -604,16 +631,9 @@ function viewExam(m){
       <div><button class="btn pri" data-exam="${k}">Commencer ${ico("arrow")}</button></div>
     </article>`).join("")}
   </div>
-  <article class="sheet tight">
-    <h2 class="h-card">Pénalité par réponse fausse</h2>
-    <div class="chips" role="group" aria-label="Pénalité par réponse fausse">
-      ${[0,0.25,0.33,0.5,1].map(p=>`<button class="mono" data-pen="${p}" aria-pressed="${S.set.pen===p}">−${fmtNum(p)}</button>`).join("")}
-    </div>
-  </article>
   ${last.length?`<article class="sheet"><h2 class="h-sec">Dernières épreuves</h2><div class="tw"><table class="t">
-    <thead><tr><th>Date</th><th>Module</th><th class="num">Justes</th><th class="num">Fausses</th><th class="num">Ann</th><th class="num hide-sm">Temps / q.</th><th class="num">Note / 20</th></tr></thead>
-    <tbody>${last.map(x=>`<tr${x.ids?` class="click" data-xrev="${x.id}" tabindex="0" title="Revoir la copie"`:""}><td>${new Date(x.at).toLocaleDateString("fr-FR",{day:"numeric",month:"short"})}</td><td>${EXAMS[x.kind].l}</td><td class="num">${x.ok}</td><td class="num">${x.ko}</td><td class="num">${x.ab}</td><td class="num hide-sm">${x.tq?fmtDur(x.tq):"—"}</td><td class="num"><b>${fmtNum(x.note,1)}</b></td></tr>`).join("")}</tbody></table></div>
-    ${last.some(x=>x.ids)?`<p class="small muted">Clique sur une des 5 dernières épreuves pour revoir la copie.</p>`:""}</article>`:""}`;
+    <thead><tr><th>Date</th><th>Module</th><th class="num">Justes</th><th class="num">Fausses</th><th class="num">Ann</th><th class="num hide-sm">Temps / q.</th><th class="num">Note / 20</th><th aria-label="Supprimer"></th></tr></thead>
+    <tbody>${last.map(x=>`<tr class="click" data-xrev="${x.id}" tabindex="0" title="Revoir l'épreuve"><td>${fmtDay(x.at)}</td><td>${EXAMS[x.kind].l}</td><td class="num">${x.ok}</td><td class="num">${x.ko}</td><td class="num">${x.ab}</td><td class="num hide-sm">${x.tq?fmtDur(x.tq):"—"}</td><td class="num"><b>${fmtNum(x.note,1)}</b></td><td class="num"><button class="btn sm ghost xdel" data-xdelask="${x.id}" aria-label="Supprimer l'épreuve du ${fmtDay(x.at)}" title="Supprimer">${ico("trash")}</button></td></tr>`).join("")}</tbody></table></div></article>`:""}`;
 }
 function viewExamRun(m){
   const R = S.run; const E = EXAMS[R.kind];
@@ -682,9 +702,8 @@ function finishExam(timeout){
   const res = {id:R.id, kind:R.kind, at:Date.now(), n:R.ids.length, ok, ko, ab, pen:R.pen, raw, note, by, wrong, timeout:!!timeout,
     dur: Math.min(Date.now(), R.start+R.dur) - R.start, tq: Math.round(tt / R.ids.length), ids:R.ids, ans:R.ans, t:R.t||{}, flag:Object.keys(R.flag||{})};
   S.exams.unshift(res); S.exams = S.exams.slice(0,40);
-  S.exams.forEach((x,i)=>{ if(i>=5){ delete x.ids; delete x.ans; delete x.t; delete x.flag; } });
   S.run = null; save();
-  lastResult = res; revF = res.ko ? "ko" : "all"; tab="examen"; render();
+  showResult(res, true);
 }
 function viewExamResult(m, x){
   const E = EXAMS[x.kind];
@@ -707,29 +726,73 @@ function viewExamResult(m, x){
     <div class="tw"><table class="t">
       <thead><tr><th>Thème</th><th class="num">Justes</th><th class="num">Fausses</th><th class="num">Ann</th><th class="num">Réussite</th><th class="num">Jury 2026</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
-    <div class="row"><button class="btn" data-act="examhome">Retour</button></div>
   </article>
-  ${x.ids?reviewHtml(x):`<article class="sheet tight"><p class="small muted">Le détail question par question n'est conservé que pour les 5 dernières épreuves.</p></article>`}`;
+  ${x.ids?reviewHtml(x):`<article class="sheet tight"><p class="small muted">Le détail question par question n'a pas été conservé pour cette épreuve.</p></article>`}
+  <div class="row" id="xdelbox"><button class="btn sm danger" data-xdelask="${x.id}">${ico("trash")}Supprimer cette épreuve</button></div>`;
 }
-// Revue de la copie : question par question, filtrable, avec le temps passé et les questions signalées.
-let revF = "all";
-function reviewHtml(x){
+// Revue de la copie : masquée par défaut. Feuille de numéros colorés par thème, pastille juste / fausse / abstention ;
+// un clic sur un numéro affiche la question, la réponse donnée et la correction.
+let revOpen = false, revQ = null;
+// Ouvrir une épreuve ajoute une étape à l'historique : le bouton retour ramène à la liste des épreuves.
+let skipPop = false;
+function showResult(x, push){
+  lastResult = x; revOpen = false; revQ = null; tab = "examen";
+  if(push) try { history[history.state && history.state.qcmRev ? "replaceState" : "pushState"]({qcmRev:x.id}, ""); } catch(e){}
+  render(); window.scrollTo({top:0});
+}
+function closeResult(){
+  if(!lastResult) return;
+  lastResult = null;
+  if(history.state && history.state.qcmRev){ skipPop = true; history.back(); }
+}
+window.addEventListener("popstate", e => {
+  if(skipPop){ skipPop = false; return; }
+  const id = e.state && e.state.qcmRev, x = id && S.exams.find(z=>z.id===id);
+  if(x) showResult(x, false); else { lastResult = null; render(); }
+});
+function delExam(id){
+  S.exams = S.exams.filter(x=>x.id!==id); if(!S.xdel.includes(id)) S.xdel.push(id);
+  save(); invalidate(); toast("Épreuve supprimée.");
+  if(lastResult && lastResult.id===id){ closeResult(); window.scrollTo({top:0}); }
+  render();
+}
+const REV_ST = {ok:["ok","check","Juste","juste"], ko:["bad","cross","Fausse","fausse"], abst:["warn","info","Abstention","abstention"]};
+function reviewItems(x){
   const flags = new Set(x.flag||[]);
-  const items = x.ids.map((id,k)=>{ const c=cardMap().get(id); if(!c) return null; const a=x.ans[id]; const perm=permFor(id,x.id);
+  return x.ids.map((id,k)=>{ const c=cardMap().get(id); if(!c) return null; const a=x.ans[id]; const perm=permFor(id,x.id);
     return {id,k,c,a,perm,st: a==null||a===-1 ? "abst" : perm[a]===c.a ? "ok" : "ko", fl: flags.has(id), t:(x.t||{})[id]||0}; }).filter(Boolean);
-  const F = [["all","Toutes",items.length],["ko","Fausses",items.filter(i=>i.st==="ko").length],["abst","Abstentions",items.filter(i=>i.st==="abst").length],["flag","À revoir",items.filter(i=>i.fl).length],["ok","Justes",items.filter(i=>i.st==="ok").length]];
-  const shown = items.filter(i=> revF==="all" || (revF==="flag" ? i.fl : i.st===revF));
-  const open = revF!=="all" && revF!=="ok";
-  const slow = items.filter(i=>i.t).sort((p,q)=>q.t-p.t)[0];
+}
+function reviewHtml(x){
+  const items = reviewItems(x);
+  const themes = [...new Set(items.map(i=>i.c.t))];
+  const at = items.findIndex(i=>i.k===revQ);
   return `<article class="sheet">
-    <div class="row between"><h2 class="h-sec">Revoir la copie</h2>${slow?`<span class="small muted">Plus long : Q${slow.k+1} (${fmtDur(slow.t)})</span>`:""}</div>
-    <div class="chips" role="group" aria-label="Filtrer les questions">${F.map(([k,l,n])=>`<button data-revf="${k}" aria-pressed="${revF===k}" ${n?"":"disabled"}>${l} <span class="mono">${n}</span></button>`).join("")}</div>
-    <div class="stack" style="gap:var(--s2)">${shown.length ? shown.map(i=>`<div class="item"><button class="head" data-toggle>
-      <span class="badge ${i.st==="ok"?"ok":i.st==="ko"?"bad":"warn"}">${ico(i.st==="ok"?"check":i.st==="ko"?"cross":"info")}Q${i.k+1} · ${i.st==="ok"?"juste":i.st==="ko"?"fausse":"abstention"}</span>
-      ${i.fl?`<span class="badge warn">${ico("flag")}à revoir</span>`:""}${i.t?`<span class="badge mono out">${fmtDur(i.t)}</span>`:""}
-      <span class="badge acc">${esc(THEMES[i.c.t].s)}</span> ${esc(i.c.q)}</button>
-      <div class="body"${open?"":" hidden"}><ol>${i.perm.map((oi,j)=>`<li class="${oi===i.c.a?"good":""}">${esc(i.c.o[oi])}${oi===i.c.a?' <span class="badge ok">Bonne réponse</span>':""}${i.a===j&&oi!==i.c.a?' <span class="badge bad">Ta réponse</span>':""}</li>`).join("")}</ol>${explHtml(i.c)}</div></div>`).join("") : `<p class="empty">Aucune question dans ce filtre.</p>`}</div>
+    <div class="row between"><h2 class="h-sec">Copie</h2><button class="btn sm" data-act="revtoggle" aria-expanded="${revOpen}">${revOpen?"Masquer la copie":"Afficher la copie"}</button></div>
+    ${revOpen?`<div class="rev">
+      <div class="stack" style="gap:var(--s3)">
+        <div class="rsheet">${items.map(i=>`<button class="th-${i.c.t} ${i.st}${i.k===revQ?" cur":""}" data-revq="${i.k}" aria-pressed="${i.k===revQ}" aria-label="Question ${i.k+1}, ${esc(THEMES[i.c.t].s)}, ${REV_ST[i.st][3]}">${i.k+1}</button>`).join("")}</div>
+        <div class="legend">${themes.map(t=>`<span><i class="th-${t}"></i>${esc(THEMES[t].s)}</span>`).join("")}</div>
+        <div class="legend"><span><i class="mk ok"></i>juste</span><span><i class="mk ko"></i>fausse</span><span><i class="mk abst"></i>abstention</span></div>
+      </div>
+      <div class="revq" id="revq">${at<0 ? `<p class="empty">Clique sur un numéro pour revoir la question.</p>` : revQHtml(items[at], items[at-1], items[at+1])}</div>
+    </div>`:""}
   </article>`;
+}
+function revQHtml(i, prev, nxt){
+  const [cls, ic, lab] = REV_ST[i.st];
+  const opts = i.perm.map((oi,j)=>{ let c="opt", box=j+1, l="";
+    if(oi===i.c.a){ c+=" right"; box=ico("check"); l = i.a===j ? "Ta réponse" : "Bonne réponse"; }
+    else if(i.a===j){ c+=" wrong"; box=ico("cross"); l="Ta réponse"; }
+    return `<div class="${c}"><span class="box">${box}</span><span class="t">${esc(i.c.o[oi])}</span><span class="lab">${l}</span></div>`; }).join("");
+  return `<div class="stack" style="gap:var(--s3)">
+    <div class="row between">
+      <div class="row" style="gap:6px"><span class="badge mono out">Q${i.k+1}</span><span class="badge ${cls}">${ico(ic)}${lab}</span><span class="badge acc">${esc(THEMES[i.c.t].l)}</span>${i.fl?`<span class="badge warn">${ico("flag")}signalée</span>`:""}${i.t?`<span class="badge mono out">${fmtDur(i.t)}</span>`:""}</div>
+      <div class="row" style="gap:6px"><button class="btn sm" ${prev?`data-revq="${prev.k}"`:"disabled"}>Précédente</button><button class="btn sm" ${nxt?`data-revq="${nxt.k}"`:"disabled"}>Suivante</button></div>
+    </div>
+    <p class="question">${esc(i.c.q)}</p>
+    <div class="opts locked">${opts}</div>
+    ${explHtml(i.c, i.st==="ok"?"ok":i.st==="ko"?"bad":"")}
+  </div>`;
 }
 
 // ----- Progrès -----
@@ -980,10 +1043,15 @@ function viewReglages(m){
 // ---------- Événements ----------
 document.addEventListener("click", e => {
   const tr = e.target.closest("tr[data-xrev]");
-  if(tr){ const x = S.exams.find(z=>z.id===tr.dataset.xrev); if(x){ lastResult = x; revF = x.ko ? "ko" : "all"; render(); window.scrollTo({top:0}); } return; }
+  if(tr && !e.target.closest("button")){ const x = S.exams.find(z=>z.id===tr.dataset.xrev); if(x) showResult(x, true); return; }
   const b = e.target.closest("button,a[data-tab]"); if(!b) return;
   const d = b.dataset;
-  if(d.revf){ revF = d.revf; render(); return; }
+  if(d.revq!=null){ revQ = Number(d.revq); render(); const q=$("#revq"); if(q && innerWidth<1280) q.scrollIntoView({block:"start", behavior:"smooth"}); return; }
+  if(d.xdelask){ const x = S.exams.find(z=>z.id===d.xdelask); if(!x) return;
+    const box = `<div class="confirm">Supprimer l'épreuve du ${fmtDay(x.at)} (${fmtNum(x.note,1)}/20) ? <button class="btn danger" data-xdel="${esc(x.id)}">Oui, supprimer</button><button class="btn" data-act="rerender">Annuler</button></div>`;
+    const row = b.closest("tr"); if(row){ row.removeAttribute("data-xrev"); row.classList.remove("click"); row.innerHTML = `<td colspan="8">${box}</td>`; } else $("#xdelbox").innerHTML = box;
+    return; }
+  if(d.xdel){ delExam(d.xdel); return; }
   if(d.notesk){ notesK = d.notesk; render(); return; }
   if(d.tab){ e.preventDefault(); go(d.tab); return; }
   if(d.mod){ if(S.set.mod!==d.mod){ S.set.mod=d.mod; S.daily=null; session=null; save(); render(); toast("Module : "+MODULES[d.mod].l+"."); } return; }
@@ -991,7 +1059,6 @@ document.addEventListener("click", e => {
   if(d.pick!=null){ pick(Number(d.pick)); return; }
   if(d.toggle!=null){ const body=b.nextElementSibling; if(body) body.hidden=!body.hidden; return; }
   if(d.exam){ startExam(d.exam); return; }
-  if(d.pen!=null){ S.set.pen = Number(d.pen); save(); render(); return; }
   if(d.xpick!=null && S.run){ xAnswer(Number(d.xpick)); return; }
   if(d.xnav && S.run){ S.run.pos = Math.min(Math.max(0, S.run.pos + Number(d.xnav)), S.run.ids.length-1); save(); render(); return; }
   if(d.xgo!=null && S.run){ S.run.pos = Number(d.xgo); xsheet = false; save(); render(); return; }
@@ -1007,7 +1074,7 @@ document.addEventListener("click", e => {
     case "end": finishExam(false); break;
     case "xsheet": xsheet = !xsheet; render(); break;
     case "xflag": xFlag(); break;
-    case "examhome": lastResult=null; render(); break;
+    case "revtoggle": revOpen = !revOpen; render(); break;
     case "bqmore": bq.lim += 40; render(); break;
     case "rerender": render(); break;
     case "newday": S.daily=null; session=null; save(); toast("Session du jour recomposée."); go("jour"); break;
@@ -1070,6 +1137,8 @@ document.addEventListener("keydown", e => {
 })();
 window.addEventListener("storage", e => { if(e.key===KEY){ S = load(); invalidate(); session=null; render(); } });
 
+// Page rechargée sur une épreuve ouverte : on la rouvre, pour que le bouton retour mène toujours à la liste.
+try { const id = history.state && history.state.qcmRev, x = id && S.exams.find(z=>z.id===id); if(x){ lastResult = x; tab = "examen"; } else if(id) history.replaceState(null, ""); } catch(e){}
 render();
 initSync();
 </script>
