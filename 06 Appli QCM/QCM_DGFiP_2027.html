@@ -4455,8 +4455,8 @@ function viewReglages(m){
     <button type="button" class="sheet tight plus-link" data-go="ajout"><span class="ic">${ico("plus")}</span><b>Questions perso</b><span>${plural(S.custom.length,"question")} · en ajouter une</span></button>
     <article class="sheet">
       <label class="f">Module<select id="set-mod">${Object.entries(MODULES).map(([k,v])=>`<option value="${k}" ${s.mod===k?"selected":""}>${v.l} (${v.t.map(t=>THEMES[t].s).join(", ")})</option>`).join("")}</select></label>
-      <label class="f">Questions par jour : <b id="size-v">${s.size}</b><input type="range" id="set-size" min="20" max="60" step="5" value="${s.size}"></label>
-      <label class="f">Nouvelles questions par jour au maximum<input type="number" id="set-new" min="0" max="60" value="${s.newMax}"></label>
+      <label class="f">Questions par jour : <b id="size-v">${s.size}</b><input type="range" id="set-size" min="20" max="150" step="5" value="${s.size}"></label>
+      <label class="f">Nouvelles questions par jour au maximum<input type="number" id="set-new" min="0" max="150" value="${s.newMax}"></label>
       <label class="f">Pénalité par réponse fausse<select id="set-pen">${[0,0.25,0.33,0.5,1].map(p=>`<option value="${p}" ${s.pen===p?"selected":""}>−${fmtNum(p)} point</option>`).join("")}</select></label>
       <label class="row" style="font-size:var(--t-md)"><input type="checkbox" id="set-act" ${s.act?"checked":""}> Inclure les questions d'actualité datée</label>
       <div class="row"><button class="btn" data-act="newday">Recomposer la session du jour</button></div>
@@ -4537,7 +4537,7 @@ document.addEventListener("change", e => {
   if(t.id==="bq-flag"){ bq.flag=t.value; render(); return; }
   if(t.id==="set-mod"){ S.set.mod=t.value; S.daily=null; session=null; save(); render(); toast("Module : "+MODULES[t.value].l+"."); }
   if(t.id==="set-size"){ S.set.size=Number(t.value); S.daily=null; session=null; save(); renderPills(); }
-  if(t.id==="set-new"){ S.set.newMax=Math.max(0,Math.min(60,Number(t.value)||0)); S.daily=null; session=null; save(); }
+  if(t.id==="set-new"){ S.set.newMax=Math.max(0,Math.min(150,Number(t.value)||0)); S.daily=null; session=null; save(); }
   if(t.id==="set-pen"){ S.set.pen=Number(t.value); save(); }
   if(t.id==="set-act"){ S.set.act=t.checked; S.daily=null; session=null; save(); }
 });
