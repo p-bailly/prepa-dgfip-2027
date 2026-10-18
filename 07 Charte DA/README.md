@@ -43,6 +43,7 @@ Direction actuelle, déclinaison **Sage** avec la mise en page **Colonne**. Appl
 | --- | --- |
 | `pastille/tokens.css` | Variables (couleurs, relief, rayons, police) et composants de base |
 | `pastille/appli.css` | Ossature et composants communs aux trois applis (menu latéral, onglets du bas, options QCM, feuille de réponse, journal…). Garde les noms de classes de « Copie double » pour que les vues n'aient pas à changer |
+| `logos/propositions.html` | Six pistes de logo pour le site, montrées dans le menu latéral (clair et sombre), l'onglet du navigateur et l'écran d'accueil. L'icône installée et le favicon sont encore ceux de « Copie double » : la piste retenue les remplacera |
 
 Les `build.js` des trois applis ajoutent `tokens.css` puis `appli.css` avant le style propre à chaque appli :
 rien à recopier à la main. Chaque appli choisit son pastel avec `data-app="qcm|qrc|atelier"`.
