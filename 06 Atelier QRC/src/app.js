@@ -74,23 +74,6 @@
   function avg(s) { return s.n ? s.sum / s.n : null; }
   function eligible() { var pr = profil(); return Object.keys(T).map(function (k) { return T[k]; }).filter(function (t) { return pr === 'I' || t.ctrl; }); }
   function isDue(s) { return !s.n || s.due <= Date.now(); }
-  function prio(t) {
-    var s = st(t.id), a = avg(s), p = 0, l = (s.last || [])[0];
-    if (!s.n) p += 60; else if (s.due <= Date.now()) p += 80 + Math.min(30, (Date.now() - s.due) / DAY * 3);
-    p += (5 - s.box) * 8;
-    if (a !== null) p += (1 - a) * 30;
-    if (l && l.s < 0.6) p += 25;
-    if (l && l.t > t.minutes * 60 * 1.3) p += 10;
-    return p;
-  }
-  function why(t) {
-    var s = st(t.id), l = (s.last || [])[0];
-    if (!s.n) return 'Jamais travaillé';
-    if (l && l.s < 0.6) return 'Raté la dernière fois (' + noteTxt(l.s) + ')';
-    if (s.due <= Date.now()) return 'Révision prévue aujourd’hui';
-    if (l && l.t > t.minutes * 60 * 1.3) return 'Trop lent la dernière fois (' + mmss(l.t) + ')';
-    return 'Moyenne ' + noteTxt(avg(s));
-  }
   function nextTxt(s) {
     if (!s.n) return 'nouveau';
     var d = Math.ceil((s.due - Date.now()) / DAY);
@@ -120,7 +103,6 @@
       s.box = box; s.due = due;
     }
   }
-  function recommend(n) { return eligible().slice().sort(function (a, b) { return prio(b) - prio(a); }).slice(0, n || 1); }
 
   /* ---------- Exercices ---------- */
   function makeEx(typeId, o) {
@@ -297,14 +279,9 @@
     var cfg = EXAMS[profil()], ep = S.prog.epreuves.filter(function (e) { return e.p === profil(); });
     var h = '<section class="hero"><h1 class="h-page">' + (due ? '<mark class="hl">' + due + ' type' + (due > 1 ? 's' : '') + '</mark> à revoir aujourd’hui' : !nEx ? '<mark class="hl">' + el.length + ' types</mark> à découvrir' : 'Rien à revoir aujourd’hui') + '</h1></section>';
     h += '<div class="stats"><div class="stat"><span>Exercices corrigés</span><b>' + nEx + '</b></div><div class="stat"><span>Note moyenne</span><b>' + (nEx ? note(sum / nEx) + ' <small>/ 20</small>' : '—') + '</b></div><div class="stat"><span>Types maîtrisés</span><b>' + solid + ' <small>/ ' + el.length + '</small></b></div><div class="stat"><span>Épreuves blanches</span><b>' + ep.length + '</b>' + (ep.length ? '<span>dernière : ' + noteTxt(ep[0].s) + '</span>' : '') + '</div></div>';
-    h += recoHtml();
     h += '<article class="sheet"><h2 class="h-sec">Progression par type</h2>' + typesTable(el, true) + '</article>';
     if (ep.length) h += '<article class="sheet"><h2 class="h-sec">Dernières épreuves blanches</h2>' + epTable(ep.slice(0, 6), false) + '</article>';
     return h;
-  }
-  // Recommandations : les trois types à travailler en priorité
-  function recoHtml() {
-    return '<section class="stack"><div class="row between"><h2 class="h-sec">À travailler maintenant</h2><button type="button" class="btn ghost sm" data-act="auto">Point faible</button></div><div class="reco">' + recommend(3).map(function (t, i) { var dc = { weak: 'bad', due: 'warn', good: 'ok', '': '' }[dotCls(t)]; return '<button type="button" data-train="' + t.id + '"' + (i === 0 ? ' class="first"' : '') + '><span class="eyebrow">' + esc(t.famille) + '</span><b>' + esc(t.nom) + '</b><span class="why"><span class="dot ' + dc + '"></span>' + esc(why(t)) + '</span>' + ico('arrow') + '</button>'; }).join('') + '</div></section>';
   }
   // Tableau des types : une ligne cliquable par type, qui lance un exercice
   function typesTable(list, fam) {
@@ -332,14 +309,13 @@
     h += S.confirmReset ? '<div class="confirm"><span>Effacer toute la progression ? Cette action est définitive.</span><button type="button" class="btn sm danger" data-act="resetyes">Effacer</button><button type="button" class="btn sm" data-act="resetno">Annuler</button></div>' : '<div class="row"><button type="button" class="btn sm danger" data-act="reset">Effacer ma progression</button></div>';
     return h + '</article>';
   }
-  function dotCls(t) { var s = st(t.id), l = (s.last || [])[0]; if (!s.n) return ''; if (l && l.s < 0.6) return 'weak'; if (isDue(s)) return 'due'; return 'good'; }
   function viewTrain() {
     var el = eligible();
     if (S.trainType && !el.some(function (t) { return t.id === S.trainType; })) { S.trainType = null; S.train = null; }
     if (S.train) return '<div class="row"><button type="button" class="btn sm ghost" data-act="choose">' + ico('back') + 'Choisir un autre exercice</button></div>' + exHtml(S.train, 'train');
     // Aucun exercice en cours : on choisit avant de commencer
     var fams = []; el.forEach(function (t) { if (fams.indexOf(t.famille) < 0) fams.push(t.famille); });
-    var h = '<section class="hero"><h1 class="h-page">Choisis un exercice</h1></section>' + recoHtml();
+    var h = '<section class="hero"><h1 class="h-page">Choisis un exercice</h1></section>';
     fams.forEach(function (f) { h += '<article class="sheet"><h2 class="h-sec">' + esc(f) + '</h2>' + typesTable(el.filter(function (t) { return t.famille === f; }), false) + '</article>'; });
     return h;
   }
@@ -516,7 +492,6 @@
     if (ds.epdel) { S.prog.epreuves = S.prog.epreuves.filter(function (e) { return String(e.d) !== ds.epdel; }); S.confirmDel = null; Store.save(); return render(); }
     if (ds.pill !== undefined) { examSwitch(Number(ds.pill)); render(); var e2 = $('.exambar'); if (e2) e2.scrollIntoView({ block: 'start' }); return; }
     switch (ds.act) {
-      case 'auto': return startTrain(recommend(1)[0].id);
       case 'choose': S.train = null; S.trainType = null; render(); window.scrollTo(0, 0); return;
       case 'epdelno': S.confirmDel = null; return render();
       case 'tdelno': S.confirmTdel = null; return render();

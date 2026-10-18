@@ -8,13 +8,6 @@
 @media (max-width: 519px) { .tw { margin-inline: calc(var(--s4) * -1); padding-inline: var(--s4); } }
 .small b, .lede b { color: var(--ink); }
 
-/* Tableau de bord : la première recommandation est la carte principale */
-.reco > button { display: flex; flex-direction: column; gap: 6px; padding: var(--s4); border-radius: var(--r-md); border: var(--bw) solid var(--line); background: var(--surface); color: var(--ink); text-align: left; cursor: pointer; position: relative; }
-.reco > button:hover { border-color: var(--edge); }
-.reco > button b { font-size: var(--t-base); font-weight: 800; padding-right: 22px; }
-.reco > button .why { display: flex; gap: 6px; align-items: center; font-size: var(--t-sm); color: var(--muted); }
-.reco > button > svg { position: absolute; top: 16px; right: 14px; width: 18px; height: 18px; color: var(--ink); }
-.reco > button.first { border-color: var(--edge); box-shadow: var(--lift-sm); }
 table.t tr.click:focus-visible { outline-offset: -2px; }
 .seg-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2) var(--s3); }
 .seg-row .seg { flex-wrap: wrap; border-radius: var(--r-md); }
