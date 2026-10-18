@@ -43,7 +43,9 @@ Direction actuelle, déclinaison **Sage** avec la mise en page **Colonne**. Appl
 | --- | --- |
 | `pastille/tokens.css` | Variables (couleurs, relief, rayons, police) et composants de base |
 | `pastille/appli.css` | Ossature et composants communs aux trois applis (menu latéral, onglets du bas, options QCM, feuille de réponse, journal…). Garde les noms de classes de « Copie double » pour que les vues n'aient pas à changer |
-| `logos/propositions.html` | Six pistes de logo pour le site, montrées dans le menu latéral (clair et sombre), l'onglet du navigateur et l'écran d'accueil. L'icône installée et le favicon sont encore ceux de « Copie double » : la piste retenue les remplacera |
+| `logos/prepa.svg` | Logo du site, piste « Quatre pastilles » : favicon (suit le thème sombre) et pastille du menu de l'accueil |
+| `logos/prepa-icone.svg` | Le logo sur fond lilas très pâle, source des icônes PNG de `site/icones/` (180 et « maskable » 512 plein cadre, 192 et 512 aux coins arrondis) |
+| `logos/propositions.html` | Les six pistes de logo étudiées, montrées dans le menu latéral (clair et sombre), l'onglet du navigateur et l'écran d'accueil |
 
 Les `build.js` des trois applis ajoutent `tokens.css` puis `appli.css` avant le style propre à chaque appli :
 rien à recopier à la main. Chaque appli choisit son pastel avec `data-app="qcm|qrc|atelier"`.
@@ -56,6 +58,8 @@ rien à recopier à la main. Chaque appli choisit son pastel avec `data-app="qcm
 - **Mise en page** : menu latéral de 260 px sur ordinateur, barre d'onglets en bas sur téléphone (< 860 px),
   tableau de bord du jour au centre. L'accueil lit la progression que chaque appli garde dans le navigateur.
 - **Typographie** : Nunito seule, de 600 à 900 ; la graisse fait la hiérarchie.
+- **Logo** « Quatre pastilles » : un rond par outil dans l'ordre du menu (QCM lilas, QRC menthe, écrit et oral corail,
+  documents soleil), lu aussi comme les cases A, B, C, D d'un QCM ; la case cochée est seule en relief.
 - États juste / faux / à revoir toujours doublés d'un pictogramme ou d'un mot ; contrastes ≥ 4,5:1 en clair et en sombre
   (juste `#1D7540`, faux `#B8322A`, à revoir `#855000` sur blanc et sur leur teinte).
 
