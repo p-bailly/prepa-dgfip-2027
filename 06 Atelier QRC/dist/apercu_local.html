@@ -3291,22 +3291,34 @@ ANNALES = [
     v.classList.toggle('wide', !!currentEx());
     measure(); syncHist();
   }
-  // Bouton retour du navigateur : un exercice, un sujet réel ou une épreuve ouvre une étape d'historique,
-  // si bien que « retour » ramène à la liste de l'onglet au lieu de quitter l'atelier. Une épreuve en cours reste ouverte.
+  // Bouton retour du navigateur : chaque niveau ouvert ajoute une étape d'historique.
+  // Entraînement et sujets : liste (0) → page du type ou du sujet, avec Démarrer (1) → exercice commencé (2).
+  // « Retour » depuis un exercice ramène donc à sa page, puis à la liste. Une épreuve en cours reste ouverte.
   var skipPop = false;
-  function inSub() { return (S.view === 'train' && !!S.train) || (S.view === 'annales' && !!S.annale) || (S.view === 'exam' && !!S.exam); }
+  function level() {
+    var ex = S.view === 'train' ? S.train : S.view === 'annales' ? S.annale : null;
+    if (ex) return ex.start ? 2 : 1;
+    return S.view === 'exam' && S.exam ? 1 : 0;
+  }
   function syncHist() {
     try {
-      var on = !!(history.state && history.state.qrcSub);
-      if (inSub() && !on) history.pushState({ qrcSub: 1 }, '');
-      else if (!inSub() && on && !skipPop) { skipPop = true; history.back(); }
+      var want = level(), cur = (history.state && history.state.qrcSub) || 0;
+      if (skipPop) return;
+      for (var k = cur + 1; k <= want; k++) history.pushState({ qrcSub: k }, '');
+      if (want < cur) { skipPop = true; history.go(want - cur); }
     } catch (e) { }
   }
+  function annaleEx(id) { var a = ANNALES.filter(function (x) { return x.id === id; })[0]; var ex = makeEx(a.type, { params: a.p, src: a.src, note: a.note, wait: true }); ex.annaleId = id; return ex; }
   window.addEventListener('popstate', function () {
-    if (skipPop) { skipPop = false; return; }
-    if (S.view === 'train') { S.train = null; S.trainType = null; S.confirmTdel = null; }
-    else if (S.view === 'annales') S.annale = null;
-    else if (S.view === 'exam' && S.exam && S.exam.done) S.exam = null;
+    if (skipPop) { skipPop = false; syncHist(); return; }
+    var n = (history.state && history.state.qrcSub) || 0;
+    if (S.view === 'train' && S.train) {
+      if (!n) { S.train = null; S.trainType = null; }
+      else if (S.train.start) S.train = makeEx(S.train.typeId, { wait: true });
+      S.confirmTdel = null;
+    } else if (S.view === 'annales' && S.annale) {
+      S.annale = n && S.annale.start ? annaleEx(S.annale.annaleId) : null;
+    } else if (S.view === 'exam' && S.exam && S.exam.done && !n) S.exam = null;
     render(); window.scrollTo(0, 0);
   });
   function measure() { var t = $('.appbar'); if (t) document.documentElement.style.setProperty('--hh', t.offsetHeight + 'px'); }
@@ -3332,7 +3344,7 @@ ANNALES = [
     if (ds.fiche) { S.fiche = ds.fiche; return go('fiches'); }
     if (ds.p) { S.prog.settings.profil = ds.p; Store.save(); if (S.exam && !S.exam.done) { } else S.exam = null; return render(); }
     if (ds.train) return startTrain(ds.train);
-    if (ds.annale) { var a = ANNALES.filter(function (x) { return x.id === ds.annale; })[0]; S.annale = makeEx(a.type, { params: a.p, src: a.src, note: a.note, wait: true }); render(); window.scrollTo(0, 0); return; }
+    if (ds.annale) { S.annale = annaleEx(ds.annale); render(); window.scrollTo(0, 0); return; }
     if (ds.pcg !== undefined) { S.prog.settings.pcgOld = ds.pcg === '1'; Store.save(); return render(); }
     if (ds.eprev) return reviewExam(ds.eprev);
     if (ds.epdelask) { S.confirmDel = ds.epdelask; return render(); }
