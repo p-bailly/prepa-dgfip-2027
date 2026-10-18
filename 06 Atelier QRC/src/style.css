@@ -23,7 +23,8 @@ table.t tr.click:focus-visible { outline-offset: -2px; }
 .ex { display: flex; flex-direction: column; gap: var(--s5); }
 .ex-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: var(--s3); }
 .clock:has(.over) { color: var(--bad); border-color: var(--bad); }
-/* Avant le départ : objectif de temps et bouton Démarrer */
+/* Avant le départ : objectif de temps et bouton Démarrer, puis l'historique du type */
+.t b.ok { color: var(--ok); } .t b.warn { color: var(--warn); } .t b.bad { color: var(--bad); }
 .ex-start { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s3); }
 .ex-start b { display: inline-flex; align-items: center; gap: 8px; font-size: var(--t-md); font-weight: 900; }
 .ex-start b svg { width: 18px; height: 18px; }
