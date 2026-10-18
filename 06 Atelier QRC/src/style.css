@@ -106,7 +106,6 @@ table.journal td:nth-child(3), table.journal td:nth-child(4) { text-align: right
   table.calc td:first-child { min-width: 0; }
   table.calc td:nth-child(2) { font-size: var(--t-xs); }
 }
-.pickrow select.pick { flex: 1 1 260px; width: auto; }
 
 /* Énoncé toujours visible pendant la saisie */
 .ex-grid { display: flex; flex-direction: column; gap: var(--s5); }

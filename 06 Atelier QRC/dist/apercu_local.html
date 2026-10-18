@@ -631,7 +631,6 @@ table.journal td:nth-child(3), table.journal td:nth-child(4) { text-align: right
   table.calc td:first-child { min-width: 0; }
   table.calc td:nth-child(2) { font-size: var(--t-xs); }
 }
-.pickrow select.pick { flex: 1 1 260px; width: auto; }
 
 /* Énoncé toujours visible pendant la saisie */
 .ex-grid { display: flex; flex-direction: column; gap: var(--s5); }
@@ -2854,7 +2853,7 @@ ANNALES = [
     I: { label: 'inspecteur', date: new Date(2026, 11, 7), n: 4, min: 70, txt: '4 exercices en 1 h 10' },
     C: { label: 'contrôleur', date: new Date(2027, 0, 11), n: 3, min: 60, txt: '3 exercices en 1 h' }
   };
-  var S = { prog: blank(), view: 'train', train: null, trainType: null, annale: null, exam: null, fiche: null, confirmReset: false };
+  var S = { prog: blank(), view: 'train', train: null, trainType: null, annale: null, exam: null, fiche: null, confirmReset: false, confirmDel: null };
   var uid = 0;
   var COURT = { affectation: 'Affectation', tva_ca3: 'TVA CA3', tva_coef: 'Coef. TVA', tva_regul: 'Régul. TVA', amort: 'Amortissement', derog: 'Dérogatoire', cession: 'Cession', depreciations: 'Dépréciations', regul: 'Régularisations', augcap: 'Capital', seuil: 'Seuil', commande: 'Coût marginal', sig_caf: 'SIG et CAF', bilan_fonc: 'Bilan fonct.', ratios: 'Ratios', is: 'IS', devises: 'Devises' };
   function blank() { return { v: 1, updated: 0, types: {}, epreuves: [], settings: { profil: 'I', pcgOld: false } }; }
@@ -2869,6 +2868,9 @@ ANNALES = [
   function esc(s) { return String(s === undefined || s === null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function mmss(s) { s = Math.max(0, Math.round(s)); var m = Math.floor(s / 60), r = s % 60; return (m < 10 ? '0' : '') + m + ':' + (r < 10 ? '0' : '') + r; }
   function pct(x) { return Math.round(x * 100) + ' %'; }
+  // Note sur 20 : le score (part des résultats et des écritures justes) ramené au barème du concours
+  function note(x) { return U.n(x * 20, 1); }
+  function noteTxt(x) { return note(x) + ' / 20'; }
   function profil() { return S.prog.settings.profil === 'C' ? 'C' : 'I'; }
   // Pictogrammes de la charte (trait 1,8 px, 24 × 24)
   var ICO = {
@@ -2880,7 +2882,9 @@ ANNALES = [
     plus: '<path d="M12 5v14M5 12h14"/>',
     scale: '<path d="M12 4v16M7 20h10M4.5 8h15M7 8l-3 6a3 3 0 0 0 6 0zM17 8l-3 6a3 3 0 0 0 6 0z"/>',
     flag: '<path d="M5.5 21V4.5M5.5 5h11l-2 4 2 4h-11"/>',
-    book: '<path d="M4.5 5.5c2.5-1 5-1 7.5.5v13c-2.5-1.5-5-1.5-7.5-.5zM19.5 5.5c-2.5-1-5-1-7.5.5v13c2.5-1.5 5-1.5 7.5-.5z"/>'
+    book: '<path d="M4.5 5.5c2.5-1 5-1 7.5.5v13c-2.5-1.5-5-1.5-7.5-.5zM19.5 5.5c-2.5-1-5-1-7.5.5v13c2.5-1.5 5-1.5 7.5-.5z"/>',
+    back: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
+    trash: '<path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5"/>'
   };
   function ico(n) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICO[n] + '</svg>'; }
 
@@ -2928,10 +2932,10 @@ ANNALES = [
   function why(t) {
     var s = st(t.id), l = (s.last || [])[0];
     if (!s.n) return 'Jamais travaillé';
-    if (l && l.s < 0.6) return 'Raté la dernière fois (' + pct(l.s) + ')';
+    if (l && l.s < 0.6) return 'Raté la dernière fois (' + noteTxt(l.s) + ')';
     if (s.due <= Date.now()) return 'Révision prévue aujourd’hui';
     if (l && l.t > t.minutes * 60 * 1.3) return 'Trop lent la dernière fois (' + mmss(l.t) + ')';
-    return 'Moyenne ' + pct(avg(s));
+    return 'Moyenne ' + noteTxt(avg(s));
   }
   function nextTxt(s) {
     if (!s.n) return 'nouveau';
@@ -2952,7 +2956,7 @@ ANNALES = [
   function makeEx(typeId, o) {
     o = o || {};
     U.pcgOld = !!S.prog.settings.pcgOld;
-    var t = T[typeId], seed = o.seed || (Math.floor(Math.random() * 899999) + 100000), opt = { profil: profil() };
+    var t = T[typeId], seed = o.seed || (Math.floor(Math.random() * 899999) + 100000), opt = { profil: o.profil || profil() };
     var p = o.params ? JSON.parse(JSON.stringify(o.params)) : t.gen(U.rng(seed), opt);
     var data = t.solve(p, opt);
     return { uid: ++uid, typeId: typeId, seed: seed, params: p, data: data, src: o.src || null, note: o.note || null, answers: {},
@@ -3042,7 +3046,7 @@ ANNALES = [
   }
   function scoreHtml(ex) {
     var R = ex.res, t = T[ex.typeId], s = st(ex.typeId);
-    return '<div class="score" role="status"><span class="big">' + Math.round(R.score * 100) + '<small> %</small></span><div class="stack" style="gap:4px"><b>' + R.ok + ' sur ' + R.nq + ' résultats exacts' + (R.js !== null ? ' · écritures : ' + pct(R.js) : '') + '</b><span class="small muted">Temps : ' + mmss(ex.secs) + ' (objectif ' + t.minutes + ' min)' + (ex.secs > t.minutes * 60 ? ' : trop lent' : '') + '</span><div><span class="badge ' + (R.score >= 0.8 ? 'ok' : (R.score >= 0.5 ? 'warn' : 'bad')) + '">Prochaine révision : ' + nextTxt(s) + '</span></div></div></div>';
+    return '<div class="score" role="status"><span class="big">' + note(R.score) + '<small> / 20</small></span><div class="stack" style="gap:4px"><b>' + R.ok + ' sur ' + R.nq + ' résultats exacts' + (R.js !== null ? ' · écritures : ' + pct(R.js) : '') + '</b><span class="small muted">Temps : ' + mmss(ex.secs) + ' (objectif ' + t.minutes + ' min)' + (ex.secs > t.minutes * 60 ? ' : trop lent' : '') + '</span><div><span class="badge ' + (R.score >= 0.8 ? 'ok' : (R.score >= 0.5 ? 'warn' : 'bad')) + '">Prochaine révision : ' + nextTxt(s) + '</span></div></div></div>';
   }
   function exHtml(ex, mode) {
     var t = T[ex.typeId], d = ex.data;
@@ -3092,16 +3096,31 @@ ANNALES = [
     el.forEach(function (t) { var s = st(t.id); nEx += s.n; sum += s.sum; if (s.n && isDue(s)) due++; if ((s.box || 0) >= 4) solid++; });
     var cfg = EXAMS[profil()], ep = S.prog.epreuves.filter(function (e) { return e.p === profil(); });
     var h = '<section class="hero"><h1 class="h-page">' + (due ? '<mark class="hl">' + due + ' type' + (due > 1 ? 's' : '') + '</mark> à revoir aujourd’hui' : !nEx ? '<mark class="hl">' + el.length + ' types</mark> à découvrir' : 'Rien à revoir aujourd’hui') + '</h1></section>';
-    h += '<div class="stats"><div class="stat"><span>Exercices corrigés</span><b>' + nEx + '</b></div><div class="stat"><span>Score moyen</span><b>' + (nEx ? Math.round(sum / nEx * 100) + ' <small>%</small>' : '—') + '</b></div><div class="stat"><span>Types maîtrisés</span><b>' + solid + ' <small>/ ' + el.length + '</small></b></div><div class="stat"><span>Épreuves blanches</span><b>' + ep.length + '</b>' + (ep.length ? '<span>dernière : ' + pct(ep[0].s) + '</span>' : '') + '</div></div>';
-    h += '<section class="stack"><div class="row between"><h2 class="h-sec">À travailler maintenant</h2><button type="button" class="btn ghost sm" data-act="auto">Point faible</button></div><div class="reco">' + recommend(3).map(function (t, i) { var dc = { weak: 'bad', due: 'warn', good: 'ok', '': '' }[dotCls(t)]; return '<button type="button" data-train="' + t.id + '"' + (i === 0 ? ' class="first"' : '') + '><span class="eyebrow">' + esc(t.famille) + '</span><b>' + esc(t.nom) + '</b><span class="why"><span class="dot ' + dc + '"></span>' + esc(why(t)) + '</span>' + ico('arrow') + '</button>'; }).join('') + '</div></section>';
-    h += '<article class="sheet"><h2 class="h-sec">Progression par type</h2><div class="tw"><table class="t"><thead><tr><th>Type d’exercice</th><th>Niveau</th><th class="num hide-sm">Moyenne</th><th class="num hide-sm">Dernier</th><th>Révision</th></tr></thead><tbody>';
-    el.forEach(function (t) {
-      var s = st(t.id), l = (s.last || [])[0], a = avg(s), nt = nextTxt(s);
-      h += '<tr class="click" data-train="' + t.id + '" tabindex="0"><td><b>' + esc(t.nom) + '</b><div class="small muted">' + esc(t.famille) + (t.ctrl ? '' : ' · inspecteur') + '</div></td><td>' + pips(s.box || 0) + '</td><td class="num hide-sm">' + (a === null ? '—' : pct(a)) + '</td><td class="num hide-sm">' + (l ? pct(l.s) + ' · ' + mmss(l.t) : '—') + '</td><td><span class="badge ' + (nt === 'à revoir' ? 'warn' : (nt === 'nouveau' ? 'out' : 'ok')) + '">' + nt + '</span></td></tr>';
-    });
-    h += '</tbody></table></div></article>';
-    if (ep.length) h += '<article class="sheet"><h2 class="h-sec">Dernières épreuves blanches</h2><div class="tw"><table class="t"><thead><tr><th>Date</th><th class="num">Score</th><th class="num">Durée</th><th class="hide-sm">Exercices</th></tr></thead><tbody>' + ep.slice(0, 6).map(function (e) { return '<tr><td>' + new Date(e.d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) + '</td><td class="num"><b>' + pct(e.s) + '</b></td><td class="num">' + mmss(e.t) + '</td><td class="hide-sm small">' + e.x.map(function (x) { return esc((T[x.id] || { nom: x.id }).nom) + ' (' + pct(x.s) + ')'; }).join(', ') + '</td></tr>'; }).join('') + '</tbody></table></div></article>';
+    h += '<div class="stats"><div class="stat"><span>Exercices corrigés</span><b>' + nEx + '</b></div><div class="stat"><span>Note moyenne</span><b>' + (nEx ? note(sum / nEx) + ' <small>/ 20</small>' : '—') + '</b></div><div class="stat"><span>Types maîtrisés</span><b>' + solid + ' <small>/ ' + el.length + '</small></b></div><div class="stat"><span>Épreuves blanches</span><b>' + ep.length + '</b>' + (ep.length ? '<span>dernière : ' + noteTxt(ep[0].s) + '</span>' : '') + '</div></div>';
+    h += recoHtml();
+    h += '<article class="sheet"><h2 class="h-sec">Progression par type</h2>' + typesTable(el, true) + '</article>';
+    if (ep.length) h += '<article class="sheet"><h2 class="h-sec">Dernières épreuves blanches</h2>' + epTable(ep.slice(0, 6), false) + '</article>';
     return h;
+  }
+  // Recommandations : les trois types à travailler en priorité
+  function recoHtml() {
+    return '<section class="stack"><div class="row between"><h2 class="h-sec">À travailler maintenant</h2><button type="button" class="btn ghost sm" data-act="auto">Point faible</button></div><div class="reco">' + recommend(3).map(function (t, i) { var dc = { weak: 'bad', due: 'warn', good: 'ok', '': '' }[dotCls(t)]; return '<button type="button" data-train="' + t.id + '"' + (i === 0 ? ' class="first"' : '') + '><span class="eyebrow">' + esc(t.famille) + '</span><b>' + esc(t.nom) + '</b><span class="why"><span class="dot ' + dc + '"></span>' + esc(why(t)) + '</span>' + ico('arrow') + '</button>'; }).join('') + '</div></section>';
+  }
+  // Tableau des types : une ligne cliquable par type, qui lance un exercice
+  function typesTable(list, fam) {
+    var h = '<div class="tw"><table class="t"><thead><tr><th>Type d’exercice</th><th>Niveau</th><th class="num hide-sm">Moyenne</th><th class="num hide-sm">Dernier</th><th>Révision</th></tr></thead><tbody>';
+    list.forEach(function (t) {
+      var s = st(t.id), l = (s.last || [])[0], a = avg(s), nt = nextTxt(s);
+      h += '<tr class="click" data-train="' + t.id + '" tabindex="0"><td><b>' + esc(t.nom) + '</b><div class="small muted">' + (fam ? esc(t.famille) + (t.ctrl ? '' : ' · inspecteur') : t.minutes + ' min' + (t.ctrl ? '' : ' · inspecteur')) + '</div></td><td>' + pips(s.box || 0) + '</td><td class="num hide-sm">' + (a === null ? '—' : noteTxt(a)) + '</td><td class="num hide-sm">' + (l ? noteTxt(l.s) + ' · ' + mmss(l.t) : '—') + '</td><td><span class="badge ' + (nt === 'à revoir' ? 'warn' : (nt === 'nouveau' ? 'out' : 'ok')) + '">' + nt + '</span></td></tr>';
+    });
+    return h + '</tbody></table></div>';
+  }
+  // Historique des épreuves blanches : une ligne par épreuve, à revoir d'un clic (si le détail a été conservé)
+  function epTable(list, del) {
+    return '<div class="tw"><table class="t"><thead><tr><th>Date</th><th class="hide-sm">Programme</th><th class="hide-sm">Exercices</th><th class="num">Durée</th><th class="num">Note / 20</th>' + (del ? '<th aria-label="Supprimer"></th>' : '') + '</tr></thead><tbody>' + list.map(function (e) {
+      var rev = e.x.length && e.x[0].p, day = new Date(e.d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+      return '<tr' + (rev ? ' class="click" data-eprev="' + e.d + '" tabindex="0" title="Revoir l’épreuve"' : '') + '><td>' + day + '</td><td class="hide-sm">' + (e.p === 'C' ? 'Contrôleur' : 'Inspecteur') + '</td><td class="hide-sm small">' + e.x.map(function (x) { return esc(COURT[x.id] || x.id) + ' (' + note(x.s) + ')'; }).join(', ') + '</td><td class="num">' + mmss(e.t) + '</td><td class="num"><b>' + note(e.s) + '</b></td>' + (del ? '<td class="num"><button type="button" class="btn sm ghost" data-epdelask="' + e.d + '" aria-label="Supprimer l’épreuve du ' + day + '" title="Supprimer">' + ico('trash') + '</button></td>' : '') + '</tr>';
+    }).join('') + '</tbody></table></div>';
   }
   // Réglages : compte, synchronisation et préférences, dans leur propre onglet
   function viewReglages() {
@@ -3117,14 +3136,11 @@ ANNALES = [
   function viewTrain() {
     var el = eligible();
     if (S.trainType && !el.some(function (t) { return t.id === S.trainType; })) { S.trainType = null; S.train = null; }
-    if (!S.train) { S.trainType = recommend(1)[0].id; S.train = makeEx(S.trainType); }
-    var h = '';
+    if (S.train) return '<div class="row"><button type="button" class="btn sm ghost" data-act="choose">' + ico('back') + 'Choisir un autre exercice</button></div>' + exHtml(S.train, 'train');
+    // Aucun exercice en cours : on choisit avant de commencer
     var fams = []; el.forEach(function (t) { if (fams.indexOf(t.famille) < 0) fams.push(t.famille); });
-    var sel = '<select class="input pick" id="pick-type" aria-label="Type d’exercice">' + fams.map(function (f) {
-      return '<optgroup label="' + esc(f) + '">' + el.filter(function (t) { return t.famille === f; }).map(function (t) { return '<option value="' + t.id + '"' + (S.trainType === t.id ? ' selected' : '') + '>' + esc(t.nom) + ' · ' + nextTxt(st(t.id)) + '</option>'; }).join('') + '</optgroup>';
-    }).join('') + '</select>';
-    h += '<div class="sheet tight"><div class="row pickrow">' + sel + '<button type="button" class="btn" data-act="picked">Nouvel exercice</button><button type="button" class="btn pri" data-act="auto">Point faible</button></div></div>';
-    if (S.train) h += exHtml(S.train, 'train');
+    var h = '<section class="hero"><h1 class="h-page">Choisis un exercice</h1></section>' + recoHtml();
+    fams.forEach(function (f) { h += '<article class="sheet"><h2 class="h-sec">' + esc(f) + '</h2>' + typesTable(el.filter(function (t) { return t.famille === f; }), false) + '</article>'; });
     return h;
   }
   function acctHtml(x) {
@@ -3160,19 +3176,40 @@ ANNALES = [
   function viewExam() {
     var cfg = EXAMS[profil()], E = S.exam;
     if (!E) {
-      return '<section class="hero"><span class="eyebrow">Épreuve blanche · ' + cfg.label + '</span><h1 class="h-page">' + cfg.txt + '</h1></section><div class="row"><button type="button" class="btn pri" data-act="startexam">Commencer l’épreuve ' + ico('arrow') + '</button></div>';
+      var ep = S.prog.epreuves, h0 = '<section class="hero"><h1 class="h-page">Épreuves blanches</h1></section>';
+      h0 += '<article class="sheet"><div class="row between"><h2 class="h-sec">Programme ' + cfg.label + '</h2><span class="badge mono out">' + (cfg.min >= 60 ? '1 h' + (cfg.min > 60 ? ' ' + (cfg.min - 60) : '') : cfg.min + ' min') + '</span></div><p><b>' + cfg.n + ' exercices</b> tirés parmi tes points faibles · écrit le ' + dateTxt(cfg.date) + '</p><div><button type="button" class="btn pri" data-act="startexam">Commencer ' + ico('arrow') + '</button></div></article>';
+      if (ep.length) {
+        h0 += '<article class="sheet"><h2 class="h-sec">Dernières épreuves</h2>' + epTable(ep, true);
+        if (S.confirmDel) { var cd = ep.filter(function (e) { return String(e.d) === S.confirmDel; })[0]; if (cd) h0 += '<div class="confirm"><span>Supprimer l’épreuve du ' + new Date(cd.d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) + ' (' + noteTxt(cd.s) + ') ?</span><button type="button" class="btn sm danger" data-epdel="' + cd.d + '">Supprimer</button><button type="button" class="btn sm" data-act="epdelno">Annuler</button></div>'; }
+        h0 += '</article>';
+      }
+      return h0;
     }
+    if (E.review) cfg = EXAMS[E.p];
     var h = '<div class="exambar"><div class="row">';
     var rem = E.done ? 0 : E.dur - (Date.now() - E.start) / 1000;
-    h += E.done ? '<span class="big">' + pct(E.score) + '</span>' : '<span class="clock" title="Temps restant">' + ico('clock') + '<span id="cd">' + mmss(rem) + '</span></span>';
-    h += '<div class="pills">' + E.items.map(function (x, i) { return '<button type="button" data-pill="' + i + '" aria-current="' + (i === E.cur) + '">' + (i + 1) + '. ' + esc(COURT[x.typeId] || x.typeId) + (E.done ? ' · ' + pct(x.res.score) : '') + '</button>'; }).join('') + '</div></div>';
-    h += E.done ? '<button type="button" class="btn sm" data-act="newexam">Nouvelle épreuve</button>' : '<button type="button" class="btn sm" data-act="submit">Rendre la copie</button>';
+    h += E.done ? '<span class="big">' + noteTxt(E.score) + '</span>' : '<span class="clock" title="Temps restant">' + ico('clock') + '<span id="cd">' + mmss(rem) + '</span></span>';
+    h += '<div class="pills">' + E.items.map(function (x, i) { return '<button type="button" data-pill="' + i + '" aria-current="' + (i === E.cur) + '">' + (i + 1) + '. ' + esc(COURT[x.typeId] || x.typeId) + (E.done ? ' · ' + note(x.res.score) : '') + '</button>'; }).join('') + '</div></div>';
+    h += E.done ? '<button type="button" class="btn sm" data-act="examlist">' + ico('back') + 'Retour aux épreuves</button>' : '<button type="button" class="btn sm" data-act="submit">Rendre la copie</button>';
     h += '</div>';
     if (E.done) {
-      h += '<article class="sheet"><h2 class="h-sec">Résultat de l’épreuve</h2><div class="tw"><table class="t"><thead><tr><th>Exercice</th><th class="num">Score</th><th class="num">Temps passé</th></tr></thead><tbody>' + E.items.map(function (x, i) { return '<tr class="click" data-pill="' + i + '"><td>' + (i + 1) + '. ' + esc(T[x.typeId].nom) + '</td><td class="num">' + pct(x.res.score) + '</td><td class="num">' + mmss(E.spent[i]) + '</td></tr>'; }).join('') + '<tr class="tot"><td>Total</td><td class="num">' + pct(E.score) + '</td><td class="num">' + mmss(E.used) + ' / ' + cfg.min + ':00</td></tr></tbody></table></div></article>';
+      h += '<article class="sheet"><h2 class="h-sec">Résultat de l’épreuve' + (E.review ? ' du ' + new Date(E.d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : '') + '</h2><div class="tw"><table class="t"><thead><tr><th>Exercice</th><th class="num">Note / 20</th><th class="num">Temps passé</th></tr></thead><tbody>' + E.items.map(function (x, i) { return '<tr class="click" data-pill="' + i + '"><td>' + (i + 1) + '. ' + esc(T[x.typeId].nom) + '</td><td class="num">' + note(x.res.score) + '</td><td class="num">' + mmss(E.spent[i]) + '</td></tr>'; }).join('') + '<tr class="tot"><td>Note de l’épreuve</td><td class="num">' + note(E.score) + '</td><td class="num">' + mmss(E.used) + ' / ' + cfg.min + ':00</td></tr></tbody></table></div><p class="small muted">Chaque exercice compte autant ; sa note mêle les résultats chiffrés et les écritures justes.</p></article>';
       h += exHtml(E.items[E.cur], 'review');
     } else h += exHtml(E.items[E.cur], 'exam');
     return h;
+  }
+  // Revue d'une épreuve passée : les exercices sont reconstruits à partir des données et des réponses conservées
+  function reviewExam(d) {
+    var e = S.prog.epreuves.filter(function (x) { return String(x.d) === String(d); })[0]; if (!e || !e.x.length || !e.x[0].p) return;
+    var items = e.x.map(function (x) {
+      var ex = makeEx(x.id, { params: x.p, seed: x.seed, profil: e.p });
+      ex.answers = x.a || {};
+      ex.jl = ex.data.journal.map(function (en, i) { var l = ((x.j || [])[i] || []).map(function (r) { return { a: r.a || '', d: r.d || '', c: r.c || '' }; }); while (l.length < en.lines.length) l.push({ a: '', d: '', c: '' }); return l; });
+      ex.res = grade(ex); ex.checked = true; ex.secs = x.t;
+      return ex;
+    });
+    S.exam = { review: true, d: e.d, p: e.p, items: items, cur: 0, done: true, score: e.s, used: e.t, spent: e.x.map(function (x) { return x.t; }) };
+    S.view = 'exam'; render(); window.scrollTo(0, 0);
   }
   function drawExam() {
     var cfg = EXAMS[profil()], pool = eligible().slice(), chosen = [], fam = {};
@@ -3197,7 +3234,12 @@ ANNALES = [
     var tot = 0;
     E.items.forEach(function (ex, i) { ex.res = grade(ex); ex.checked = true; ex.secs = E.spent[i]; tot += ex.res.score; record(ex.typeId, ex.res.score, E.spent[i], 'epreuve'); });
     E.score = tot / E.items.length; E.done = true; E.cur = 0;
-    S.prog.epreuves = [{ d: Date.now(), p: profil(), s: U.rd(E.score, 3), t: Math.round(E.used), x: E.items.map(function (ex, i) { return { id: ex.typeId, s: U.rd(ex.res.score, 3), t: Math.round(E.spent[i]) }; }) }].concat(S.prog.epreuves).slice(0, 30);
+    S.prog.epreuves = [{ d: Date.now(), p: profil(), s: U.rd(E.score, 3), t: Math.round(E.used), x: E.items.map(function (ex, i) {
+      // Données et réponses conservées pour revoir la copie ; lignes de journal vides écartées
+      var a = {}; Object.keys(ex.answers).forEach(function (k) { if (String(ex.answers[k]).trim() !== '') a[k] = ex.answers[k]; });
+      var j = ex.jl.map(function (ls) { return ls.filter(function (l) { return String(l.a || '').trim() || String(l.d || '').trim() || String(l.c || '').trim(); }); });
+      return { id: ex.typeId, s: U.rd(ex.res.score, 3), t: Math.round(E.spent[i]), seed: ex.seed, p: ex.params, a: a, j: j };
+    }) }].concat(S.prog.epreuves).slice(0, 30);
     Store.save();
   }
 
@@ -3222,10 +3264,14 @@ ANNALES = [
     dr.classList.toggle('open', open); if (fab) fab.setAttribute('aria-expanded', String(open));
   });
   document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') { var dr = document.querySelector('.enonce-drawer.open'); if (dr) dr.classList.remove('open'); } });
-  function go(v) { S.view = v; S.confirmReset = false; render(); window.scrollTo(0, 0); }
+  function go(v) {
+    // Un second clic sur l'onglet Épreuves ramène de la copie corrigée à la liste
+    if (v === 'exam' && S.view === 'exam' && S.exam && S.exam.done) S.exam = null;
+    S.view = v; S.confirmReset = false; S.confirmDel = null; render(); window.scrollTo(0, 0);
+  }
 
   document.addEventListener('click', function (ev) {
-    var b = ev.target.closest('button, a[data-v], a[data-fiche], tr[data-train], tr[data-pill]'); if (!b) return;
+    var b = ev.target.closest('button, a[data-v], a[data-fiche], tr[data-train], tr[data-pill], tr[data-eprev]'); if (!b) return;
     var ds = b.dataset, ex = currentEx();
     if (b.tagName === 'A') ev.preventDefault();
     if (ds.v) return go(ds.v);
@@ -3234,10 +3280,14 @@ ANNALES = [
     if (ds.train) return startTrain(ds.train);
     if (ds.annale) { var a = ANNALES.filter(function (x) { return x.id === ds.annale; })[0]; S.annale = makeEx(a.type, { params: a.p, src: a.src, note: a.note }); render(); window.scrollTo(0, 0); return; }
     if (ds.pcg !== undefined) { S.prog.settings.pcgOld = ds.pcg === '1'; Store.save(); return render(); }
+    if (ds.eprev) return reviewExam(ds.eprev);
+    if (ds.epdelask) { S.confirmDel = ds.epdelask; return render(); }
+    if (ds.epdel) { S.prog.epreuves = S.prog.epreuves.filter(function (e) { return String(e.d) !== ds.epdel; }); S.confirmDel = null; Store.save(); return render(); }
     if (ds.pill !== undefined) { examSwitch(Number(ds.pill)); render(); var e2 = $('.exambar'); if (e2) e2.scrollIntoView({ block: 'start' }); return; }
     switch (ds.act) {
       case 'auto': return startTrain(recommend(1)[0].id);
-      case 'picked': var pk = $('#pick-type'); return startTrain(pk ? pk.value : S.trainType);
+      case 'choose': S.train = null; S.trainType = null; render(); window.scrollTo(0, 0); return;
+      case 'epdelno': S.confirmDel = null; return render();
       case 'check':
         if (!ex) return;
         ex.secs = elapsed(ex); ex.res = grade(ex); ex.checked = true;
@@ -3254,7 +3304,7 @@ ANNALES = [
         S.exam.spent = S.exam.items.map(function () { return 0; });
         render(); window.scrollTo(0, 0); return;
       case 'submit': submitExam(); render(); window.scrollTo(0, 0); return;
-      case 'newexam': S.exam = null; return render();
+      case 'examlist': S.exam = null; S.view = 'exam'; render(); window.scrollTo(0, 0); return;
       case 'reset': S.confirmReset = true; return render();
       case 'resetno': S.confirmReset = false; return render();
       case 'resetyes':
@@ -3263,10 +3313,10 @@ ANNALES = [
   });
   document.addEventListener('keydown', function (ev) {
     if (ev.key === 'Enter' && ev.target.matches && ev.target.matches('tr[data-train]')) startTrain(ev.target.dataset.train);
+    if (ev.key === 'Enter' && ev.target.matches && ev.target.matches('tr[data-eprev]')) reviewExam(ev.target.dataset.eprev);
   });
   function onInput(ev) {
     var t = ev.target;
-    if (t.id === 'pick-type') { if (ev.type === 'change') startTrain(t.value); return; }
     if (t.id === 'pick-fiche') { if (ev.type === 'change') { S.fiche = t.value; render(); } return; }
     var ex = currentEx(); if (!ex || ex.checked) return;
     if (t.dataset.q) ex.answers[t.dataset.q] = t.value;
