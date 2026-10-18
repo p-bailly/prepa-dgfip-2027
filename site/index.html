@@ -127,7 +127,6 @@ a.card:hover { border-color: var(--edge); }
 .res small { display: block; font-size: .8125rem; color: var(--muted); }
 .res b { font-weight: 900; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .empty { font-size: .875rem; color: var(--muted); }
-.local { font-size: .8125rem; color: var(--muted); }
 
 @media (max-width: 1099px) {
   .today { grid-template-columns: 1fr 1fr; }
@@ -200,19 +199,16 @@ a.card:hover { border-color: var(--edge); }
         <span class="tag">QCM · série du jour</span>
         <div class="big"><b id="q-done">0</b><span id="q-of">/ 30 questions</span></div>
         <div class="bar" aria-hidden="true"><i id="q-bar"></i></div>
-        <p id="q-sub">Révision espacée et épreuves blanches, progrès comparés au jury.</p>
         <a class="btn go" href="qcm/" id="q-go">Commencer la série</a>
       </div>
       <a class="card" href="qrc/">
         <span class="tag qrc">QRC de comptabilité</span>
         <h2 id="r-title">Exercices chiffrés de comptabilité</h2>
-        <p id="r-sub">Écritures, TVA, amortissements, analyse financière : corrigés pas à pas.</p>
         <span class="more" id="r-go">Ouvrir l'atelier →</span>
       </a>
       <a class="card" href="atelier/">
         <span class="tag ate">Écrit et oral</span>
         <h2 id="a-title">Note de synthèse, analyse de dossier, oral</h2>
-        <p id="a-sub">Entraînement chronométré, grille d'auto-évaluation, oral enregistré.</p>
         <span class="more" id="a-go">Ouvrir l'atelier →</span>
       </a>
     </section>
@@ -226,11 +222,9 @@ a.card:hover { border-color: var(--edge); }
       <a class="card doc-card" href="docs/">
         <span class="tag doc">Documents</span>
         <h2>Fiches, annales et rapports de jury</h2>
-        <p>Sujets inspecteur et contrôleur, guides ENFiP, programmes de l'épreuve 2.</p>
         <span class="more">Toute la bibliothèque →</span>
       </a>
     </section>
-    <p class="local">Les chiffres viennent de la progression enregistrée sur cet appareil ; ouvre une appli pour la mettre à jour depuis ton compte.</p>
   </main>
 </div>
 <script>
@@ -288,8 +282,7 @@ a.card:hover { border-color: var(--edge); }
     set("q-done", done);
     set("q-of", "/ " + total + " questions");
     $("q-bar").style.width = Math.round(done * 100 / total) + "%";
-    if (done >= total) { set("q-sub", "Série du jour terminée" + (dl.n ? " : " + dl.ok + " justes sur " + dl.n + "." : ".")); set("q-go", "Voir mes progrès"); }
-    else { set("q-sub", due ? plural(due, "carte") + " à revoir en plus des nouvelles questions." : "Aucune carte en retard : place aux nouvelles questions."); set("q-go", done ? "Continuer la série" : "Commencer la série"); }
+    set("q-go", done >= total ? "Voir mes progrès" : done ? "Continuer la série" : "Commencer la série");
     if (due) set("nav-qcm", due);
     (q.exams || []).slice(0, 3).forEach(function (x) { if (x && x.at && typeof x.note === "number") results.push({ t: x.at, k: "", l: "Épreuve blanche QCM", v: dec(x.note) + "/20" }); });
   }
@@ -304,7 +297,6 @@ a.card:hover { border-color: var(--edge); }
     });
     if (last) {
       set("r-title", rdue ? plural(rdue, "type") + " d'exercice à revoir" : "Rien à revoir aujourd'hui");
-      set("r-sub", "Dernier exercice le " + day(last.d) + " : " + Math.round(last.s * 100) + " % de réussite.");
       set("r-go", rdue ? "Reprendre l'entraînement →" : "Un nouvel exercice →");
       if (rdue) set("nav-qrc", rdue);
     }
@@ -315,9 +307,9 @@ a.card:hover { border-color: var(--edge); }
   if (a) {
     function live(m) { return Object.keys(m || {}).map(function (k) { return m[k]; }).filter(function (e) { return e && !e.deleted && typeof e.note === "number"; }).sort(function (x, y) { return (y.date || 0) - (x.date || 0); }); }
     var ec = live(a.ecrits), or = live(a.oraux), ep = function (e) { return e.ep === "nds" ? "Note de synthèse" : "Analyse de dossier"; };
-    if (a.cur && a.cur.run) { set("a-title", "Un écrit est en cours"); set("a-sub", "Le chrono reprend là où tu l'as laissé."); set("a-go", "Reprendre l'écrit →"); }
-    else if (ec[0]) { set("a-title", ep(ec[0]) + " : " + dec(ec[0].note) + "/20"); set("a-sub", "Dernier écrit le " + day(ec[0].date) + (or[0] ? ", dernier oral : " + dec(or[0].note) + "/20." : ".")); set("a-go", "Nouvel entraînement →"); }
-    else if (or[0]) { set("a-title", "Dernier oral : " + dec(or[0].note) + "/20"); set("a-sub", "Enregistré le " + day(or[0].date) + "."); }
+    if (a.cur && a.cur.run) { set("a-title", "Un écrit est en cours"); set("a-go", "Reprendre l'écrit →"); }
+    else if (ec[0]) { set("a-title", ep(ec[0]) + " : " + dec(ec[0].note) + "/20"); set("a-go", "Nouvel entraînement →"); }
+    else if (or[0]) set("a-title", "Dernier oral : " + dec(or[0].note) + "/20");
     ec.slice(0, 2).forEach(function (e) { results.push({ t: e.date, k: "ate", l: ep(e), v: dec(e.note) + "/20" }); });
     or.slice(0, 2).forEach(function (e) { results.push({ t: e.date, k: "ate", l: "Oral", v: dec(e.note) + "/20" }); });
   }
