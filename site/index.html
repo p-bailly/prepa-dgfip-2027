@@ -270,8 +270,13 @@ a.card:hover { border-color: var(--edge); }
   // Compte à rebours vers l'écrit du concours suivi (réglage du QCM, sinon de l'atelier QRC).
   var mod = q && q.set && q.set.mod, prof = r && r.settings && r.settings.profil;
   var which = mod === "ctrl" || (!mod && prof === "C") ? ["ctrl"] : mod === "both" ? ["insp", "ctrl"] : ["insp"];
-  var parts = which.map(function (k) { var n = dayNum(EXAMS[k].d) - dayNum(); return n >= 0 ? "J-" + n + " avant l'écrit " + EXAMS[k].l : null; }).filter(Boolean);
-  if (parts.length) { $("countdown").hidden = false; $("countdown").lastElementChild.textContent = parts.join(" · "); }
+  // Affiché « J-50 » ; le détail (écrit visé) reste dans l'infobulle et pour les lecteurs d'écran.
+  var parts = which.map(function (k) { var n = dayNum(EXAMS[k].d) - dayNum(); return n >= 0 ? { j: "J-" + n, l: "J-" + n + " avant l'écrit " + EXAMS[k].l } : null; }).filter(Boolean);
+  if (parts.length) {
+    var cd = $("countdown"), full = parts.map(function (x) { return x.l; }).join(" · ");
+    cd.hidden = false; cd.title = full; cd.setAttribute("aria-label", full);
+    cd.lastElementChild.textContent = parts.map(function (x) { return x.j; }).join(" · ");
+  }
 
   // QCM : série du jour, cartes à revoir, examens blancs
   if (q && q.cards) {
