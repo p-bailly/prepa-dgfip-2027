@@ -73,6 +73,7 @@ svg { flex: none; }
 .acct .who b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; }
 .acct .av { width: 34px; height: 34px; flex: none; display: grid; place-items: center; border-radius: 999px; background: var(--qcm-t); font-weight: 900; text-transform: uppercase; }
 .acct .wait { color: var(--muted); }
+.acct .out svg { display: none; width: 19px; height: 19px; }
 
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 26px; padding: 34px 44px 48px; max-width: 1180px; }
 
@@ -141,9 +142,15 @@ a.card:hover { border-color: var(--edge); }
 @media (max-width: 859px) {
   .shell { display: block; }
   .side { position: static; width: auto; height: auto; flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; padding: 12px max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px)); border-right: 0; border-bottom: 1.5px solid var(--line); }
-  .brand { padding: 0; }
+  .brand { gap: 8px; padding: 0; font-size: 1rem; white-space: nowrap; }
+  .brand svg { width: 30px; height: 30px; }
   .me { margin: 0; padding: 0; border: 0; align-items: center; }
+  /* Pastille et déconnexion sur une seule ligne : le bouton ne garde que son icône */
+  .acct { flex-wrap: nowrap; justify-content: flex-end; gap: 2px; }
   .acct .who b { display: none; }
+  .acct .out { width: 44px; padding: 0; }
+  .acct .out svg { display: block; }
+  .acct .out span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .nav { position: fixed; z-index: 20; inset: auto 0 0 0; flex-direction: row; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; padding: 6px 4px calc(8px + env(safe-area-inset-bottom, 0px)); background: var(--bg); border-top: 1.5px solid var(--line); }
   .nav a { flex-direction: column; justify-content: center; gap: 3px; min-height: 54px; padding: 0 2px; border: 0; font-size: .6875rem; font-weight: 700; color: var(--muted); }
   .nav a:hover { background: none; }
@@ -156,6 +163,7 @@ a.card:hover { border-color: var(--edge); }
   .today { grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .card { padding: 18px; border-radius: 20px; }
 }
+@media (max-width: 359px) { .brand span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } }
 @media (min-width: 860px) { .nav .short { display: none; } }
 @media (prefers-reduced-motion: no-preference) {
   .nav a, .btn, a.card, .theme-btn { transition: background-color .12s, border-color .12s, box-shadow .12s; }
@@ -165,7 +173,7 @@ a.card:hover { border-color: var(--edge); }
 <body>
 <div class="shell">
   <aside class="side">
-    <span class="brand"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="16" cy="16" r="11.5" style="fill:var(--qcm)"/><circle cx="16" cy="47" r="11.5" style="fill:var(--ate)"/><circle cx="47" cy="47" r="11.5" style="fill:var(--doc)"/><circle class="drop" cx="50.5" cy="19.5" r="11.5"/><circle cx="47" cy="16" r="11.5" style="fill:var(--qrc)"/><path d="M41.5 16.5l4 4 7.5-8"/></svg>Prépa DGFiP</span>
+    <span class="brand"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="16" cy="16" r="11.5" style="fill:var(--qcm)"/><circle cx="16" cy="47" r="11.5" style="fill:var(--ate)"/><circle cx="47" cy="47" r="11.5" style="fill:var(--doc)"/><circle class="drop" cx="50.5" cy="19.5" r="11.5"/><circle cx="47" cy="16" r="11.5" style="fill:var(--qrc)"/><path d="M41.5 16.5l4 4 7.5-8"/></svg><span>Prépa DGFiP</span></span>
     <nav class="nav" aria-label="Applis">
       <a class="home" href="./" aria-current="page"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7v9H4z"/></svg></span><span class="full">Aujourd'hui</span><span class="short">Accueil</span></a>
       <a class="qcm" href="qcm/"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg></span><span class="full">QCM</span><span class="short">QCM</span><span class="n" id="nav-qcm"></span></a>
@@ -341,7 +349,7 @@ a.card:hover { border-color: var(--edge); }
     var s = S.status(), m = s.user ? "in:" + s.user : (s.state === "connexion" && S.connected()) ? "wait" : "out";
     if (m === mode) return; mode = m;
     hello.textContent = s.user ? "Bonjour " + s.user + "." : "Bonjour.";
-    if (s.user) { form.hidden = true; acct.innerHTML = '<span class="who"><span class="av" aria-hidden="true">' + esc(s.user.charAt(0)) + '</span><span class="lbl sr">Connecté : </span><b>' + esc(s.user) + '</b></span><button type="button" class="btn ghost" id="out">Se déconnecter</button>'; }
+    if (s.user) { form.hidden = true; acct.innerHTML = '<span class="who"><span class="av" aria-hidden="true">' + esc(s.user.charAt(0)) + '</span><span class="lbl sr">Connecté : </span><b>' + esc(s.user) + '</b></span><button type="button" class="btn ghost out" id="out" title="Se déconnecter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 20H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h3M16 16l4-4-4-4M20 12H10"/></svg><span>Se déconnecter</span></button>'; }
     else if (m === "wait") acct.innerHTML = '<span class="wait">Connexion…</span>';
     else acct.innerHTML = '<button type="button" class="btn" id="open" aria-expanded="' + !form.hidden + '" aria-controls="login">Se connecter</button>';
   }
@@ -358,8 +366,9 @@ a.card:hover { border-color: var(--edge); }
   form.querySelector('[data-k="up"]').addEventListener("click", function () { go("up"); });
   form.querySelector('[data-k="close"]').addEventListener("click", function () { open(false); });
   acct.addEventListener("click", function (e) {
+    var out = e.target.closest("#out");
     if (e.target.id === "open") open(form.hidden);
-    if (e.target.id === "out") { e.target.disabled = true; window.PrepaSync.signOut().then(draw); }
+    if (out) { out.disabled = true; window.PrepaSync.signOut().then(draw); }
   });
   if (window.PrepaSync) { PrepaSync.onStatus(draw); PrepaSync.resume(); }
   draw();
