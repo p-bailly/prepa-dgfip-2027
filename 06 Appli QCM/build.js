@@ -15,7 +15,7 @@ const page = fs.readFileSync(path.join(__dirname, "app.html"), "utf8")
   .replace("/*__SYNC__*/", () => sync)
   .replace("/*__BANK__*/", () => bank);
 const head = '<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'
-  + '<link rel="manifest" href="../manifest.webmanifest"><meta name="theme-color" content="#F7F5FF" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#1A1926" media="(prefers-color-scheme: dark)"><link rel="apple-touch-icon" href="../icones/icone-180.png">'
+  + '<link rel="manifest" href="../manifest.webmanifest"><meta name="theme-color" content="#F7F5FF" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#1A1926" media="(prefers-color-scheme: dark)"><link rel="icon" href="../prepa.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="../icones/icone-180.png">'
   + '<style>[hidden]{display:none!important}body{margin:0}</style></head><body>\n';
 const tail = '\n<script>if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("../sw.js").catch(function(){});</script>\n</body></html>\n';
 fs.writeFileSync(path.join(__dirname, "QCM_DGFiP_2027.html"), head + page + tail);

@@ -43,7 +43,7 @@ Direction actuelle, déclinaison **Sage** avec la mise en page **Colonne**. Appl
 | --- | --- |
 | `pastille/tokens.css` | Variables (couleurs, relief, rayons, police) et composants de base |
 | `pastille/appli.css` | Ossature et composants communs aux trois applis (menu latéral, onglets du bas, options QCM, feuille de réponse, journal…). Garde les noms de classes de « Copie double » pour que les vues n'aient pas à changer |
-| `logos/prepa.svg` | Logo du site, piste « Quatre pastilles » : favicon (suit le thème sombre) et pastille du menu de l'accueil |
+| `logos/prepa.svg` | Logo du site, piste « Quatre pastilles » : favicon de l'accueil, de la page Documents et des trois applis (suit le thème sombre), pastille du menu de l'accueil |
 | `logos/prepa-icone.svg` | Le logo sur fond lilas très pâle, source des icônes PNG de `site/icones/` (180 et « maskable » 512 plein cadre, 192 et 512 aux coins arrondis) |
 | `logos/propositions.html` | Les six pistes de logo étudiées, montrées dans le menu latéral (clair et sombre), l'onglet du navigateur et l'écran d'accueil |
 
