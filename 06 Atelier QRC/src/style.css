@@ -23,6 +23,10 @@ table.t tr.click:focus-visible { outline-offset: -2px; }
 .ex { display: flex; flex-direction: column; gap: var(--s5); }
 .ex-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: var(--s3); }
 .clock:has(.over) { color: var(--bad); border-color: var(--bad); }
+/* Avant le départ : objectif de temps et bouton Démarrer */
+.ex-start { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s3); }
+.ex-start b { display: inline-flex; align-items: center; gap: 8px; font-size: var(--t-md); font-weight: 900; }
+.ex-start b svg { width: 18px; height: 18px; }
 .clock .muted { font-weight: 700; }
 .enonce { display: flex; flex-direction: column; gap: var(--s3); max-width: 76ch; }
 .enonce ul, .enonce ol, .part ul { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
