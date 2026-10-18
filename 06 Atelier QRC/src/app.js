@@ -465,8 +465,26 @@
     document.querySelectorAll('[data-p]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.p === profil())); });
     if (S.view === 'reglages') { status(); if (window.PrepaSync) PrepaSync.mount($('#acct')); }
     v.classList.toggle('wide', !!currentEx());
-    measure();
+    measure(); syncHist();
   }
+  // Bouton retour du navigateur : un exercice, un sujet réel ou une épreuve ouvre une étape d'historique,
+  // si bien que « retour » ramène à la liste de l'onglet au lieu de quitter l'atelier. Une épreuve en cours reste ouverte.
+  var skipPop = false;
+  function inSub() { return (S.view === 'train' && !!S.train) || (S.view === 'annales' && !!S.annale) || (S.view === 'exam' && !!S.exam); }
+  function syncHist() {
+    try {
+      var on = !!(history.state && history.state.qrcSub);
+      if (inSub() && !on) history.pushState({ qrcSub: 1 }, '');
+      else if (!inSub() && on && !skipPop) { skipPop = true; history.back(); }
+    } catch (e) { }
+  }
+  window.addEventListener('popstate', function () {
+    if (skipPop) { skipPop = false; return; }
+    if (S.view === 'train') { S.train = null; S.trainType = null; S.confirmTdel = null; }
+    else if (S.view === 'annales') S.annale = null;
+    else if (S.view === 'exam' && S.exam && S.exam.done) S.exam = null;
+    render(); window.scrollTo(0, 0);
+  });
   function measure() { var t = $('.appbar'); if (t) document.documentElement.style.setProperty('--hh', t.offsetHeight + 'px'); }
   function startTrain(id) { S.view = 'train'; S.trainType = id; S.confirmTdel = null; S.train = makeEx(id, { wait: true }); render(); var a = $('#ex' + S.train.uid); if (a) a.scrollIntoView({ block: 'start' }); }
   document.addEventListener('click', function (ev) {
