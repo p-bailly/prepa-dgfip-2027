@@ -71,6 +71,18 @@
 .rep-th p { color: var(--muted); font-size: var(--t-sm); }
 .rep-docs { display: flex; flex-wrap: wrap; gap: 8px; }
 .rep-docs a svg { width: 16px; height: 16px; }
+/* Fiches : sommaire en pastilles, puis la fiche en une feuille lisible (tableaux alignés en haut, piège en encadré) */
+.fiche { gap: var(--s3); }
+.fiche .f-num { font-size: var(--t-sm); font-weight: 900; color: var(--muted); }
+.fiche h3 { margin-top: var(--s3); font-size: var(--t-lg); font-weight: 900; line-height: 1.25; }
+.fiche p, .fiche li { line-height: 1.6; }
+.fiche ul, .fiche ol { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 6px; }
+.fiche li::marker { color: var(--muted); font-weight: 800; }
+.fiche b { font-weight: 900; }
+.fiche table.t td { vertical-align: top; line-height: 1.5; min-width: 9em; }
+.fiche table.t td:first-child { min-width: 7em; }
+.fiche .callout p { line-height: 1.55; }
+.f-nav { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 /* Revue de copie : feuille de numéros colorés par thème, pastille juste / fausse / abstention, la question choisie à côté */
 :root { --th-sky: #BFDDFB; --th-pink: #F6C5E0; --th-teal: #BDEBE7; --th-sand: #E6D6C2; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --th-sky: #A3C7EE; --th-pink: #E9AACB; --th-teal: #9ED8D2; --th-sand: #D2BFA6; } }
@@ -212,6 +224,7 @@ input[type=checkbox] { width: 18px; height: 18px; }
 <script>
 const BANK = [];
 /*__BANK__*/
+/*__FICHES__*/
 </script>
 <script>
 "use strict";
@@ -278,6 +291,7 @@ const ICO = {
   flag:'<path d="M5.5 21V4.5M5.5 4.5h11.5l-2.2 4 2.2 4H5.5"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
   trash:'<path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5"/>',
+  note:'<path d="M7 3.5h7l4.5 4.5v12.5H7z"/><path d="M14 3.5V8h4.5M9.5 12h6M9.5 15.5h6"/>',
   info:'<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.8v.2"/>',
   sliders:'<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>'
 };
@@ -447,8 +461,8 @@ function startExtra(ids, label){
 function permFor(id, salt){ return shuffle([0,1,2,3], rng(hash(id+"|"+salt))); }
 
 // ---------- Rendu ----------
-// Six destinations ; « Réglages » donne aussi accès aux questions perso. [clé, onglet, pictogramme, libellé de la barre du bas]
-const TABS = [["jour","Entraînement","today","Entraînement"],["examen","Épreuves","exam","Épreuves"],["progres","Progrès","chart","Progrès"],["banque","Banque","bank","Banque"],["reperes","Repères","book","Repères"],["reglages","Réglages","sliders","Réglages"]];
+// Sept destinations ; « Réglages » donne aussi accès aux questions perso. [clé, onglet, pictogramme, libellé de la barre du bas]
+const TABS = [["jour","Entraînement","today","Entraînement"],["examen","Épreuves","exam","Épreuves"],["progres","Progrès","chart","Progrès"],["banque","Banque","bank","Banque"],["fiches","Fiches","note","Fiches"],["reperes","Repères","book","Repères"],["reglages","Réglages","sliders","Réglages"]];
 // Pages rattachées à l'onglet Réglages
 const IN_PLUS = ["ajout"];
 let tab = "jour";
@@ -478,7 +492,7 @@ function render(){
   const m = $("#main");
   m.classList.toggle("fit", tab==="jour" || (tab==="examen" && !!S.run));
   document.body.classList.toggle("xrun", tab==="examen" && !!S.run);
-  ({jour:viewJour, examen:viewExam, progres:viewProgres, banque:viewBanque, reperes:viewReperes, ajout:viewAjout, reglages:viewReglages})[tab](m);
+  ({jour:viewJour, examen:viewExam, progres:viewProgres, banque:viewBanque, fiches:viewFiches, reperes:viewReperes, ajout:viewAjout, reglages:viewReglages})[tab](m);
   renderPills();
 }
 
@@ -1085,6 +1099,39 @@ function viewReperes(m){
   </article>`;
 }
 
+// ----- Fiches -----
+let ficheK = null;
+// La fiche contrôleur (français, maths, histoire-géo) n'apparaît qu'avec le module contrôleur.
+function fichesOn(){ return FICHES.filter(f => !f.ctrl || S.set.mod!=="insp"); }
+const fmd = s => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+function ficheBlock(x){
+  if(x.h) return `<h3>${fmd(x.h)}</h3>`;
+  if(x.p) return `<p>${fmd(x.p)}</p>`;
+  if(x.ul) return `<ul>${x.ul.map(l=>`<li>${fmd(l)}</li>`).join("")}</ul>`;
+  if(x.ol) return `<ol>${x.ol.map(l=>`<li>${fmd(l)}</li>`).join("")}</ol>`;
+  if(x.warn) return `<div class="callout warn"><span class="ic">${ico("flag")}</span><div><h4>À ne pas confondre</h4><p>${fmd(x.warn)}</p></div></div>`;
+  if(x.note) return `<div class="callout"><span class="ic">${ico("info")}</span><div><p>${fmd(x.note)}</p></div></div>`;
+  if(x.tb) return `<div class="tw"><table class="t"><thead><tr>${x.tb.c.map(c=>`<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${x.tb.r.map(r=>`<tr>${r.map(c=>`<td>${fmd(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+  return "";
+}
+function viewFiches(m){
+  const list = fichesOn();
+  const i = Math.max(0, list.findIndex(f => f.id===ficheK)), F = list[i];
+  const ths = F.th.filter(t => themesOn().includes(t));
+  const nav = (j, lab) => list[j] ? `<button class="btn sm${j>i?" pri":""}" data-fiche="${list[j].id}">${lab} : ${esc(list[j].t)}</button>` : "<span></span>";
+  m.innerHTML = `
+  <section class="hero">
+    <h1 class="h-page">Fiches</h1>
+  </section>
+  <div class="chips" role="group" aria-label="Fiches">${list.map((f,j)=>`<button data-fiche="${f.id}" aria-pressed="${j===i}">${j+1}. ${esc(f.t)}</button>`).join("")}</div>
+  <article class="sheet fiche">
+    <div class="row between"><span class="f-num">Fiche ${i+1} sur ${list.length}</span>${ths.length?`<div class="row" style="gap:6px">${ths.map(t=>`<button class="btn sm" data-theme-session="${t}">${ico("bolt")}30 questions · ${THEMES[t].s}</button>`).join("")}</div>`:""}</div>
+    <h2 class="h-sec">${esc(F.t)}</h2>
+    ${F.b.map(ficheBlock).join("")}
+  </article>
+  <div class="f-nav">${nav(i-1,"Précédente")}${nav(i+1,"Suivante")}</div>`;
+}
+
 // ----- Réglages -----
 function viewReglages(m){
   const s = S.set;
@@ -1136,6 +1183,7 @@ document.addEventListener("click", e => {
   if(d.xdel){ delExam(d.xdel); return; }
   if(d.notesk){ notesK = d.notesk; render(); return; }
   if(d.repk){ repK = d.repk; render(); return; }
+  if(d.fiche){ ficheK = d.fiche; render(); window.scrollTo({top:0}); return; }
   if(d.tab){ e.preventDefault(); go(d.tab); return; }
   if(d.mod){ if(S.set.mod!==d.mod){ S.set.mod=d.mod; S.daily=null; session=null; save(); render(); toast("Module : "+MODULES[d.mod].l+"."); } return; }
   if(d.go){ go(d.go); return; }
