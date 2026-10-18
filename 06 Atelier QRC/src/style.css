@@ -32,6 +32,9 @@ table.t tr.click:focus-visible { outline-offset: -2px; }
 .enonce ul, .enonce ol, .part ul { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
 .part { display: flex; flex-direction: column; gap: var(--s2); }
 .part > h3 { font-size: var(--t-base); font-weight: 800; }
+/* Exemple corrigé d'une fiche : l'énoncé encadré, puis le corrigé */
+.fex { display: flex; flex-direction: column; gap: var(--s4); margin-top: var(--s4); padding-top: var(--s4); border-top: var(--bw) solid var(--line); }
+.fex-box { display: flex; flex-direction: column; gap: var(--s2); padding: var(--s4); border: var(--bw) solid var(--line); border-radius: var(--r-md); background: var(--side); }
 .ans .in::after { content: attr(data-u); }
 .ans .in[data-u="K€"] .input { padding-right: 36px; }
 .ans .in[data-u=""] .input { padding-right: 12px; }

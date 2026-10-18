@@ -329,8 +329,20 @@
     h += '<h4>Étapes</h4><ol class="steps">' + fi.etapes.map(function (x) { return '<li><span>' + esc(x) + '</span></li>'; }).join('') + '</ol>';
     h += '<h4>Pièges</h4><ul class="traps">' + fi.pieges.map(function (x) { return '<li>' + ico('cross') + '<span>' + esc(x) + '</span></li>'; }).join('') + '</ul>';
     if (fi.comptes.length) h += '<h4>Comptes</h4><div class="accts">' + fi.comptes.map(acctHtml).join('') + '</div>';
-    h += '<div class="row" style="margin-top:8px"><button type="button" class="btn pri" data-train="' + cur.id + '">S’entraîner sur ce type · ' + cur.minutes + ' min</button><span class="small muted">Ton niveau : ' + pips(st(cur.id).box || 0) + '</span></div>';
+    var fx = S.fex && S.fex.ex.typeId === cur.id ? S.fex.ex : null;
+    h += '<div class="row" style="margin-top:8px"><button type="button" class="btn pri" data-train="' + cur.id + '">S’entraîner sur ce type · ' + cur.minutes + ' min</button><button type="button" class="btn" data-act="fex" aria-expanded="' + !!fx + '" aria-controls="fex">' + ico('book') + (fx ? 'Masquer l’exemple' : 'Exemple corrigé') + '</button><span class="small muted">Ton niveau : ' + pips(st(cur.id).box || 0) + '</span></div>';
+    if (fx) h += ficheExHtml(fx);
     return h + '</div></article></div>';
+  }
+  // Exemple type de la fiche : un énoncé et son corrigé rédigé pas à pas, produits par le même moteur que les exercices.
+  function ficheExHtml(ex) {
+    var d = ex.data;
+    var h = '<section class="fex" id="fex"><div class="row between"><h4>Exemple corrigé · variante n° ' + ex.seed + '</h4><button type="button" class="btn sm ghost" data-act="fexnext">Autre exemple</button></div>';
+    h += '<div class="fex-box"><span class="eyebrow">Énoncé</span><div class="enonce">' + d.enonce + '</div></div>';
+    d.steps.forEach(function (s) { h += '<section class="part"><h3>' + esc(s.h) + '</h3>' + s.html + '</section>'; });
+    if (d.journal.length) h += '<section class="part"><h3>Écritures au journal</h3>' + U.journalHtml(d.journal) + '</section>';
+    h += '<div class="callout"><span class="ic">' + ico('info') + '</span><div><h4>Ce qu’il faut rédiger sur la copie</h4><p>' + d.comment + '</p></div></div>';
+    return h + '</section>';
   }
   function viewAnnales() {
     if (S.annale) return exHtml(S.annale, 'annale');
@@ -462,6 +474,8 @@
       case 'corr':
         if (!ex) return; ex.corr = !ex.corr; render(); if (ex.corr) { var c = $('#corr' + ex.uid); if (c) c.scrollIntoView({ block: 'start' }); } return;
       case 'next': return startTrain(S.trainType || ex.typeId);
+      case 'fex': S.fex = S.fex && S.fex.ex.typeId === S.fiche ? null : { ex: makeEx(S.fiche, { seed: 271828, wait: true }) }; render(); if (S.fex) { var fe = $('#fex'); if (fe) fe.scrollIntoView({ block: 'start', behavior: 'smooth' }); } return;
+      case 'fexnext': S.fex = { ex: makeEx(S.fiche, { wait: true }) }; render(); var fn = $('#fex'); if (fn) fn.scrollIntoView({ block: 'start' }); return;
       case 'exstart': if (!ex || ex.start) return; ex.start = Date.now(); render(); var xs = $('#ex' + ex.uid); if (xs) xs.scrollIntoView({ block: 'start' }); return;
       case 'addline': if (!ex) return; ex.jl[Number(ds.j)].push({ a: '', d: '', c: '' }); return render();
       case 'backannales': S.annale = null; return render();
