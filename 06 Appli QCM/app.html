@@ -749,7 +749,7 @@ function viewExamResult(m, x){
   <article class="sheet">
     <h2 class="h-sec">Par thème</h2>
     <div class="tw"><table class="t">
-      <thead><tr><th>Thème</th><th class="num">Justes</th><th class="num">Fausses</th><th class="num">Ann</th><th class="num">Réussite</th><th class="num">Jury 2026</th></tr></thead>
+      <thead><tr><th>Thème</th><th class="num">Justes</th><th class="num">Fausses</th><th class="num">Ann</th><th class="num">Réussite</th><th class="num">Candidats 2026</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
   </article>
   ${x.ids?reviewHtml(x):`<article class="sheet tight"><p class="small muted">Le détail question par question n'a pas été conservé pour cette épreuve.</p></article>`}
@@ -848,7 +848,7 @@ function viewProgres(m){
   const [x0, x1] = S.exams;
   m.innerHTML = `
   <section class="hero">
-    <h1 class="h-page">${above ? `Tu dépasses le jury dans <mark class="hl">${above} ${above>1?"thèmes":"thème"} sur ${withJury.length}</mark>` : `Objectif : <mark class="hl">dépasser le jury</mark> thème par thème`}</h1>
+    <h1 class="h-page">${above ? `Tu dépasses les candidats 2026 dans <mark class="hl">${above} ${above>1?"thèmes":"thème"} sur ${withJury.length}</mark>` : `Objectif : <mark class="hl">dépasser les candidats 2026</mark> thème par thème`}</h1>
   </section>
   <div class="stats">
     <div class="stat"><span>Réussite en révision</span><b>${fmtPct(pct(totalOk,totalAns))}</b><span>${plural(totalAns,"réponse")}</span></div>
@@ -860,12 +860,12 @@ function viewProgres(m){
   <article class="sheet">
     <div class="row between">
       <h2 class="h-sec">Par thème</h2>
-      <div class="legend"><span><i style="background:var(--ok);border-color:var(--ok)"></i>au-dessus du jury</span><span><i style="background:var(--bad);border-color:var(--bad)"></i>en dessous</span><span><i class="jury"></i>moyenne jury 2026</span></div>
+      <div class="legend"><span><i style="background:var(--ok);border-color:var(--ok)"></i>au-dessus des candidats 2026</span><span><i style="background:var(--bad);border-color:var(--bad)"></i>en dessous</span><span><i class="jury"></i>moyenne des candidats 2026</span></div>
     </div>
     <div class="bars" style="padding-top:10px">
       ${st.map(s=>{ const v=pct(s.ok,s.n); const j=THEMES[s.t].jury; return `<div class="bar-row">
-        <div class="lab"><b>${THEMES[s.t].l}</b><span><strong>${fmtPct(v)}</strong>${j?` · jury ${fmtNum(j,1)} %`:""} · examen ${fmtPct(pct(s.xok,s.xn))} · ${plural(s.n,"réponse")}</span></div>
-        <div class="track" role="img" aria-label="${THEMES[s.t].l} : ${fmtPct(v)}${j?", jury "+Math.round(j)+" %":""}">
+        <div class="lab"><b>${THEMES[s.t].l}</b><span><strong>${fmtPct(v)}</strong>${j?` · candidats 2026 : ${fmtNum(j,1)} %`:""} · examen ${fmtPct(pct(s.xok,s.xn))} · ${plural(s.n,"réponse")}</span></div>
+        <div class="track" role="img" aria-label="${THEMES[s.t].l} : ${fmtPct(v)}${j?", candidats 2026 : "+Math.round(j)+" %":""}">
           <div class="fill ${v==null?"":j==null?"":v>=j?"ok":"bad"}" style="width:${v||0}%"></div>
           ${j?`<div class="jury" style="left:${j}%" data-l="${fmtNum(j,1)}"></div>`:""}
         </div></div>`; }).join("")}
@@ -879,9 +879,10 @@ function viewProgres(m){
   <article class="sheet">
     <h2 class="h-sec">Détail par thème</h2>
     <div class="tw"><table class="t">
-      <thead><tr><th>Thème</th><th class="num">Banque</th><th class="num">Vues</th><th class="num">Acquises</th><th class="num">Réponses</th><th></th></tr></thead>
-      <tbody>${st.map(s=>`<tr><td>${THEMES[s.t].s}</td><td class="num">${s.total}</td><td class="num">${s.seen}</td><td class="num">${s.acq}</td><td class="num">${s.n}</td><td class="r"><button class="btn sm" data-theme-session="${s.t}">30 questions</button></td></tr>`).join("")}</tbody>
+      <thead><tr><th>Thème</th><th class="num">Ta réussite</th><th class="num">Candidats 2026</th><th class="num">Banque</th><th class="num">Vues</th><th class="num">Acquises</th><th class="num">Réponses</th><th></th></tr></thead>
+      <tbody>${st.map(s=>`<tr><td>${THEMES[s.t].s}</td><td class="num">${fmtPct(pct(s.ok,s.n))}</td><td class="num">${THEMES[s.t].jury?fmtNum(THEMES[s.t].jury,1)+" %":"—"}</td><td class="num">${s.total}</td><td class="num">${s.seen}</td><td class="num">${s.acq}</td><td class="num">${s.n}</td><td class="r"><button class="btn sm" data-theme-session="${s.t}">30 questions</button></td></tr>`).join("")}</tbody>
     </table></div>
+    <p class="small muted">Candidats 2026 : taux de bonnes réponses au QCM de l'inspecteur 2026 (rapport du jury, p. 9). Le rapport du contrôleur ne donne pas de taux par thème.</p>
   </article>`;
   drawNotes();
 }
@@ -1089,7 +1090,7 @@ function viewReperes(m){
   </div>
   <article class="sheet">
     <div class="row between"><h2 class="h-sec">Programme du QCM</h2><span class="small muted">aucun nombre de questions par thème n'est fixé</span></div>
-    <div>${R.themes.map(([t,l,d])=>{ const j = k==="insp" && THEMES[t] && THEMES[t].jury, me = mine(t); return `<div class="rep-th"><div class="row"><b>${esc(l)}</b>${j?`<span class="badge out mono">jury 2026 · ${fmtPct(j)}</span>`:""}${me!=null?`<span class="badge acc mono">toi · ${fmtPct(me)}</span>`:""}</div><p>${esc(d)}</p></div>`; }).join("")}</div>
+    <div>${R.themes.map(([t,l,d])=>{ const j = k==="insp" && THEMES[t] && THEMES[t].jury, me = mine(t); return `<div class="rep-th"><div class="row"><b>${esc(l)}</b>${j?`<span class="badge out mono">candidats 2026 · ${fmtPct(j)}</span>`:""}${me!=null?`<span class="badge acc mono">toi · ${fmtPct(me)}</span>`:""}</div><p>${esc(d)}</p></div>`; }).join("")}</div>
     <span class="rep-src">Programme de l'épreuve 2 (arrêté du 1er juillet 2024)${k==="insp"?" · taux de bonnes réponses au QCM 2026 : rapport du jury p. 9":""}</span>
   </article>
   <article class="sheet"><h2 class="h-sec">Le jury 2026</h2>${li(R.jury)}</article>
