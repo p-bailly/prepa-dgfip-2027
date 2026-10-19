@@ -449,3 +449,99 @@ T.regul = {
     return { enonce: en, questions: qs, journal: journal, steps: [{ h: 'Calculs', html: U.calc(c) }], comment: com };
   }
 };
+
+/* ---------- 18. Stocks au coût moyen pondéré ---------- */
+var MARCHANDISES = [['casques de vélo', 'casque'], ['théières en fonte', 'théière'], ['lampes frontales', 'lampe'], ['sacs à dos', 'sac'], ['bouilloires', 'bouilloire'], ['tapis de yoga', 'tapis'], ['gourdes isothermes', 'gourde']];
+T.stocks = {
+  id: 'stocks', nom: 'Stocks au coût moyen pondéré (CMUP)', famille: 'Travaux d’inventaire', ctrl: true, minutes: 15,
+  fiche: {
+    objectif: 'Valoriser les sorties et le stock final au coût unitaire moyen pondéré (CMUP), de fin de période ou après chaque entrée, puis passer les écritures d’inventaire.',
+    etapes: [
+      'Coût d’entrée = prix d’achat net de remises + frais accessoires (transport), hors TVA récupérable.',
+      'CMUP de fin de période = (valeur du stock initial + coût des entrées) ÷ (quantité initiale + quantités entrées). Toutes les sorties de la période partent à ce coût unique.',
+      'CMUP après chaque entrée : à chaque entrée, nouveau coût = (valeur du stock + coût de l’entrée) ÷ (quantité en stock + quantité entrée) ; les sorties suivantes partent à ce coût jusqu’à l’entrée suivante.',
+      'Stock final = quantité restante × CMUP (arrondi au centime).',
+      'Inventaire intermittent au 31/12 : annuler le stock initial (D 6037 / C 37), puis constater le stock final (D 37 / C 6037).',
+      'Variation de stock (6037) = stock initial − stock final : un stock qui augmente diminue les charges et augmente le résultat.',
+      'Dépréciation si la valeur actuelle (prix de vente estimé − frais de vente) est inférieure au coût : (coût − valeur actuelle) × quantité, D 6817 / C 397.'
+    ],
+    pieges: [
+      'Oublier le stock initial dans le calcul du CMUP de fin de période.',
+      'Méthode permanente : valoriser une sortie au CMUP en vigueur à sa date, pas au CMUP de fin de période.',
+      'Inverser les deux écritures d’inventaire : le stock initial sort par le crédit du 37, le stock final y entre au débit.',
+      'Le stock se déprécie, il ne s’amortit pas ; la dépréciation est reprise l’exercice suivant (D 397 / C 7817).'
+    ],
+    comptes: ['37 Stocks de marchandises', '6037 Variation des stocks de marchandises', '607 Achats de marchandises', '397 Dépréciations des stocks de marchandises', '6817 Dotations aux dépréciations des actifs circulants']
+  },
+  gen: function (r) {
+    for (var t = 0; t < 200; t++) {
+      var c0 = r.int(60, 900) / 10, q0 = r.int(2, 40) * 10;
+      var q1 = r.int(5, 60) * 10, c1 = U.r2(c0 * r.int(92, 118) / 100);
+      var s1 = r.int(1, Math.floor((q0 + q1) * 0.8 / 10)) * 10;
+      var q2 = r.int(5, 60) * 10, c2 = U.r2(c1 * r.int(92, 118) / 100);
+      var s2 = r.int(1, Math.floor((q0 + q1 - s1 + q2) * 0.8 / 10)) * 10;
+      if (q0 + q1 + q2 - s1 - s2 < 10 || c1 === c0 || c2 === c1) continue;
+      var m = [r.int(2, 3), r.int(4, 5), r.int(6, 8), r.int(9, 11)];
+      var p = { nom: U.nom(r), mar: r.pick(MARCHANDISES), q0: q0, c0: c0, ev: [{ k: 'e', q: q1, c: c1, d: U.dt(r.int(2, 27), m[0]) }, { k: 's', q: s1, d: U.dt(r.int(2, 27), m[1]) }, { k: 'e', q: q2, c: c2, d: U.dt(r.int(2, 27), m[2]) }, { k: 's', q: s2, d: U.dt(r.int(2, 27), m[3]) }] };
+      if (r.chance(0.5)) p.va = U.r2(this.calc(p).cmup * r.int(80, 95) / 100);
+      return p;
+    }
+  },
+  calc: function (p) {
+    var x = { V0: U.r2(p.q0 * p.c0), qin: 0, vin: 0, qout: 0 };
+    p.ev.forEach(function (ev) { if (ev.k === 'e') { x.qin += ev.q; x.vin = U.r2(x.vin + ev.q * ev.c); } else x.qout += ev.q; });
+    x.qf = p.q0 + x.qin - x.qout;
+    x.cmupX = (x.V0 + x.vin) / (p.q0 + x.qin); x.cmup = U.r2(x.cmupX);
+    x.sf = U.r2(x.qf * x.cmup); x.sfX = U.r2(x.qf * x.cmupX);
+    x.cs = U.r2(x.qout * x.cmup); x.csX = U.r2(x.qout * x.cmupX);
+    x.vari = U.r2(x.V0 - x.sf);
+    // Méthode permanente : le coût change à chaque entrée, chaque sortie part au coût du moment
+    var q = p.q0, v = x.V0, cu = p.c0, cuX = p.c0, vX = x.V0;
+    x.fiche = [{ d: '01/01/N', lib: 'Stock initial', st: [q, cu, v] }];
+    x.cmups = [];
+    p.ev.forEach(function (ev) {
+      if (ev.k === 'e') {
+        var ve = U.r2(ev.q * ev.c);
+        cuX = (vX + ve) / (q + ev.q); vX = vX + ve;
+        cu = U.r2((v + ve) / (q + ev.q)); q += ev.q; v = U.r2(q * cu);
+        x.cmups.push(cu);
+        x.fiche.push({ d: ev.d, lib: 'Achat', en: [ev.q, ev.c, ve], st: [q, cu, v] });
+      } else {
+        var vs = U.r2(ev.q * cu); vX -= ev.q * cuX; q -= ev.q; v = U.r2(q * cu);
+        x.fiche.push({ d: ev.d, lib: 'Vente', so: [ev.q, cu, vs], st: [q, cu, v] });
+      }
+    });
+    x.sfp = v; x.sfpX = U.r2(vX);
+    if (p.va) { x.depU = U.r2(x.cmup - p.va); x.dep = U.r2(x.qf * x.depU); }
+    return x;
+  },
+  solve: function (p) {
+    var x = this.calc(p), e = U.e, e2 = U.e2, n = U.n, L = U.L;
+    var mv = p.ev.map(function (ev) { return ev.d + ' : ' + (ev.k === 'e' ? 'achat de ' + n(ev.q) + ' ' + p.mar[0] + ' au coût unitaire de ' + e2(ev.c) + ' HT' : 'vente de ' + n(ev.q) + ' ' + p.mar[0]) + ' ;'; });
+    var en = '<p>La société <b>' + p.nom + '</b> commercialise des ' + p.mar[0] + '. Au 01/01/N, le stock comprend ' + n(p.q0) + ' ' + p.mar[0] + ' évalués à ' + e2(p.c0) + ' l’unité. Mouvements de l’exercice N :</p>';
+    en += U.ul(mv);
+    en += '<p>Elle tient son inventaire de façon intermittente : le stock n’est enregistré en comptabilité qu’à la clôture.' + (p.va ? ' Au 31/12/N, la concurrence a fait baisser les prix : la valeur actuelle d’un ' + p.mar[1] + ' (prix de vente estimé diminué des frais de vente) n’est plus que de ' + e2(p.va) + '.' : '') + '</p>';
+    en += '<p class="consigne">1. Calculez le CMUP de fin de période, le coût des sorties et la valeur du stock final. 2. Établissez la fiche de stock au CMUP après chaque entrée et comparez. 3. Passez les écritures d’inventaire au 31/12/N' + (p.va ? ', dépréciation comprise' : '') + ' (stock final au CMUP de fin de période).</p>';
+    var qs = [Q('cmup', 'CMUP de fin de période', x.cmup, '€', { tol: 0.01 }), Q('qf', 'Quantité en stock au 31/12/N', x.qf, 'u', { tol: 0 }),
+      Q('cs', 'Coût des sorties au CMUP de fin de période', x.cs, '€', { alts: [x.csX] }), Q('sf', 'Stock final au CMUP de fin de période', x.sf, '€', { alts: [x.sfX] }),
+      Q('cm2', 'CMUP après la seconde entrée (méthode permanente)', x.cmups[1], '€', { tol: 0.01 }), Q('sfp', 'Stock final au CMUP après chaque entrée', x.sfp, '€', { alts: [x.sfpX] }),
+      Q('var', 'Variation des stocks (compte 6037 : stock initial − stock final)', x.vari, '€')];
+    if (p.va) qs.push(Q('dep', 'Dépréciation du stock au 31/12/N', x.dep, '€'));
+    var c = [['Valeur du stock initial', n(p.q0) + ' × ' + n(p.c0, 2), e(x.V0)]];
+    p.ev.forEach(function (ev) { if (ev.k === 'e') c.push(['Achat du ' + ev.d, n(ev.q) + ' × ' + n(ev.c, 2), e(U.r2(ev.q * ev.c))]); });
+    c.push(['CMUP de fin de période', '(' + n(x.V0) + ' + ' + n(x.vin) + ') ÷ (' + n(p.q0) + ' + ' + n(x.qin) + ') = ' + n(x.cmupX, 4), '<b>' + e2(x.cmup) + '</b>'],
+      ['Quantité finale', n(p.q0) + ' + ' + n(x.qin) + ' − ' + n(x.qout), n(x.qf) + ' unités'], ['Coût des sorties', n(x.qout) + ' × ' + n(x.cmup, 2), e(x.cs)],
+      ['Stock final', n(x.qf) + ' × ' + n(x.cmup, 2), '<b>' + e(x.sf) + '</b>'], ['Variation des stocks', n(x.V0) + ' − ' + n(x.sf), e(x.vari)]);
+    if (p.va) c.push(['Dépréciation', n(x.qf) + ' × (' + n(x.cmup, 2) + ' − ' + n(p.va, 2) + ')', '<b>' + e(x.dep) + '</b>']);
+    var tri = function (a) { return a ? [n(a[0]), n(a[1], 2), n(a[2], 2)] : ['', '', '']; };
+    var fs = U.tbl(['Date', 'Libellé', 'Entrées Q', 'CU', 'Montant', 'Sorties Q', 'CU', 'Montant', 'Stock Q', 'CU', 'Montant'], x.fiche.map(function (l) { return [l.d, l.lib].concat(tri(l.en), tri(l.so), tri(l.st)); }));
+    var journal = [U.entry('31/12/N', 'Annulation du stock initial', [L('6037', x.V0, 0), L('37', 0, x.V0)]), U.entry('31/12/N', 'Constatation du stock final', [L('37', x.sf, 0), L('6037', 0, x.sf)])];
+    if (p.va) journal.push(U.entry('31/12/N', 'Dépréciation du stock de marchandises', [L('6817', x.dep, 0), L('397', 0, x.dep)]));
+    var hausse = p.ev[2].c > p.c0, ecart = U.r2(x.sfp - x.sf);
+    var com = 'Le CMUP de fin de période (' + e2(x.cmup) + ') lisse les ' + (hausse ? 'hausses' : 'variations') + ' de prix de l’exercice : toutes les sorties partent au même coût, mais ce coût n’est connu qu’à la clôture, ce qui interdit de suivre la marge au fil des ventes. ';
+    com += 'Le CMUP après chaque entrée suit mieux les prix récents : le stock final vaut ' + e(x.sfp) + ' contre ' + e(x.sf) + ', soit un écart de ' + e(Math.abs(ecart)) + (Math.abs(ecart) < 1 ? ', négligeable ici. ' : ' : la méthode choisie modifie le coût des ventes et donc le résultat. ');
+    com += 'La variation des stocks (' + e(x.vari) + ') ' + (x.vari < 0 ? 'est créditrice : le stock a augmenté, ce qui réduit les charges de l’exercice. Les achats non vendus ne pèsent pas sur le résultat de N.' : 'est débitrice : le stock a diminué, l’entreprise a vendu une partie du stock initial, ce qui alourdit les charges de l’exercice.') + ' ';
+    com += p.va ? 'La dépréciation de ' + e(x.dep) + ' applique la prudence : le stock ne peut figurer au bilan pour plus que sa valeur actuelle. Elle sera reprise en N+1, à la vente des marchandises ou si les prix se redressent.' : 'Aucune dépréciation n’est nécessaire si la valeur actuelle des ' + p.mar[0] + ' reste supérieure à leur coût.';
+    return { enonce: en, questions: qs, journal: journal, steps: [{ h: 'CMUP de fin de période', html: U.calc(c) }, { h: 'Fiche de stock au CMUP après chaque entrée', html: fs }], comment: com };
+  }
+};

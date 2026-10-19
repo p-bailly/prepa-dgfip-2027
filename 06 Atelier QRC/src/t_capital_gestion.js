@@ -203,3 +203,77 @@ T.commande = {
     return { enonce: en, questions: qs, journal: [], steps: [{ h: 'Raisonnement global', html: glob }, { h: 'Coût marginal', html: U.calc(c) }], comment: com };
   }
 };
+
+/* ---------- 19. Coût complet ---------- */
+// Matière : [avec article défini, après « kg »], puis les deux produits
+var FABRICATIONS = [[['l’aluminium', 'd’aluminium'], ['vélos', 'vélo'], ['trottinettes', 'trottinette']], [['l’acier', 'd’acier'], ['radiateurs', 'radiateur'], ['sèche-serviettes', 'sèche-serviettes']], [['la laine', 'de laine'], ['pulls', 'pull'], ['plaids', 'plaid']], [['l’argile', 'd’argile'], ['vases', 'vase'], ['saladiers', 'saladier']], [['le chêne', 'de chêne'], ['tables', 'table'], ['bancs', 'banc']]];
+T.cout_complet = {
+  id: 'cout_complet', nom: 'Coût complet : achat, production, revient', famille: 'Comptabilité de gestion', ctrl: false, minutes: 20,
+  fiche: {
+    objectif: 'Calculer le coût de l’unité d’œuvre des centres d’analyse, puis la chaîne des coûts (achat, production, revient) et le résultat analytique de chaque produit.',
+    etapes: [
+      'Charges directes : affectées sans calcul à un produit (matière consommée, main-d’œuvre directe). Charges indirectes : réparties dans les centres d’analyse.',
+      'Coût de l’unité d’œuvre (UO) d’un centre = total du centre après répartition secondaire ÷ nombre d’unités d’œuvre. Assiette de frais : l’UO est « 100 € de chiffre d’affaires ».',
+      'Coût d’achat = prix d’achat + charges directes d’achat + centre Approvisionnement (UO × coût de l’UO).',
+      'Coût de production = matière consommée (au coût d’achat) + main-d’œuvre directe + centres de production.',
+      'Coût de revient = coût de production des produits vendus + centre Distribution.',
+      'Résultat analytique = chiffre d’affaires − coût de revient ; la somme des résultats analytiques, corrigée des charges non incorporables et supplétives, redonne le résultat comptable.'
+    ],
+    pieges: [
+      'Oublier le centre Approvisionnement dans le coût de la matière consommée.',
+      'Multiplier le coût de l’UO Distribution par le chiffre d’affaires au lieu du nombre de « 100 € de CA ».',
+      'Conclure à l’abandon d’un produit déficitaire en coût complet : ses charges fixes resteraient à la charge des autres produits. Raisonne en coût variable avant de décider.',
+      'Arrondir le coût de l’UO trop tôt : garde au moins deux décimales.'
+    ],
+    comptes: []
+  },
+  gen: function (r) {
+    var f = r.pick(FABRICATIONS), M = r.int(10, 80) * 100, pm = r.int(20, 120) / 10, mA = U.r0(M * r.int(35, 65) / 100 / 10) * 10;
+    var qA = r.int(4, 40) * 50, qB = r.int(4, 40) * 50, hA = U.r0(qA * r.int(5, 30) / 10), hB = U.r0(qB * r.int(5, 30) / 10);
+    var p = { nom: U.nom(r), mat: f[0], pA: f[1], pB: f[2], M: M, pm: pm, mA: mA, mB: M - mA, uoA: r.int(5, 60) / 100, qA: qA, qB: qB, hA: hA, hB: hB, th: r.int(14, 30), uoP: r.int(150, 600) / 10, uoD: r.int(30, 120) / 10 };
+    var d = p.uoD / 100, base = this.calc(p);
+    p.vA = U.r0(base.cpA / qA / (1 - d) * r.int(88, 125) / 100);
+    p.vB = U.r0(base.cpB / qB / (1 - d) * r.int(85, 120) / 100);
+    return p;
+  },
+  calc: function (p) {
+    var x = {};
+    x.TA = U.r2(p.M * p.uoA); x.cam = U.r2(p.M * p.pm + x.TA); x.cu = x.cam / p.M;
+    x.matA = U.r2(p.mA * x.cu); x.matB = U.r2(p.mB * x.cu);
+    x.modA = U.r2(p.hA * p.th); x.modB = U.r2(p.hB * p.th);
+    x.TP = U.r2((p.hA + p.hB) * p.uoP); x.atA = U.r2(p.hA * p.uoP); x.atB = U.r2(p.hB * p.uoP);
+    x.cpA = U.r2(x.matA + x.modA + x.atA); x.cpB = U.r2(x.matB + x.modB + x.atB);
+    if (p.vA) {
+      x.caA = U.r2(p.qA * p.vA); x.caB = U.r2(p.qB * p.vB); x.nbD = (x.caA + x.caB) / 100; x.TD = U.r2(x.nbD * p.uoD);
+      x.diA = U.r2(x.caA / 100 * p.uoD); x.diB = U.r2(x.caB / 100 * p.uoD);
+      x.crA = U.r2(x.cpA + x.diA); x.crB = U.r2(x.cpB + x.diB);
+      x.raA = U.r2(x.caA - x.crA); x.raB = U.r2(x.caB - x.crB); x.ra = U.r2(x.raA + x.raB);
+    }
+    return x;
+  },
+  solve: function (p) {
+    var x = this.calc(p), e = U.e, e2 = U.e2, n = U.n;
+    var A = p.pA[0], B = p.pB[0], dcu = Math.abs(x.cu - U.r2(x.cu)) < 1e-9 ? 2 : 4;
+    var en = '<p>La société <b>' + p.nom + '</b> fabrique des ' + A + ' et des ' + B + ' à partir d’une seule matière, ' + p.mat[0] + '. Données du mois (aucun stock en début ni en fin de mois : tout ce qui est acheté est consommé, tout ce qui est produit est vendu) :</p>';
+    en += U.ul(['achats : ' + n(p.M) + ' kg ' + p.mat[1] + ' à ' + e2(p.pm) + ' le kg ; consommation : ' + n(p.mA) + ' kg pour les ' + A + ', ' + n(p.mB) + ' kg pour les ' + B + ' ;',
+      'main-d’œuvre directe à ' + e(p.th) + ' de l’heure, charges comprises : ' + n(p.hA) + ' heures pour les ' + A + ', ' + n(p.hB) + ' heures pour les ' + B + ' ;',
+      'production et ventes : ' + n(p.qA) + ' ' + A + ' vendus ' + e(p.vA) + ' HT l’unité, ' + n(p.qB) + ' ' + B + ' vendus ' + e(p.vB) + ' HT l’unité.']);
+    en += '<p>Tableau de répartition des charges indirectes, après répartition secondaire :</p>';
+    en += U.tbl(['Centre', 'Total', 'Unité d’œuvre'], [['Approvisionnement', e(x.TA), 'kg de matière achetée'], ['Atelier', e(x.TP), 'heure de main-d’œuvre directe'], ['Distribution', e(x.TD), '100 € de chiffre d’affaires']]);
+    en += '<p class="consigne">1. Calculez le coût de l’unité d’œuvre de chaque centre. 2. Calculez le coût d’achat de la matière, le coût de production et le coût de revient de chaque produit. 3. Calculez les résultats analytiques et commentez.</p>';
+    var t1 = { tol: 0.01 };
+    var qs = [Q('uoa', 'Coût de l’unité d’œuvre Approvisionnement (par kg)', p.uoA, '€', t1), Q('uop', 'Coût de l’unité d’œuvre Atelier (par heure)', p.uoP, '€', t1), Q('uod', 'Coût de l’unité d’œuvre Distribution (pour 100 € de CA)', p.uoD, '€', t1),
+      Q('cam', 'Coût d’achat de la matière', x.cam, '€'), Q('cpa', 'Coût de production des ' + A, x.cpA, '€'), Q('cpb', 'Coût de production des ' + B, x.cpB, '€'),
+      Q('cra', 'Coût de revient des ' + A, x.crA, '€'), Q('crb', 'Coût de revient des ' + B, x.crB, '€'), Q('raa', 'Résultat analytique des ' + A, x.raA, '€'), Q('rab', 'Résultat analytique des ' + B, x.raB, '€')];
+    var uo = U.tbl(['Centre', 'Total', 'Nombre d’UO', 'Coût de l’UO'], [['Approvisionnement', e(x.TA), n(p.M) + ' kg', e2(p.uoA)], ['Atelier', e(x.TP), n(p.hA + p.hB) + ' h (' + n(p.hA) + ' + ' + n(p.hB) + ')', e2(p.uoP)], ['Distribution', e(x.TD), n(x.nbD, 2) + ' (' + n(U.r2(x.caA + x.caB)) + ' ÷ 100)', e2(p.uoD)]]);
+    var ach = U.tbl(['Coût d’achat de la matière', 'Quantité', 'Coût unitaire', 'Montant'], [['Prix d’achat', n(p.M), n(p.pm, 2), n(U.r2(p.M * p.pm), 2)], ['Centre Approvisionnement', n(p.M), n(p.uoA, 2), n(x.TA, 2)], { cls: 'tot', cells: ['Coût d’achat', n(p.M), n(x.cu, dcu), n(x.cam, 2)] }]);
+    var prod = U.tbl(['Coût de production', A, B], [['Matière consommée', n(p.mA) + ' × ' + n(x.cu, dcu) + ' = ' + n(x.matA, 2), n(p.mB) + ' × ' + n(x.cu, dcu) + ' = ' + n(x.matB, 2)], ['Main-d’œuvre directe', n(p.hA) + ' × ' + n(p.th) + ' = ' + n(x.modA, 2), n(p.hB) + ' × ' + n(p.th) + ' = ' + n(x.modB, 2)], ['Centre Atelier', n(p.hA) + ' × ' + n(p.uoP, 2) + ' = ' + n(x.atA, 2), n(p.hB) + ' × ' + n(p.uoP, 2) + ' = ' + n(x.atB, 2)], { cls: 'tot', cells: ['Coût de production', n(x.cpA, 2) + ' (' + n(x.cpA / p.qA, 2) + ' par unité)', n(x.cpB, 2) + ' (' + n(x.cpB / p.qB, 2) + ' par unité)'] }]);
+    var rev = U.tbl(['Coût de revient et résultat', A, B], [['Coût de production', n(x.cpA, 2), n(x.cpB, 2)], ['Centre Distribution', n(x.caA / 100, 2) + ' × ' + n(p.uoD, 2) + ' = ' + n(x.diA, 2), n(x.caB / 100, 2) + ' × ' + n(p.uoD, 2) + ' = ' + n(x.diB, 2)], { cls: 'tot', cells: ['Coût de revient', n(x.crA, 2), n(x.crB, 2)] }, ['Chiffre d’affaires', n(p.qA) + ' × ' + n(p.vA) + ' = ' + n(x.caA, 2), n(p.qB) + ' × ' + n(p.vB) + ' = ' + n(x.caB, 2)], { cls: 'tot', cells: ['Résultat analytique', n(x.raA, 2), n(x.raB, 2)] }]);
+    var tA = x.raA / x.caA, tB = x.raB / x.caB, com = [];
+    com.push('Le résultat analytique global atteint ' + e(x.ra) + '. Les ' + A + ' ' + (x.raA >= 0 ? 'dégagent ' + e(x.raA) + ', soit ' + U.pc(tA, 1) + ' de leur chiffre d’affaires' : 'perdent ' + e(-x.raA)) + ', les ' + B + ' ' + (x.raB >= 0 ? 'dégagent ' + e(x.raB) + ', soit ' + U.pc(tB, 1) + ' de leur chiffre d’affaires.' : 'perdent ' + e(-x.raB) + '.'));
+    if (x.raA < 0 || x.raB < 0) com.push('Un résultat négatif en coût complet ne suffit pas à justifier l’abandon du produit : le coût complet contient des charges indirectes, en partie fixes, qui resteraient à couvrir par l’autre produit. Il faut d’abord vérifier si le produit dégage une marge sur coût variable positive ; si oui, il contribue à couvrir les charges fixes et son abandon dégraderait le résultat global. Les pistes sont plutôt un relèvement du prix, la baisse de la consommation de matière ou d’heures, ou la renégociation des achats.');
+    else com.push('Les deux produits sont rentables ; ' + (tA > tB ? 'les ' + A : 'les ' + B) + ' le sont davantage, ce qui peut orienter l’effort commercial, sous réserve de la capacité de production.');
+    com.push('Ces coûts dépendent du choix des unités d’œuvre : l’heure de main-d’œuvre répartit les charges de l’atelier au prorata du temps passé, ce qui pénalise le produit le plus long à fabriquer. La méthode ABC, qui répartit les charges par activités et inducteurs de coût, donne une image plus fidèle quand les charges indirectes pèsent lourd.');
+    return { enonce: en, questions: qs, journal: [], steps: [{ h: 'Coût des unités d’œuvre', html: uo }, { h: 'Coût d’achat', html: ach }, { h: 'Coût de production', html: prod }, { h: 'Coût de revient et résultat analytique', html: rev }], comment: com.join(' ') };
+  }
+};

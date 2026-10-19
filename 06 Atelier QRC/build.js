@@ -3,7 +3,7 @@
 // La synchro du compte vient de commun/sync.js, partagé avec les autres applis.
 const fs = require('fs'), path = require('path');
 const S = f => fs.readFileSync(path.join(__dirname, 'src', f), 'utf8');
-const ENGINE = ['core.js', 't_affect_tva.js', 't_immo_inv.js', 't_capital_gestion.js', 't_analyse.js', 't_fiscal.js', 'annales.js'];
+const ENGINE = ['core.js', 't_affect_tva.js', 't_immo_inv.js', 't_capital_gestion.js', 't_analyse.js', 't_fiscal.js', 't_flux.js', 'annales.js'];
 const engine = ENGINE.map(S).join('\n');
 fs.mkdirSync(path.join(__dirname, 'dist'), { recursive: true });
 fs.writeFileSync(path.join(__dirname, 'dist', 'engine.js'), engine + '\nif (typeof module !== "undefined") module.exports = { T: T, ANNALES: ANNALES, U: U, AM: AM };\n');
