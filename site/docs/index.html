@@ -12,13 +12,14 @@
 /* Liste des documents · charte « Pastille », déclinaison Sage (07 Charte DA/pastille) */
 :root {
   --bg: #FFFFFF; --side: #F7F5FF; --surface: #FFFFFF; --line: #ECEAF4; --line-2: #D9D6E8; --ink: #1B1B2F; --muted: #5B5874;
-  --edge: #1B1B2F; --drop: #1B1B2F; --doc: #FFE07A;
+  --edge: #1B1B2F; --drop: #1B1B2F; --on-tile: #1B1B2F;
+  --qcm: #C9C2FF; --qrc: #B8E6C9; --ate: #FFD2C2; --doc: #FFE07A;
   --f: "Nunito", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --bg: #15141D; --side: #1A1926; --surface: #1E1C2A; --line: #2A2838; --line-2: #3A3850; --ink: #F2F0FA; --muted: #A9A5BF; --edge: #3A3850; --drop: #000000; --doc: #F2D06B; color-scheme: dark; }
+  :root:not([data-theme="light"]) { --bg: #15141D; --side: #1A1926; --surface: #1E1C2A; --line: #2A2838; --line-2: #3A3850; --ink: #F2F0FA; --muted: #A9A5BF; --edge: #3A3850; --drop: #000000; --qcm: #B3A9FF; --qrc: #9ED9B5; --ate: #F7B9A5; --doc: #F2D06B; color-scheme: dark; }
 }
-:root[data-theme="dark"] { --bg: #15141D; --side: #1A1926; --surface: #1E1C2A; --line: #2A2838; --line-2: #3A3850; --ink: #F2F0FA; --muted: #A9A5BF; --edge: #3A3850; --drop: #000000; --doc: #F2D06B; color-scheme: dark; }
+:root[data-theme="dark"] { --bg: #15141D; --side: #1A1926; --surface: #1E1C2A; --line: #2A2838; --line-2: #3A3850; --ink: #F2F0FA; --muted: #A9A5BF; --edge: #3A3850; --drop: #000000; --qcm: #B3A9FF; --qrc: #9ED9B5; --ate: #F7B9A5; --doc: #F2D06B; color-scheme: dark; }
 *, *::before, *::after { box-sizing: border-box; }
 html { background: var(--bg); -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f); font-size: 1rem; font-weight: 600; line-height: 1.5; }
@@ -32,6 +33,11 @@ li + li { border-top: 1.5px solid var(--line); }
 li a { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 13px 18px; color: inherit; text-decoration: none; }
 li a:hover { background: var(--side); }
 li a:focus-visible { outline: 3px solid var(--ink); outline-offset: -4px; border-radius: 16px; }
+.p { display: inline-block; margin-right: 10px; padding: 1px 9px; border-radius: 999px; background: var(--doc); color: var(--on-tile); font-size: .75rem; font-weight: 800; line-height: 1.5; white-space: nowrap; vertical-align: 1px; }
+.p.qcm { background: var(--qcm); } .p.qrc { background: var(--qrc); } .p.ate { background: var(--ate); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: -14px 0 0; font-size: .8125rem; font-weight: 700; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; margin-right: 7px; border-radius: 999px; background: var(--doc); }
+.legend .qcm { background: var(--qcm); } .legend .qrc { background: var(--qrc); } .legend .ate { background: var(--ate); }
 li small { flex: none; font-size: .8125rem; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
 .theme-btn, .back { width: 44px; height: 44px; flex: none; display: grid; place-items: center; padding: 0; border: 1.5px solid var(--line-2); border-radius: 12px; background: var(--surface); color: var(--ink); cursor: pointer; }
 .theme-btn:hover, .back:hover { border-color: var(--edge); }
@@ -49,75 +55,76 @@ li small { flex: none; font-size: .8125rem; font-weight: 700; color: var(--muted
     <h1>Documents</h1>
     <button type="button" class="theme-btn" id="theme" aria-label="Changer de thème"></button>
   </div>
+  <p class="legend"><span><i class="qcm"></i>QCM</span><span><i class="qrc"></i>Comptabilité</span><span><i class="ate"></i>Écrit et oral</span><span><i></i>Général</span></p>
   <section>
     <h2>Fiches</h2>
     <ul>
-      <li><a href="fiches/00_Vue_d_ensemble_et_annales.pdf" target="_blank" rel="noopener"><span>Vue d'ensemble et annales</span><small>185 Ko</small></a></li>
-      <li><a href="fiches/01_Fiches_QCM_commun.pdf" target="_blank" rel="noopener"><span>Fiches QCM commun</span><small>414 Ko</small></a></li>
-      <li><a href="fiches/02_QCM_entrainement_et_corriges.pdf" target="_blank" rel="noopener"><span>QCM d'entraînement et corrigés</span><small>410 Ko</small></a></li>
-      <li><a href="fiches/03_Fiches_QRC_comptabilite_analyse_financiere.pdf" target="_blank" rel="noopener"><span>Fiches QRC comptabilité et analyse financière</span><small>504 Ko</small></a></li>
-      <li><a href="fiches/04_QRC_entrainement_et_corriges.pdf" target="_blank" rel="noopener"><span>QRC d'entraînement et corrigés</span><small>371 Ko</small></a></li>
-      <li><a href="fiches/05_Note_de_synthese_methode.pdf" target="_blank" rel="noopener"><span>Note de synthèse : méthode</span><small>206 Ko</small></a></li>
-      <li><a href="fiches/06_Sujets_blancs_note_de_synthese_corriges.pdf" target="_blank" rel="noopener"><span>Sujets blancs de note de synthèse corrigés</span><small>325 Ko</small></a></li>
-      <li><a href="fiches/07_Controleur.pdf" target="_blank" rel="noopener"><span>Spécificités contrôleur</span><small>181 Ko</small></a></li>
-      <li><a href="fiches/08_Sources.pdf" target="_blank" rel="noopener"><span>Sources</span><small>107 Ko</small></a></li>
+      <li><a href="fiches/00_Vue_d_ensemble_et_annales.pdf" target="_blank" rel="noopener"><span><b class="p doc">00</b>Vue d'ensemble et annales</span><small>185 Ko</small></a></li>
+      <li><a href="fiches/01_Fiches_QCM_commun.pdf" target="_blank" rel="noopener"><span><b class="p qcm">01</b>Fiches QCM commun</span><small>414 Ko</small></a></li>
+      <li><a href="fiches/02_QCM_entrainement_et_corriges.pdf" target="_blank" rel="noopener"><span><b class="p qcm">02</b>QCM d'entraînement et corrigés</span><small>410 Ko</small></a></li>
+      <li><a href="fiches/03_Fiches_QRC_comptabilite_analyse_financiere.pdf" target="_blank" rel="noopener"><span><b class="p qrc">03</b>Fiches QRC comptabilité et analyse financière</span><small>504 Ko</small></a></li>
+      <li><a href="fiches/04_QRC_entrainement_et_corriges.pdf" target="_blank" rel="noopener"><span><b class="p qrc">04</b>QRC d'entraînement et corrigés</span><small>371 Ko</small></a></li>
+      <li><a href="fiches/05_Note_de_synthese_methode.pdf" target="_blank" rel="noopener"><span><b class="p ate">05</b>Note de synthèse : méthode</span><small>206 Ko</small></a></li>
+      <li><a href="fiches/06_Sujets_blancs_note_de_synthese_corriges.pdf" target="_blank" rel="noopener"><span><b class="p ate">06</b>Sujets blancs de note de synthèse corrigés</span><small>325 Ko</small></a></li>
+      <li><a href="fiches/07_Controleur.pdf" target="_blank" rel="noopener"><span><b class="p doc">07</b>Spécificités contrôleur</span><small>181 Ko</small></a></li>
+      <li><a href="fiches/08_Sources.pdf" target="_blank" rel="noopener"><span><b class="p doc">08</b>Sources</span><small>107 Ko</small></a></li>
     </ul>
   </section>
   <section>
     <h2>Sujets inspecteur</h2>
     <ul>
-      <li><a href="sujets/IFiP_2026_Epreuve1_Note_de_synthese.pdf" target="_blank" rel="noopener"><span>2026 · Note de synthèse</span><small>3,1 Mo</small></a></li>
-      <li><a href="sujets/IFiP_2026_Epreuve2_QCM-QRC_Comptabilite.pdf" target="_blank" rel="noopener"><span>2026 · QCM-QRC comptabilité</span><small>443 Ko</small></a></li>
-      <li><a href="sujets/IFiP_2026_Epreuve2_QCM-QRC_Comptabilite_corrige.pdf" target="_blank" rel="noopener"><span>2026 · QCM-QRC comptabilité, corrigé</span><small>246 Ko</small></a></li>
-      <li><a href="sujets/IFiP_2026_Epreuve2_QCM-QRC_Finances_publiques.pdf" target="_blank" rel="noopener"><span>2026 · QCM-QRC finances publiques</span><small>501 Ko</small></a></li>
-      <li><a href="sujets/IFiP_Sujet_test_Epreuve1_Note_de_synthese_avec_corrige.pdf" target="_blank" rel="noopener"><span>Sujet test · Note de synthèse, avec corrigé</span><small>1,0 Mo</small></a></li>
-      <li><a href="sujets/IFiP_Sujet_test_Epreuve2_Comptabilite_avec_corrige.pdf" target="_blank" rel="noopener"><span>Sujet test · Comptabilité, avec corrigé</span><small>242 Ko</small></a></li>
-      <li><a href="sujets/IFiP_2025_externe_Note_de_synthese.pdf" target="_blank" rel="noopener"><span>Externe 2025 · JO de Paris 2024 (ancien format)</span><small>3,8 Mo</small></a></li>
-      <li><a href="sujets/IFiP_2024_externe_Note_de_synthese.pdf" target="_blank" rel="noopener"><span>Externe 2024 · Marketing d’influence (ancien format)</span><small>1,1 Mo</small></a></li>
-      <li><a href="sujets/IFiP_2023_externe_Note_de_synthese.pdf" target="_blank" rel="noopener"><span>Externe 2023 · Jeu vidéo (ancien format)</span><small>3,6 Mo</small></a></li>
-      <li><a href="sujets/IFiP_2022_externe_Note_de_synthese.pdf" target="_blank" rel="noopener"><span>Externe 2022 · « Logement d’abord » (ancien format)</span><small>4,5 Mo</small></a></li>
-      <li><a href="sujets/IFiP_2026_interne_Note_de_synthese.pdf" target="_blank" rel="noopener"><span>Interne 2026 · Pouvoir d’achat</span><small>8,0 Mo</small></a></li>
-      <li><a href="sujets/IFiP_2025_interne_Note_de_synthese.pdf" target="_blank" rel="noopener"><span>Interne 2025 · Neutralité carbone</span><small>18,1 Mo</small></a></li>
-      <li><a href="sujets/IFiP_2024_interne_Note_de_synthese.pdf" target="_blank" rel="noopener"><span>Interne 2024 · Marché de l’emploi</span><small>7,6 Mo</small></a></li>
+      <li><a href="sujets/IFiP_2026_Epreuve1_Note_de_synthese.pdf" target="_blank" rel="noopener"><span><b class="p ate">2026</b>Note de synthèse</span><small>3,1 Mo</small></a></li>
+      <li><a href="sujets/IFiP_2026_Epreuve2_QCM-QRC_Comptabilite.pdf" target="_blank" rel="noopener"><span><b class="p qrc">2026</b>QCM-QRC comptabilité</span><small>443 Ko</small></a></li>
+      <li><a href="sujets/IFiP_2026_Epreuve2_QCM-QRC_Comptabilite_corrige.pdf" target="_blank" rel="noopener"><span><b class="p qrc">2026</b>QCM-QRC comptabilité, corrigé</span><small>246 Ko</small></a></li>
+      <li><a href="sujets/IFiP_2026_Epreuve2_QCM-QRC_Finances_publiques.pdf" target="_blank" rel="noopener"><span><b class="p qcm">2026</b>QCM-QRC finances publiques</span><small>501 Ko</small></a></li>
+      <li><a href="sujets/IFiP_Sujet_test_Epreuve1_Note_de_synthese_avec_corrige.pdf" target="_blank" rel="noopener"><span><b class="p ate">Sujet test</b>Note de synthèse, avec corrigé</span><small>1,0 Mo</small></a></li>
+      <li><a href="sujets/IFiP_Sujet_test_Epreuve2_Comptabilite_avec_corrige.pdf" target="_blank" rel="noopener"><span><b class="p qrc">Sujet test</b>Comptabilité, avec corrigé</span><small>242 Ko</small></a></li>
+      <li><a href="sujets/IFiP_2025_externe_Note_de_synthese.pdf" target="_blank" rel="noopener"><span><b class="p ate">Externe 2025</b>JO de Paris 2024 (ancien format)</span><small>3,8 Mo</small></a></li>
+      <li><a href="sujets/IFiP_2024_externe_Note_de_synthese.pdf" target="_blank" rel="noopener"><span><b class="p ate">Externe 2024</b>Marketing d’influence (ancien format)</span><small>1,1 Mo</small></a></li>
+      <li><a href="sujets/IFiP_2023_externe_Note_de_synthese.pdf" target="_blank" rel="noopener"><span><b class="p ate">Externe 2023</b>Jeu vidéo (ancien format)</span><small>3,6 Mo</small></a></li>
+      <li><a href="sujets/IFiP_2022_externe_Note_de_synthese.pdf" target="_blank" rel="noopener"><span><b class="p ate">Externe 2022</b>«&nbsp;Logement d’abord&nbsp;» (ancien format)</span><small>4,5 Mo</small></a></li>
+      <li><a href="sujets/IFiP_2026_interne_Note_de_synthese.pdf" target="_blank" rel="noopener"><span><b class="p ate">Interne 2026</b>Pouvoir d’achat</span><small>8,0 Mo</small></a></li>
+      <li><a href="sujets/IFiP_2025_interne_Note_de_synthese.pdf" target="_blank" rel="noopener"><span><b class="p ate">Interne 2025</b>Neutralité carbone</span><small>18,1 Mo</small></a></li>
+      <li><a href="sujets/IFiP_2024_interne_Note_de_synthese.pdf" target="_blank" rel="noopener"><span><b class="p ate">Interne 2024</b>Marché de l’emploi</span><small>7,6 Mo</small></a></li>
     </ul>
   </section>
   <section>
     <h2>Sujets contrôleur</h2>
     <ul>
-      <li><a href="sujets/CFiP_2026_Epreuve1_Analyse_de_dossier.pdf" target="_blank" rel="noopener"><span>2026 · Analyse de dossier</span><small>2,7 Mo</small></a></li>
-      <li><a href="sujets/CFiP_2026_Epreuve2_QCM-QRC_Comptabilite.pdf" target="_blank" rel="noopener"><span>2026 · QCM-QRC comptabilité</span><small>437 Ko</small></a></li>
-      <li><a href="sujets/CFiP_Sujet_test_Epreuve1_Analyse_de_dossier.pdf" target="_blank" rel="noopener"><span>Sujet test · Analyse de dossier</span><small>1,5 Mo</small></a></li>
-      <li><a href="sujets/CFiP_Sujet_test_Epreuve2_Comptabilite.pdf" target="_blank" rel="noopener"><span>Sujet test · Comptabilité</span><small>2,3 Mo</small></a></li>
-      <li><a href="sujets/CFiP_2024_externe_Analyse_de_dossier.pdf" target="_blank" rel="noopener"><span>Externe 2024 · Le tourisme en France</span><small>2,7 Mo</small></a></li>
-      <li><a href="sujets/CFiP_2023_externe_Analyse_de_dossier.pdf" target="_blank" rel="noopener"><span>Externe 2023 · Le prêt garanti par l’État</span><small>8,2 Mo</small></a></li>
-      <li><a href="sujets/CFiP_2026_interne_Analyse_de_dossier.pdf" target="_blank" rel="noopener"><span>Interne 2026 · Espaces de travail et télétravail</span><small>7,2 Mo</small></a></li>
-      <li><a href="sujets/CFiP_2025_interne_Analyse_de_dossier.pdf" target="_blank" rel="noopener"><span>Interne 2025 · L’IA dans les administrations</span><small>770 Ko</small></a></li>
-      <li><a href="sujets/CFiP_2024_interne_Analyse_de_dossier.pdf" target="_blank" rel="noopener"><span>Interne 2024 · COM et responsabilité des gestionnaires</span><small>2,9 Mo</small></a></li>
+      <li><a href="sujets/CFiP_2026_Epreuve1_Analyse_de_dossier.pdf" target="_blank" rel="noopener"><span><b class="p ate">2026</b>Analyse de dossier</span><small>2,7 Mo</small></a></li>
+      <li><a href="sujets/CFiP_2026_Epreuve2_QCM-QRC_Comptabilite.pdf" target="_blank" rel="noopener"><span><b class="p qrc">2026</b>QCM-QRC comptabilité</span><small>437 Ko</small></a></li>
+      <li><a href="sujets/CFiP_Sujet_test_Epreuve1_Analyse_de_dossier.pdf" target="_blank" rel="noopener"><span><b class="p ate">Sujet test</b>Analyse de dossier</span><small>1,5 Mo</small></a></li>
+      <li><a href="sujets/CFiP_Sujet_test_Epreuve2_Comptabilite.pdf" target="_blank" rel="noopener"><span><b class="p qrc">Sujet test</b>Comptabilité</span><small>2,3 Mo</small></a></li>
+      <li><a href="sujets/CFiP_2024_externe_Analyse_de_dossier.pdf" target="_blank" rel="noopener"><span><b class="p ate">Externe 2024</b>Le tourisme en France</span><small>2,7 Mo</small></a></li>
+      <li><a href="sujets/CFiP_2023_externe_Analyse_de_dossier.pdf" target="_blank" rel="noopener"><span><b class="p ate">Externe 2023</b>Le prêt garanti par l’État</span><small>8,2 Mo</small></a></li>
+      <li><a href="sujets/CFiP_2026_interne_Analyse_de_dossier.pdf" target="_blank" rel="noopener"><span><b class="p ate">Interne 2026</b>Espaces de travail et télétravail</span><small>7,2 Mo</small></a></li>
+      <li><a href="sujets/CFiP_2025_interne_Analyse_de_dossier.pdf" target="_blank" rel="noopener"><span><b class="p ate">Interne 2025</b>L’IA dans les administrations</span><small>770 Ko</small></a></li>
+      <li><a href="sujets/CFiP_2024_interne_Analyse_de_dossier.pdf" target="_blank" rel="noopener"><span><b class="p ate">Interne 2024</b>COM et responsabilité des gestionnaires</span><small>2,9 Mo</small></a></li>
     </ul>
   </section>
   <section>
     <h2>Rapports de jury 2026</h2>
     <ul>
-      <li><a href="officiel/Rapport_jury_Inspecteur_2026.pdf" target="_blank" rel="noopener"><span>Inspecteur</span><small>155 Ko</small></a></li>
-      <li><a href="officiel/Rapport_jury_Controleur_2026.pdf" target="_blank" rel="noopener"><span>Contrôleur</span><small>76 Ko</small></a></li>
+      <li><a href="officiel/Rapport_jury_Inspecteur_2026.pdf" target="_blank" rel="noopener"><span><b class="p doc">Inspecteur</b>Rapport du jury</span><small>155 Ko</small></a></li>
+      <li><a href="officiel/Rapport_jury_Controleur_2026.pdf" target="_blank" rel="noopener"><span><b class="p doc">Contrôleur</b>Rapport du jury</span><small>76 Ko</small></a></li>
     </ul>
   </section>
   <section>
     <h2>Programmes de l'épreuve 2</h2>
     <ul>
-      <li><a href="officiel/Programme_officiel_Inspecteur_Epreuve2_QCM-QRC.pdf" target="_blank" rel="noopener"><span>Inspecteur · QCM-QRC</span><small>127 Ko</small></a></li>
-      <li><a href="officiel/Programme_officiel_Controleur_Epreuve2_QCM-QRC.pdf" target="_blank" rel="noopener"><span>Contrôleur · QCM-QRC</span><small>57 Ko</small></a></li>
+      <li><a href="officiel/Programme_officiel_Inspecteur_Epreuve2_QCM-QRC.pdf" target="_blank" rel="noopener"><span><b class="p qcm">Inspecteur</b>QCM-QRC</span><small>127 Ko</small></a></li>
+      <li><a href="officiel/Programme_officiel_Controleur_Epreuve2_QCM-QRC.pdf" target="_blank" rel="noopener"><span><b class="p qcm">Contrôleur</b>QCM-QRC</span><small>57 Ko</small></a></li>
     </ul>
   </section>
   <section>
     <h2>Guides ENFiP</h2>
     <ul>
-      <li><a href="officiel/Guide_ENFiP_preparation_concours_externes.pdf" target="_blank" rel="noopener"><span>Préparer les concours externes</span><small>6,7 Mo</small></a></li>
-      <li><a href="officiel/Guide_ENFiP_Inspecteur_Note_de_synthese.pdf" target="_blank" rel="noopener"><span>Inspecteur · Note de synthèse</span><small>6,2 Mo</small></a></li>
-      <li><a href="officiel/Guide_ENFiP_Inspecteur_QCM-QRC.pdf" target="_blank" rel="noopener"><span>Inspecteur · QCM-QRC</span><small>5,4 Mo</small></a></li>
-      <li><a href="officiel/Guide_ENFiP_Inspecteur_Oral.pdf" target="_blank" rel="noopener"><span>Inspecteur · Oral</span><small>3,6 Mo</small></a></li>
-      <li><a href="officiel/Guide_ENFiP_Controleur_Analyse_de_dossier.pdf" target="_blank" rel="noopener"><span>Contrôleur · Analyse de dossier</span><small>4,8 Mo</small></a></li>
-      <li><a href="officiel/Guide_ENFiP_Controleur_QCM-QRC.pdf" target="_blank" rel="noopener"><span>Contrôleur · QCM-QRC</span><small>5,8 Mo</small></a></li>
+      <li><a href="officiel/Guide_ENFiP_preparation_concours_externes.pdf" target="_blank" rel="noopener"><span><b class="p doc">Les deux</b>Préparer les concours externes</span><small>6,7 Mo</small></a></li>
+      <li><a href="officiel/Guide_ENFiP_Inspecteur_Note_de_synthese.pdf" target="_blank" rel="noopener"><span><b class="p ate">Inspecteur</b>Note de synthèse</span><small>6,2 Mo</small></a></li>
+      <li><a href="officiel/Guide_ENFiP_Inspecteur_QCM-QRC.pdf" target="_blank" rel="noopener"><span><b class="p qcm">Inspecteur</b>QCM-QRC</span><small>5,4 Mo</small></a></li>
+      <li><a href="officiel/Guide_ENFiP_Inspecteur_Oral.pdf" target="_blank" rel="noopener"><span><b class="p ate">Inspecteur</b>Oral</span><small>3,6 Mo</small></a></li>
+      <li><a href="officiel/Guide_ENFiP_Controleur_Analyse_de_dossier.pdf" target="_blank" rel="noopener"><span><b class="p ate">Contrôleur</b>Analyse de dossier</span><small>4,8 Mo</small></a></li>
+      <li><a href="officiel/Guide_ENFiP_Controleur_QCM-QRC.pdf" target="_blank" rel="noopener"><span><b class="p qcm">Contrôleur</b>QCM-QRC</span><small>5,8 Mo</small></a></li>
     </ul>
   </section>
 </main>
