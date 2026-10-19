@@ -101,6 +101,13 @@
 .rsheet button.abst::after { content: "–"; background: var(--muted); }
 .legend i[class^="th-"] { background: var(--th); border-color: transparent; }
 .legend i.mk { border-radius: 999px; border: 0; }
+/* Progrès : ta barre et celle des candidats 2026, l'une sous l'autre */
+.bars .bar-row { gap: 10px; }
+.duo { display: grid; grid-template-columns: max-content minmax(0, 1fr) 3.4em; align-items: center; gap: 8px 10px; }
+.duo .who { font-size: var(--t-xs); font-weight: 800; color: var(--muted); }
+.duo .val { font-size: var(--t-sm); font-weight: 900; text-align: right; font-variant-numeric: tabular-nums; }
+.track .fill.ref { background: var(--muted); }
+.legend i.ref { background: var(--muted); border-color: var(--muted); }
 .legend i.mk.ok { background: var(--ok); } .legend i.mk.ko { background: var(--bad); } .legend i.mk.abst { background: var(--muted); }
 .revq .opt { cursor: default; }
 .revq .opt:hover { border-color: var(--line-2); }
@@ -860,14 +867,18 @@ function viewProgres(m){
   <article class="sheet">
     <div class="row between">
       <h2 class="h-sec">Par thème</h2>
-      <div class="legend"><span><i style="background:var(--ok);border-color:var(--ok)"></i>au-dessus des candidats 2026</span><span><i style="background:var(--bad);border-color:var(--bad)"></i>en dessous</span><span><i class="jury"></i>moyenne des candidats 2026</span></div>
+      <div class="legend"><span><i style="background:var(--ok);border-color:var(--ok)"></i>toi, au-dessus des candidats 2026</span><span><i style="background:var(--bad);border-color:var(--bad)"></i>toi, en dessous</span><span><i class="ref"></i>moyenne des candidats 2026</span></div>
     </div>
-    <div class="bars" style="padding-top:10px">
+    <div class="bars">
       ${st.map(s=>{ const v=pct(s.ok,s.n); const j=THEMES[s.t].jury; return `<div class="bar-row">
-        <div class="lab"><b>${THEMES[s.t].l}</b><span><strong>${fmtPct(v)}</strong>${j?` · candidats 2026 : ${fmtNum(j,1)} %`:""} · examen ${fmtPct(pct(s.xok,s.xn))} · ${plural(s.n,"réponse")}</span></div>
-        <div class="track" role="img" aria-label="${THEMES[s.t].l} : ${fmtPct(v)}${j?", candidats 2026 : "+Math.round(j)+" %":""}">
-          <div class="fill ${v==null?"":j==null?"":v>=j?"ok":"bad"}" style="width:${v||0}%"></div>
-          ${j?`<div class="jury" style="left:${j}%" data-l="${fmtNum(j,1)}"></div>`:""}
+        <div class="lab"><b>${THEMES[s.t].l}</b><span>examen ${fmtPct(pct(s.xok,s.xn))} · ${plural(s.n,"réponse")}</span></div>
+        <div class="duo">
+          <span class="who">Toi</span>
+          <div class="track" role="img" aria-label="${THEMES[s.t].l}, toi : ${fmtPct(v)}"><div class="fill ${v==null?"":j==null?"":v>=j?"ok":"bad"}" style="width:${v||0}%"></div></div>
+          <span class="val">${fmtPct(v)}</span>
+          ${j?`<span class="who">Candidats 2026</span>
+          <div class="track" role="img" aria-label="${THEMES[s.t].l}, candidats 2026 : ${fmtNum(j,1)} %"><div class="fill ref" style="width:${j}%"></div></div>
+          <span class="val">${fmtNum(j,1)} %</span>`:""}
         </div></div>`; }).join("")}
     </div>
     ${weak?`<div class="callout">
