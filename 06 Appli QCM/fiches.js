@@ -283,12 +283,14 @@ const FICHES = [
     ["**Présidence du Conseil de l'UE**","**Irlande** jusqu'au 31 décembre 2026, **Lituanie** au 1er semestre 2027, **Grèce** au 2nd","Conseil de l'UE"],
     ["**Zone euro**","**21 membres** depuis l'entrée de la Bulgarie le 1er janvier 2026","Banque de France"],
     ["**Facturation électronique**","Réception obligatoire pour toutes les entreprises depuis le 1er septembre 2026",""],
-    ["**Élections**","Municipales en mars 2026 ; présidentielle au printemps 2027, à la fin du second mandat d'Emmanuel Macron",""]
+    ["**Élections**","Municipales en mars 2026 ; présidentielle les **18 avril et 2 mai 2027**, à la fin du second mandat d'Emmanuel Macron","info.gouv.fr"]
   ]}},
-  {h:"Deux nominations récentes"},
+  {h:"Nominations récentes"},
   {ul:[
     "**Amélie de Montchalin** est Première présidente de la Cour des comptes depuis le **23 février 2026**, à la suite de Pierre Moscovici ; elle préside donc aussi le Haut Conseil des finances publiques.",
-    "**Gérard Larcher** a été réélu président du Sénat le **1er octobre 2026**, avec 203 voix (compte rendu du Sénat)."
+    "**Gérard Larcher** a été réélu président du Sénat le **1er octobre 2026**, avec 203 voix (compte rendu du Sénat).",
+    "**François-Noël Buffet** est Défenseur des droits depuis le **23 juillet 2026**, à la suite de Claire Hédon.",
+    "**Richard Ferrand** préside le Conseil constitutionnel depuis le **8 mars 2025**, à la suite de Laurent Fabius."
   ]},
   {p:"D'ici le 7 décembre, suis l'avancement du vote du budget 2027."}
 ]},
