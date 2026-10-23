@@ -8,7 +8,8 @@
   };
   var S = { prog: blank(), view: 'train', train: null, trainType: null, annale: null, exam: null, fiche: null, confirmReset: false, confirmDel: null, confirmTdel: null };
   var uid = 0;
-  var COURT = { affectation: 'Affectation', tva_ca3: 'TVA CA3', tva_coef: 'Coef. TVA', tva_regul: 'Régul. TVA', amort: 'Amortissement', derog: 'Dérogatoire', cession: 'Cession', depreciations: 'Dépréciations', regul: 'Régularisations', augcap: 'Capital', seuil: 'Seuil', commande: 'Coût marginal', sig_caf: 'SIG et CAF', bilan_fonc: 'Bilan fonct.', ratios: 'Ratios', is: 'IS', devises: 'Devises' };
+  var COURT = { affectation: 'Affectation', tva_ca3: 'TVA CA3', tva_coef: 'Coef. TVA', tva_regul: 'Régul. TVA', amort: 'Amortissement', derog: 'Dérogatoire', cession: 'Cession', depreciations: 'Dépréciations', regul: 'Régularisations', augcap: 'Capital', seuil: 'Seuil', commande: 'Coût marginal', sig_caf: 'SIG et CAF', bilan_fonc: 'Bilan fonct.', ratios: 'Ratios', is: 'IS', devises: 'Devises', stocks: 'Stocks', cout_complet: 'Coût complet', flux_treso: 'Flux de tréso.', plan_fin: 'Plan de fin.', plan_treso: 'Budget tréso.',
+    generalites: 'Principes', tenue: 'Tenue des comptes', facturation: 'Facturation', paie: 'Paie', rapprochement: 'Rapprochement', emprunt: 'Emprunt', subvention: 'Subvention', immo_acq: 'Coût d’entrée', titres: 'Titres', inventaire: 'Inventaire', etats: 'Documents de synthèse' };
   function blank() { return { v: 1, updated: 0, types: {}, epreuves: [], settings: { profil: 'I', pcgOld: false } }; }
   function normalize(p) {
     var b = blank();
@@ -72,7 +73,16 @@
   /* ---------- Répétition espacée par type ---------- */
   function st(id) { return S.prog.types[id] || { n: 0, sum: 0, box: 0, due: 0, last: [] }; }
   function avg(s) { return s.n ? s.sum / s.n : null; }
-  function eligible() { var pr = profil(); return Object.keys(T).map(function (k) { return T[k]; }).filter(function (t) { return pr === 'I' || t.ctrl; }); }
+  // Familles dans l'ordre du programme officiel (comptabilité générale, de gestion, analyse financière)
+  var FAMS = ['Cadre comptable', 'Opérations courantes', 'TVA', 'Opérations financières', 'Immobilisations', 'Travaux d’inventaire', 'Comptabilité des sociétés', 'Fiscalité', 'Documents de synthèse', 'Comptabilité de gestion', 'Analyse financière'];
+  var ORDRE = ['generalites', 'tenue', 'facturation', 'paie', 'rapprochement', 'devises', 'tva_ca3', 'tva_coef', 'tva_regul', 'emprunt', 'subvention', 'immo_acq', 'amort', 'derog', 'cession', 'titres', 'regul', 'stocks', 'depreciations', 'inventaire'];
+  function famRang(f) { var i = FAMS.indexOf(f); return i < 0 ? FAMS.length : i; }
+  function rang(t, i) { var k = ORDRE.indexOf(t.id); return k < 0 ? 100 + i : k; }
+  function eligible() {
+    var pr = profil();
+    return Object.keys(T).map(function (k, i) { return { t: T[k], i: i }; }).filter(function (o) { return pr === 'I' || o.t.ctrl; })
+      .sort(function (a, b) { return famRang(a.t.famille) - famRang(b.t.famille) || rang(a.t, a.i) - rang(b.t, b.i); }).map(function (o) { return o.t; });
+  }
   function isDue(s) { return !s.n || s.due <= Date.now(); }
   function nextTxt(s) {
     if (!s.n) return 'nouveau';
@@ -336,7 +346,9 @@
       return '<h4>' + esc(f) + '</h4>' + el.filter(function (t) { return t.famille === f; }).map(function (t) { return '<a href="#fiches" data-fiche="' + t.id + '"' + (t.id === S.fiche ? ' aria-current="true"' : '') + '>' + esc(t.nom) + ' <span class="badge mono">' + t.minutes + ' min</span></a>'; }).join('');
     }).join('') + '</div></nav>';
     h += '<article class="sheet"><div class="reading"><div class="hero"><span class="eyebrow">Fiche · ' + esc(cur.famille) + '</span><h1 class="h-page">' + esc(cur.nom) + '</h1><p class="lede">' + esc(fi.objectif) + '</p></div>';
-    h += '<h4>Étapes</h4><ol class="steps">' + fi.etapes.map(function (x) { return '<li><span>' + esc(x) + '</span></li>'; }).join('') + '</ol>';
+    // Cours (facultatif) : l'essentiel à savoir, par rubrique ; « Terme : explication » met le terme en gras
+    if (fi.cours) h += fi.cours.map(function (c) { return '<h4>' + esc(c.t) + '</h4><ul class="cours">' + c.l.map(function (x) { var k = x.indexOf(' : '); return '<li>' + (k > 0 && k < 70 ? '<b>' + esc(x.slice(0, k)) + '</b>' + esc(x.slice(k)) : esc(x)) + '</li>'; }).join('') + '</ul>'; }).join('');
+    h += '<h4>' + esc(fi.titreEtapes || 'Étapes') + '</h4><ol class="steps">' + fi.etapes.map(function (x) { return '<li><span>' + esc(x) + '</span></li>'; }).join('') + '</ol>';
     h += '<h4>Pièges</h4><ul class="traps">' + fi.pieges.map(function (x) { return '<li>' + ico('cross') + '<span>' + esc(x) + '</span></li>'; }).join('') + '</ul>';
     if (fi.comptes.length) h += '<h4>Comptes</h4><div class="accts">' + fi.comptes.map(acctHtml).join('') + '</div>';
     var fx = S.fex && S.fex.ex.typeId === cur.id ? S.fex.ex : null;

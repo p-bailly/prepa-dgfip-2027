@@ -75,8 +75,10 @@ ANNALES.forEach(a => {
 const cnt = {};
 console.log('— Variantes aléatoires —');
 const N = 1500;
+// ONLY=id1,id2 node test/test.js : limite les variantes aléatoires à certains types
+const ONLY = process.env.ONLY ? process.env.ONLY.split(',') : null;
 Object.keys(T).forEach(id => {
-  const t = T[id]; if (!t.gen) return;
+  const t = T[id]; if (!t.gen || (ONLY && ONLY.indexOf(id) < 0)) return;
   let nb = 0;
   for (let s = 1; s <= N; s++) {
     const r = U.rng(s * 7919 + id.length);
@@ -105,11 +107,18 @@ Object.keys(T).forEach(id => {
     if (id === 'flux_treso') { const c = t.calc(p); ok(c.CAF > 0 && near(c.CAF, p.R + p.D - p.Rp - c.PV) && near(c.T1 - p.T0, c.FA + c.FI + c.FF), id + ' flux ' + s); }
     if (id === 'plan_fin') { const c = t.calc(p); ok(near(c.cumul[2], c.solde.reduce((a, b) => a + b, 0)) && c.dBFR.every(v => v > 0) && near(c.RB[1] * p.nE, p.E, 0.05), id + ' plan ' + s); (cnt.plan_fin = cnt.plan_fin || [0, 0])[c.ok ? 0 : 1]++; }
     if (id === 'plan_treso') { const c = t.calc(p); ok(near(c.fin[2], p.T0 + c.enc.reduce((a, b) => a + b, 0) - c.dec.reduce((a, b) => a + b, 0), 0.05) && c.tvaPaid.every(v => v >= 0), id + ' trésorerie ' + s); const sumEnc = p.Cd + p.V[0] * 1.2 + p.V[1] * 1.2 + p.V[2] * 1.2 * p.a + (p.E || 0) - p.V[2] * 0; ok(near(c.enc.reduce((a, b) => a + b, 0), sumEnc, 0.05), id + ' encaissements ' + s); }
+    if (id === 'generalites') { const r0 = ex.questions.map(q => q.options[q.ans]); ok(new Set(r0).size === r0.length && r0.length === 6, id + ' réponses distinctes ' + s); }
+    if (id === 'tenue') { const c = t.calc(p); ok(near(c.tD, c.tC) && near(c.sD, c.sC) && c.s512 > 0, id + ' balance ' + s); }
+    if (id === 'facturation') { const c = t.calc(p); ok(c.nc < c.brut && c.nap > 0 && near(c.nap, c.ttc + p.cons - c.acpt) && near(c.ttc, (c.nc - c.esc + p.port) * 1.2, 0.02), id + ' facture ' + s); }
+    if (id === 'paie') { const c = t.calc(p); ok(c.nap > 0 && near(c.nap, c.brut - c.sal - p.pas - p.acpt - p.opp) && near(c.cout, c.brut + c.pat), id + ' paie ' + s); }
+    if (id === 'rapprochement') { const c = t.calc(p); ok(c.Se > 0 && c.Sb > 0 && near(c.Se + c.tInc - c.tDec, p.R) && near(c.Sb - c.tChq + c.tRem, p.R) && near(ex.journal.reduce((a, en) => a + en.lines.filter(l => l.a === '512').reduce((b, l) => b + l.d - l.c, 0), 0), c.reg), id + ' rapprochement ' + s); }
+    if (id === 'emprunt') { const c = t.calc(p); ok(near(c.rows.reduce((a, r) => a + r.A, 0), p.K) && c.rows[p.n - 1].cf === 0 && c.rows.every(r => r.A > 0 && r.I >= 0) && c.icne > 0 && c.icne < c.rows[0].I + 0.01, id + ' emprunt ' + s); if (p.mode === 'annuite') ok(c.rows.slice(0, -1).every(r => near(r.ann, c.a)), id + ' annuités ' + s); }
+    if (id === 'subvention') { const c = t.calc(p); ok(c.qp > 0 && c.qp < c.dot && near(c.qp / c.dot, p.S / p.P, 0.01) && near(c.net + c.qp, p.S) && c.res < 0, id + ' subvention ' + s); }
     if (id === 'depreciations' && prof === 'C') ok(!p.items.some(i => i.k === 'litige'), id + ' programme contrôleur');
     nb++;
   }
   console.log('  ' + id.padEnd(14) + nb + ' variantes');
 });
-ok(cnt.plan_fin && cnt.plan_fin[0] > 300 && cnt.plan_fin[1] > 300, 'plan_fin : plans équilibrés et déséquilibrés ' + JSON.stringify(cnt.plan_fin));
+if (!ONLY || ONLY.indexOf('plan_fin') >= 0) ok(cnt.plan_fin && cnt.plan_fin[0] > 300 && cnt.plan_fin[1] > 300, 'plan_fin : plans équilibrés et déséquilibrés ' + JSON.stringify(cnt.plan_fin));
 console.log('\n' + checks + ' vérifications, ' + fails + ' échec(s)');
 process.exit(fails ? 1 : 0);

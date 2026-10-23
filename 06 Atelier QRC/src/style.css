@@ -87,6 +87,8 @@ table.journal td:nth-child(3), table.journal td:nth-child(4) { text-align: right
 .toc-wrap select { display: none; }
 .toc .badge { flex: none; }
 .reading .traps svg { flex: none; }
+.reading .cours { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 6px; }
+.reading .cours b { color: var(--ink); }
 @media (max-width: 1099px) {
   .fl { grid-template-columns: minmax(0, 1fr); }
   .toc-wrap { position: static; }

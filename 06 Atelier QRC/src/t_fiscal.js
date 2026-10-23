@@ -75,7 +75,7 @@ T.is = {
 
 /* ---------- 17. Opérations en devises ---------- */
 T.devises = {
-  id: 'devises', nom: 'Opérations en devises', famille: 'Comptabilité générale', ctrl: false, minutes: 15,
+  id: 'devises', nom: 'Opérations en devises', famille: 'Opérations courantes', ctrl: false, minutes: 15,
   fiche: {
     objectif: 'Enregistrer une créance ou une dette en devises, l’évaluer à la clôture et constater le résultat de change au règlement.',
     etapes: [
