@@ -9,7 +9,7 @@
   var S = { prog: blank(), view: 'train', train: null, trainType: null, annale: null, exam: null, fiche: null, confirmReset: false, confirmDel: null, confirmTdel: null };
   var uid = 0;
   var COURT = { affectation: 'Affectation', tva_ca3: 'TVA CA3', tva_coef: 'Coef. TVA', tva_regul: 'Régul. TVA', amort: 'Amortissement', derog: 'Dérogatoire', cession: 'Cession', depreciations: 'Dépréciations', regul: 'Régularisations', augcap: 'Capital', seuil: 'Seuil', commande: 'Coût marginal', sig_caf: 'SIG et CAF', bilan_fonc: 'Bilan fonct.', ratios: 'Ratios', is: 'IS', devises: 'Devises', stocks: 'Stocks', cout_complet: 'Coût complet', flux_treso: 'Flux de tréso.', plan_fin: 'Plan de fin.', plan_treso: 'Budget tréso.',
-    generalites: 'Principes', tenue: 'Tenue des comptes', facturation: 'Facturation', paie: 'Paie', rapprochement: 'Rapprochement', emprunt: 'Emprunt', subvention: 'Subvention', immo_acq: 'Coût d’entrée', titres: 'Titres', inventaire: 'Inventaire', etats: 'Documents de synthèse' };
+    generalites: 'Principes', tenue: 'Tenue des comptes', facturation: 'Facturation', paie: 'Paie', rapprochement: 'Rapprochement', emprunt: 'Emprunt', subvention: 'Subvention', immo_acq: 'Coût d’entrée', titres: 'Titres', inventaire: 'Inventaire', etats: 'Documents de synthèse', couts_partiels: 'Coûts partiels', couts_specifiques: 'Coûts spécifiques' };
   function blank() { return { v: 1, updated: 0, types: {}, epreuves: [], settings: { profil: 'I', pcgOld: false } }; }
   function normalize(p) {
     var b = blank();
@@ -75,7 +75,7 @@
   function avg(s) { return s.n ? s.sum / s.n : null; }
   // Familles dans l'ordre du programme officiel (comptabilité générale, de gestion, analyse financière)
   var FAMS = ['Cadre comptable', 'Opérations courantes', 'TVA', 'Opérations financières', 'Immobilisations', 'Travaux d’inventaire', 'Comptabilité des sociétés', 'Fiscalité', 'Documents de synthèse', 'Comptabilité de gestion', 'Analyse financière'];
-  var ORDRE = ['generalites', 'tenue', 'facturation', 'paie', 'rapprochement', 'devises', 'tva_ca3', 'tva_coef', 'tva_regul', 'emprunt', 'subvention', 'immo_acq', 'amort', 'derog', 'cession', 'titres', 'regul', 'stocks', 'depreciations', 'inventaire'];
+  var ORDRE = ['generalites', 'tenue', 'facturation', 'paie', 'rapprochement', 'devises', 'tva_ca3', 'tva_coef', 'tva_regul', 'emprunt', 'subvention', 'immo_acq', 'amort', 'derog', 'cession', 'titres', 'regul', 'stocks', 'depreciations', 'inventaire', 'cout_complet', 'couts_partiels', 'couts_specifiques', 'seuil', 'commande'];
   function famRang(f) { var i = FAMS.indexOf(f); return i < 0 ? FAMS.length : i; }
   function rang(t, i) { var k = ORDRE.indexOf(t.id); return k < 0 ? 100 + i : k; }
   function eligible() {

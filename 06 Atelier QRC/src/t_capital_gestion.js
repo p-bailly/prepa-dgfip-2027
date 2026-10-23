@@ -277,3 +277,198 @@ T.cout_complet = {
     return { enonce: en, questions: qs, journal: [], steps: [{ h: 'Coût des unités d’œuvre', html: uo }, { h: 'Coût d’achat', html: ach }, { h: 'Coût de production', html: prod }, { h: 'Coût de revient et résultat analytique', html: rev }], comment: com.join(' ') };
   }
 };
+
+/* ---------- Coûts partiels : coût variable par produit et imputation rationnelle ---------- */
+var GAMMES = [
+  { act: 'du mobilier de jardin', p: [['tables', 'table'], ['chaises', 'chaise'], ['parasols', 'parasol']] },
+  { act: 'des vélos', p: [['vélos de ville', 'vélo de ville'], ['vélos tout-terrain', 'VTT'], ['vélos électriques', 'vélo électrique']] },
+  { act: 'des articles de cuisine', p: [['poêles', 'poêle'], ['casseroles', 'casserole'], ['autocuiseurs', 'autocuiseur']] },
+  { act: 'des luminaires', p: [['lampes de bureau', 'lampe'], ['suspensions', 'suspension'], ['lampadaires', 'lampadaire']] },
+  { act: 'des fenêtres', p: [['fenêtres PVC', 'fenêtre PVC'], ['fenêtres aluminium', 'fenêtre aluminium'], ['baies coulissantes', 'baie']] }
+];
+function genGamme(r, opt) {
+  var g = r.pick(GAMMES), pr = [];
+  for (var i = 0; i < 3; i++) {
+    var p = r.int(3, 90) * 10, q = r.int(4, 60) * 100;
+    var tx = r.int(opt && opt[i] !== undefined ? opt[i][0] : 25, opt && opt[i] !== undefined ? opt[i][1] : 55) / 100;
+    var dist = r.pick([0.04, 0.05, 0.06, 0.08]);
+    var cvp = U.r2(p * (1 - tx - dist));
+    pr.push({ nom: g.p[i], p: p, q: q, cvp: cvp, dist: dist });
+  }
+  return { act: g.act, pr: pr };
+}
+function mcvProduits(pr) {
+  return pr.map(function (o) {
+    var CA = U.r2(o.p * o.q), CVP = U.r2(o.cvp * o.q), CVD = U.r2(CA * o.dist), CV = U.r2(CVP + CVD), MCV = U.r2(CA - CV);
+    return { CA: CA, CVP: CVP, CVD: CVD, CV: CV, MCV: MCV, tx: MCV / CA, mcvu: MCV / o.q };
+  });
+}
+
+T.couts_partiels = {
+  id: 'couts_partiels', nom: 'Coûts partiels : coût variable et imputation rationnelle', famille: 'Comptabilité de gestion', ctrl: false, minutes: 20,
+  fiche: {
+    objectif: 'Calculer la marge sur coût variable de chaque produit pour juger de sa contribution, puis neutraliser l’effet du niveau d’activité sur les coûts par l’imputation rationnelle des charges fixes.',
+    cours: [
+      { t: 'Coût complet et coûts partiels', l: [
+        'Coût complet : il incorpore toutes les charges, y compris les charges indirectes réparties entre les produits par des clés plus ou moins arbitraires ; son coût unitaire varie avec le volume produit, car les charges fixes sont réparties sur plus ou moins d’unités.',
+        'Coût partiel : il ne retient qu’une partie des charges, choisie selon un critère pertinent pour la décision (variabilité, rattachement direct, niveau d’activité).',
+        'Coût variable (direct costing simple) : charges qui varient avec l’activité (matières, main-d’œuvre payée à la pièce, commissions, transport sur ventes) ; les charges fixes sont traitées globalement.',
+        'Coût spécifique (direct costing évolué) : coût variable + charges fixes directement rattachables au produit (voir la fiche « Méthode des coûts spécifiques »).',
+        'Coût marginal : coût de la dernière unité ou de la dernière série produite (voir la fiche « Commande spéciale et coût marginal »).',
+        'Imputation rationnelle : les charges fixes sont incorporées aux coûts en proportion du niveau d’activité réel par rapport à l’activité normale.'
+      ] },
+      { t: 'Imputation rationnelle des charges fixes', l: [
+        'Coefficient d’imputation rationnelle = activité réelle ÷ activité normale.',
+        'Charges fixes imputées = charges fixes réelles × coefficient.',
+        'Coefficient < 1 : une partie des charges fixes n’est pas imputée, c’est le coût de la sous-activité (coût du chômage), qui est une charge de la période et non du produit.',
+        'Coefficient > 1 : on impute plus que les charges réelles, c’est un boni de suractivité.',
+        'Intérêt : le coût unitaire ne dépend plus du niveau d’activité ; il sert de base stable pour fixer les prix et pour évaluer les stocks (le PCG impose d’exclure la sous-activité du coût de production des stocks).'
+      ] }
+    ],
+    etapes: [
+      'Pour chaque produit : CA = quantité × prix ; coût variable = coût variable de production + coût variable de distribution.',
+      'Marge sur coût variable (MCV) = CA − coût variable ; taux de MCV = MCV ÷ CA ; MCV unitaire = MCV ÷ quantité.',
+      'Résultat global = somme des MCV − charges fixes (non réparties).',
+      'Imputation rationnelle : coefficient = activité réelle ÷ activité normale ; charges fixes imputées = charges fixes × coefficient.',
+      'Écart d’imputation = charges fixes imputées − charges fixes réelles : négatif, coût de sous-activité ; positif, boni de suractivité.',
+      'Coût unitaire rationnel = coût variable unitaire + charges fixes imputées ÷ quantité produite (= coût variable unitaire + charges fixes ÷ activité normale).'
+    ],
+    pieges: [
+      'Répartir les charges fixes entre produits en direct costing simple : elles sont couvertes globalement par la somme des MCV.',
+      'Oublier les charges variables de distribution (commissions, emballages, transport sur ventes) dans le coût variable.',
+      'Abandonner un produit à MCV positive : il contribue à la couverture des charges fixes, qui resteraient à la charge des autres produits.',
+      'Inverser le coefficient (activité normale ÷ activité réelle).',
+      'Incorporer le coût de sous-activité au coût des produits ou à la valeur des stocks.'
+    ],
+    comptes: []
+  },
+  gen: function (r) {
+    for (var t = 0; t < 100; t++) {
+      var g = genGamme(r), m = mcvProduits(g.pr), MCV = m.reduce(function (a, o) { return a + o.MCV; }, 0);
+      var CF = U.r0(MCV * r.int(60, 105) / 100 / 1000) * 1000;
+      var AN = r.int(10, 60) * 100, coef = r.pick([0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.05, 1.1, 1.15]);
+      var AR = U.r0(AN * coef / 10) * 10;
+      if (AR === AN || CF <= 0) continue;
+      return { nom: U.nom(r), act: g.act, pr: g.pr, CF: CF, at: { cvu: r.int(15, 120), F: r.int(20, 200) * 1000, AN: AN, AR: AR, prod: g.pr[0].nom } };
+    }
+  },
+  calc: function (p) {
+    var m = mcvProduits(p.pr), tot = { CA: 0, CV: 0, MCV: 0 };
+    m.forEach(function (o) { tot.CA = U.r2(tot.CA + o.CA); tot.CV = U.r2(tot.CV + o.CV); tot.MCV = U.r2(tot.MCV + o.MCV); });
+    var R = U.r2(tot.MCV - p.CF), a = p.at;
+    var coef = a.AR / a.AN, FI = U.r2(a.F * coef), ecart = U.r2(FI - a.F);
+    var cuComplet = U.r2(a.cvu + a.F / a.AR), cuRat = U.r2(a.cvu + FI / a.AR);
+    return { m: m, tot: tot, R: R, tx: tot.MCV / tot.CA, coef: coef, FI: FI, ecart: ecart, cuComplet: cuComplet, cuRat: cuRat };
+  },
+  solve: function (p) {
+    var x = this.calc(p), e = U.e, n = U.n, a = p.at;
+    var en = '<p>La société <b>' + p.nom + '</b> fabrique et vend ' + p.act + '. Données de l’exercice N :</p>';
+    en += U.tbl(['', p.pr[0].nom[0], p.pr[1].nom[0], p.pr[2].nom[0]], [['Quantités vendues'].concat(p.pr.map(function (o) { return n(o.q); })), ['Prix de vente unitaire HT'].concat(p.pr.map(function (o) { return U.e2(o.p); })), ['Coût variable unitaire de production'].concat(p.pr.map(function (o) { return U.e2(o.cvp); })), ['Charges variables de distribution (% du CA)'].concat(p.pr.map(function (o) { return U.pcs(o.dist); }))]);
+    en += '<p>Les charges fixes de l’entreprise s’élèvent à ' + e(p.CF) + ' ; elles ne sont pas réparties entre les produits.</p>';
+    en += '<p>Par ailleurs, l’atelier de montage des ' + a.prod[0] + ' supporte ' + e(a.F) + ' de charges fixes par an. Son activité normale est de ' + n(a.AN) + ' ' + a.prod[0] + ' ; il en a produit ' + n(a.AR) + ' en N. Le coût variable unitaire de production y est de ' + e(a.cvu) + '.</p>';
+    en += '<p class="consigne">1. Présentez le compte de résultat par variabilité de chaque produit et le résultat global ; commentez la contribution de chaque produit. 2. Calculez le coefficient d’imputation rationnelle, les charges fixes imputées et l’écart d’imputation de l’atelier. 3. Comparez le coût unitaire de production complet et le coût unitaire rationnel.</p>';
+    var qs = p.pr.map(function (o, i) { return Q('m' + i, 'Marge sur coût variable – ' + o.nom[0], x.m[i].MCV, '€'); });
+    qs.push(Q('tx', 'Taux de marge sur coût variable global', U.rd(x.tx * 100, 2), '%', { tol: 0.06 }), Q('res', 'Résultat global', x.R, '€'),
+      Q('coef', 'Coefficient d’imputation rationnelle', U.rd(x.coef, 4), 'coef', { tol: 0.006 }), Q('fi', 'Charges fixes imputées', x.FI, '€'),
+      Q('ec', 'Écart d’imputation (− coût de sous-activité, + boni de suractivité)', x.ecart, '€'), Q('cuc', 'Coût unitaire de production complet', x.cuComplet, '€', { tol: 0.01 }), Q('cur', 'Coût unitaire de production rationnel', x.cuRat, '€', { tol: 0.01 }));
+    var rows = [['Chiffre d’affaires'].concat(x.m.map(function (o) { return n(o.CA, 2); }), [n(x.tot.CA, 2)]),
+      ['− Coût variable de production'].concat(x.m.map(function (o) { return n(o.CVP, 2); }), [n(U.r2(x.m.reduce(function (s, o) { return s + o.CVP; }, 0)), 2)]),
+      ['− Coût variable de distribution'].concat(x.m.map(function (o) { return n(o.CVD, 2); }), [n(U.r2(x.m.reduce(function (s, o) { return s + o.CVD; }, 0)), 2)]),
+      { cls: 'tot', cells: ['= Marge sur coût variable'].concat(x.m.map(function (o) { return n(o.MCV, 2); }), [n(x.tot.MCV, 2)]) },
+      ['Taux de MCV'].concat(x.m.map(function (o) { return U.pc(o.tx, 1); }), [U.pc(x.tx, 1)]),
+      ['− Charges fixes', '', '', '', n(p.CF, 2)], { cls: 'tot', cells: ['= Résultat', '', '', '', n(x.R, 2)] }];
+    var crd = U.tbl(['', p.pr[0].nom[0], p.pr[1].nom[0], p.pr[2].nom[0], 'Total'], rows);
+    var sous = x.ecart < 0;
+    var c = [['Coefficient d’imputation rationnelle', n(a.AR) + ' ÷ ' + n(a.AN), n(x.coef, 4)], ['Charges fixes imputées', n(a.F) + ' × ' + n(x.coef, 4), e(x.FI)],
+      ['Écart d’imputation', n(x.FI) + ' − ' + n(a.F), '<b>' + (sous ? 'coût de sous-activité ' : 'boni de suractivité ') + e(Math.abs(x.ecart)) + '</b>'],
+      ['Coût unitaire complet', n(a.cvu) + ' + ' + n(a.F) + ' ÷ ' + n(a.AR), e(x.cuComplet)], ['Coût unitaire rationnel', n(a.cvu) + ' + ' + n(x.FI) + ' ÷ ' + n(a.AR) + ' (= ' + n(a.cvu) + ' + ' + n(a.F) + ' ÷ ' + n(a.AN) + ')', e(x.cuRat)]];
+    var best = 0, worst = 0;
+    x.m.forEach(function (o, i) { if (o.tx > x.m[best].tx) best = i; if (o.tx < x.m[worst].tx) worst = i; });
+    var com = 'Le direct costing simple ne retient que les charges variables : chaque produit dégage une marge sur coût variable qui contribue à couvrir les ' + e(p.CF) + ' de charges fixes, traitées globalement. Les ' + p.pr[best].nom[0] + ' sont les plus contributifs (taux de MCV de ' + U.pc(x.m[best].tx, 1) + '), les ' + p.pr[worst].nom[0] + ' les moins (' + U.pc(x.m[worst].tx, 1) + ') ; tous ayant une marge positive, aucun ne doit être abandonné à court terme, car sa marge disparaîtrait alors que les charges fixes resteraient. ' + (x.R >= 0 ? 'Le résultat global est un bénéfice de ' + e(x.R) + '.' : 'La somme des marges ne couvre pas les charges fixes : la perte de ' + e(-x.R) + ' appelle une action sur les prix, les volumes ou les charges fixes.') + ' ';
+    com += 'Dans l’atelier, l’activité réelle représente ' + U.pc(x.coef, 1) + ' de l’activité normale. ' + (sous ? 'En coût complet, les charges fixes sont réparties sur moins d’unités et le coût unitaire gonfle (' + U.e2(x.cuComplet) + ') : le produit supporterait le coût d’une capacité inemployée. L’imputation rationnelle ramène le coût à ' + U.e2(x.cuRat) + ' et isole un coût de sous-activité de ' + e(-x.ecart) + ', charge de la période imputable à la gestion de la capacité, qui ne doit pas être incorporée à la valeur des stocks.' : 'En coût complet, les charges fixes sont réparties sur plus d’unités et le coût unitaire baisse (' + U.e2(x.cuComplet) + '). L’imputation rationnelle retient un coût stable de ' + U.e2(x.cuRat) + ' et fait apparaître un boni de suractivité de ' + e(x.ecart) + ', gain lié à une meilleure utilisation des capacités.') + ' Le coût rationnel, indépendant des fluctuations d’activité, est une base plus fiable pour fixer les prix.';
+    return { enonce: en, questions: qs, journal: [], steps: [{ h: 'Compte de résultat par variabilité', html: crd }, { h: 'Imputation rationnelle', html: U.calc(c) }], comment: com };
+  }
+};
+
+/* ---------- Méthode des coûts spécifiques (direct costing évolué) ---------- */
+T.couts_specifiques = {
+  id: 'couts_specifiques', nom: 'Méthode des coûts spécifiques', famille: 'Comptabilité de gestion', ctrl: false, minutes: 20,
+  fiche: {
+    objectif: 'Calculer la marge sur coût spécifique de chaque produit, la comparer au résultat en coût complet et décider du maintien ou de l’abandon d’un produit.',
+    cours: [
+      { t: 'Principe', l: [
+        'Coût spécifique (ou coût direct) : coût variable du produit + charges fixes qui lui sont propres et disparaîtraient avec lui (amortissement d’une machine dédiée, salaire du chef de produit, publicité spécifique, loyer d’un atelier réservé).',
+        'Charges fixes communes : charges qui subsistent quel que soit le portefeuille de produits (direction, siège, comptabilité) ; elles ne sont pas réparties.',
+        'Marge sur coût spécifique (MCS) = marge sur coût variable − charges fixes spécifiques : c’est la contribution du produit à la couverture des charges communes.',
+        'Résultat global = somme des MCS − charges fixes communes.'
+      ] },
+      { t: 'Décision de maintien ou d’abandon', l: [
+        'MCS positive : le produit couvre ses charges propres et contribue aux charges communes ; l’abandonner ferait baisser le résultat du montant de sa MCS, même s’il paraît déficitaire en coût complet.',
+        'MCS négative : le produit ne couvre même pas ses charges propres ; son abandon améliore le résultat du montant de sa MCS (sous réserve des effets commerciaux : produit d’appel, gamme complète, clientèle commune).',
+        'Piège du coût complet : la répartition des charges communes (au prorata du CA par exemple) peut faire apparaître une perte sur un produit qui est pourtant rentable au sens de la MCS.',
+        'Limites : distinction parfois délicate entre charges spécifiques et communes, raisonnement de court terme.'
+      ] }
+    ],
+    etapes: [
+      'Pour chaque produit : CA, coût variable, marge sur coût variable (MCV).',
+      'Retrancher les charges fixes spécifiques : marge sur coût spécifique (MCS).',
+      'Résultat global = Σ MCS − charges fixes communes.',
+      'Si demandé, résultat en coût complet par produit : MCS − quote-part des charges communes (clé de répartition indiquée).',
+      'Abandon d’un produit : nouveau résultat = résultat global − MCS du produit (sa MCV et ses charges spécifiques disparaissent, les charges communes demeurent).',
+      'Conclure : maintien si MCS > 0, abandon envisageable si MCS < 0, en nuançant par les effets commerciaux.'
+    ],
+    pieges: [
+      'Répartir les charges communes avant de décider : la décision se fonde sur la MCS, pas sur le résultat en coût complet.',
+      'Supprimer les charges communes en même temps que le produit abandonné : elles subsistent.',
+      'Classer en charges spécifiques des charges qui ne disparaîtraient pas avec le produit.',
+      'Confondre MCV (direct costing simple) et MCS (direct costing évolué).'
+    ],
+    comptes: []
+  },
+  gen: function (r) {
+    for (var t = 0; t < 300; t++) {
+      var g = genGamme(r), m = mcvProduits(g.pr), X = r.int(0, 2), garder = r.chance(0.6);
+      var CFS = m.map(function (o, i) { return U.r0(o.MCV * (i === X ? (garder ? r.int(55, 85) : r.int(110, 140)) : r.int(25, 55)) / 100 / 100) * 100; });
+      var MCS = m.map(function (o, i) { return o.MCV - CFS[i]; }), sMCS = MCS.reduce(function (a, b) { return a + b; }, 0);
+      var CFC = U.r0(sMCS * r.int(50, 85) / 100 / 1000) * 1000;
+      var p = { nom: U.nom(r), act: g.act, pr: g.pr, CFS: CFS, CFC: CFC, X: X };
+      var c = this.calc(p);
+      if (CFC <= 0 || c.R <= 0) continue;
+      if (garder ? !(c.MCS[X] > 0 && c.RC[X] < 0) : !(c.MCS[X] < 0)) continue;
+      return p;
+    }
+  },
+  calc: function (p) {
+    var m = mcvProduits(p.pr), MCS = m.map(function (o, i) { return U.r2(o.MCV - p.CFS[i]); });
+    var CA = U.r2(m.reduce(function (a, o) { return a + o.CA; }, 0)), sMCS = U.r2(MCS.reduce(function (a, b) { return a + b; }, 0));
+    var R = U.r2(sMCS - p.CFC);
+    var QP = m.map(function (o) { return U.r2(p.CFC * o.CA / CA); });
+    QP[2] = U.r2(p.CFC - QP[0] - QP[1]);
+    var RC = MCS.map(function (v, i) { return U.r2(v - QP[i]); });
+    return { m: m, MCS: MCS, CA: CA, sMCS: sMCS, R: R, QP: QP, RC: RC, Rab: U.r2(R - MCS[p.X]) };
+  },
+  solve: function (p) {
+    var x = this.calc(p), e = U.e, n = U.n, X = p.pr[p.X].nom[0];
+    var en = '<p>La société <b>' + p.nom + '</b> fabrique et vend ' + p.act + '. Données de l’exercice N :</p>';
+    en += U.tbl(['', p.pr[0].nom[0], p.pr[1].nom[0], p.pr[2].nom[0]], [['Quantités vendues'].concat(p.pr.map(function (o) { return n(o.q); })), ['Prix de vente unitaire HT'].concat(p.pr.map(function (o) { return U.e2(o.p); })), ['Coût variable unitaire de production'].concat(p.pr.map(function (o) { return U.e2(o.cvp); })), ['Charges variables de distribution (% du CA)'].concat(p.pr.map(function (o) { return U.pcs(o.dist); })), ['Charges fixes spécifiques'].concat(p.CFS.map(function (v) { return e(v); }))]);
+    en += '<p>Les charges fixes communes (direction, administration) s’élèvent à ' + e(p.CFC) + '. Le contrôleur de gestion les répartit habituellement au prorata du chiffre d’affaires ; en coût complet, les ' + X + ' apparaissent ' + (x.RC[p.X] < 0 ? 'déficitaires' : 'peu rentables') + ' et la direction envisage d’en arrêter la production. Les charges spécifiques disparaîtraient avec le produit.</p>';
+    en += '<p class="consigne">1. Présentez le tableau de résultat selon la méthode des coûts spécifiques. 2. Calculez le résultat de chaque produit en coût complet. 3. Faut-il abandonner les ' + X + ' ? Chiffrez le résultat global après abandon.</p>';
+    var qs = p.pr.map(function (o, i) { return Q('s' + i, 'Marge sur coût spécifique – ' + o.nom[0], x.MCS[i], '€'); });
+    qs.push(Q('res', 'Résultat global', x.R, '€'), Q('rc', 'Résultat des ' + X + ' en coût complet', x.RC[p.X], '€'), Q('rab', 'Résultat global après abandon des ' + X, x.Rab, '€'),
+      QC('dec', 'Décision', ['Maintenir les ' + X, 'Abandonner les ' + X], x.MCS[p.X] > 0 ? 0 : 1));
+    var col = function (f) { return x.m.map(f); };
+    var rows = [['Chiffre d’affaires'].concat(col(function (o) { return n(o.CA, 2); }), [n(x.CA, 2)]), ['− Coût variable'].concat(col(function (o) { return n(o.CV, 2); }), [n(U.r2(x.m.reduce(function (s, o) { return s + o.CV; }, 0)), 2)]),
+      { cls: 'tot', cells: ['= Marge sur coût variable'].concat(col(function (o) { return n(o.MCV, 2); }), [n(U.r2(x.m.reduce(function (s, o) { return s + o.MCV; }, 0)), 2)]) },
+      ['− Charges fixes spécifiques'].concat(p.CFS.map(function (v) { return n(v, 2); }), [n(p.CFS.reduce(function (a, b) { return a + b; }, 0), 2)]),
+      { cls: 'tot', cells: ['= Marge sur coût spécifique'].concat(x.MCS.map(function (v) { return n(v, 2); }), [n(x.sMCS, 2)]) },
+      ['− Charges fixes communes', '', '', '', n(p.CFC, 2)], { cls: 'tot', cells: ['= Résultat', '', '', '', n(x.R, 2)] }];
+    var tab = U.tbl(['', p.pr[0].nom[0], p.pr[1].nom[0], p.pr[2].nom[0], 'Total'], rows);
+    var cc = U.tbl(['', p.pr[0].nom[0], p.pr[1].nom[0], p.pr[2].nom[0], 'Total'], [['Marge sur coût spécifique'].concat(x.MCS.map(function (v) { return n(v, 2); }), [n(x.sMCS, 2)]), ['− Charges communes (prorata du CA)'].concat(x.QP.map(function (v) { return n(v, 2); }), [n(p.CFC, 2)]), { cls: 'tot', cells: ['= Résultat en coût complet'].concat(x.RC.map(function (v) { return n(v, 2); }), [n(x.R, 2)]) }]);
+    var c = [['Résultat actuel', 'Σ MCS − charges communes', e(x.R)], ['Abandon des ' + X, n(x.R) + ' − (' + n(x.MCS[p.X]) + ')', '<b>' + e(x.Rab) + '</b>'], ['Variation du résultat', 'perte de la MCS des ' + X, e(U.r2(x.Rab - x.R))]];
+    var garder = x.MCS[p.X] > 0;
+    var com = 'La méthode des coûts spécifiques ne retient, pour chaque produit, que les charges qu’il génère : son coût variable et ses charges fixes propres. Les charges communes, qui subsisteraient quel que soit le portefeuille de produits, ne sont pas réparties. ' + (garder
+      ? 'En coût complet, les ' + X + ' affichent une perte de ' + e(-x.RC[p.X]) + ', mais elle résulte de la quote-part de charges communes qui leur est attribuée. Leur marge sur coût spécifique est positive (' + e(x.MCS[p.X]) + ') : ils couvrent leurs charges propres et contribuent à la couverture des charges communes. Les abandonner ferait tomber le résultat global de ' + e(x.R) + ' à ' + e(x.Rab) + ', car les charges communes resteraient à la charge des autres produits. Il faut donc les maintenir, et chercher plutôt à améliorer leur marge (prix, coûts variables, charges spécifiques).'
+      : 'La marge sur coût spécifique des ' + X + ' est négative (' + e(x.MCS[p.X]) + ') : ils ne couvrent même pas leurs charges propres et détruisent du résultat. Leur abandon porterait le résultat global de ' + e(x.R) + ' à ' + e(x.Rab) + '. Avant de décider, l’entreprise doit vérifier que l’arrêt n’entraîne pas la perte de clients communs aux autres produits (produit d’appel, gamme complète) et qu’une relance (hausse de prix, baisse des charges spécifiques) est impossible.') + ' La décision se fonde sur la marge sur coût spécifique, et non sur le résultat en coût complet, qui dépend d’une clé de répartition arbitraire.';
+    return { enonce: en, questions: qs, journal: [], steps: [{ h: 'Tableau des marges sur coût spécifique', html: tab }, { h: 'Résultat en coût complet (pour comparaison)', html: cc }, { h: 'Incidence de l’abandon', html: U.calc(c) }], comment: com };
+  }
+};

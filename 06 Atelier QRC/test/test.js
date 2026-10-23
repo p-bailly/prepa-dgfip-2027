@@ -92,7 +92,8 @@ Object.keys(T).forEach(id => {
     if (id === 'affectation') { const c = t.calc(p); ok(c.RL >= 0 && c.RAN >= 0 && c.RAN < c.nb * p.arr + 0.01 && c.divTot <= c.BD + 0.01 && near(c.RL + p.RS + p.F + c.divTot + c.RAN, p.R + p.RAN0), id + ' totaux ' + s); }
     if (id === 'tva_ca3') { const c = t.calc(p); ok(c.coll > 0 && c.ded >= 0, id + ' montants ' + s); }
     if (id === 'tva_coef') { const c = t.calc(p); ok(c.ded > 0 && c.ded <= 1 && near(c.tvaD + c.tvaND, c.tva), id + ' coef ' + s); }
-    if (id === 'amort' && !p.comp) { const b = (function () { let x = p.prix * (1 - (p.remise || 0)); p.frais.forEach(f => { if (f.incl) x += f.mt; }); return U.r2(x); })(); const pl = AM.lineaire(b, p.n, p.mes.d, p.mes.m), pd = AM.degressif(b, p.n, p.acq.m); ok(near(pl.rows.reduce((a, r) => a + r.a, 0), b, 0.02) && near(pd.rows.reduce((a, r) => a + r.a, 0), b, 0.02) && pd.rows.every(r => r.a >= 0) && pd.rows.length === p.n && pl.rows.length === (p.mes.d === 1 && p.mes.m === 1 ? p.n : p.n + 1), id + ' plans ' + s + ' ' + JSON.stringify([b, p.n, p.mes, pl.rows.length])); }
+    if (id === 'amort' && p.unites) { const pu = t.planUO(p); ok(near(pu.rows.reduce((a, r) => a + r.a, 0), pu.base, 0.02) && pu.rows.every(r => r.a > 0) && near(p.unites.reduce((a, u) => a + u, 0), p.tot, 0), id + ' unités d’œuvre ' + s); }
+    if (id === 'amort' && !p.comp && !p.unites) { const b = (function () { let x = p.prix * (1 - (p.remise || 0)); p.frais.forEach(f => { if (f.incl) x += f.mt; }); return U.r2(x); })(); const pl = AM.lineaire(b, p.n, p.mes.d, p.mes.m), pd = AM.degressif(b, p.n, p.acq.m); ok(near(pl.rows.reduce((a, r) => a + r.a, 0), b, 0.02) && near(pd.rows.reduce((a, r) => a + r.a, 0), b, 0.02) && pd.rows.every(r => r.a >= 0) && pd.rows.length === p.n && pl.rows.length === (p.mes.d === 1 && p.mes.m === 1 ? p.n : p.n + 1), id + ' plans ' + s + ' ' + JSON.stringify([b, p.n, p.mes, pl.rows.length])); }
     if (id === 'derog') { const st = ex.steps[1].html; ok(/Total/.test(st), id + ' tableau'); }
     if (id === 'cession') { const c = t.calc(p); ok(c.vnc > 0 && c.dot > 0 && c.cum > 0, id + ' cession ' + s + ' ' + JSON.stringify(c)); }
     if (id === 'sig_caf') { const c = t.calc(p); if (!p.ebeOnly) ok(near(c.CAFa, c.CAFs), id + ' CAF additive ≠ soustractive ' + s); ok(c.EBE > 0, id + ' EBE ' + s); }
@@ -118,11 +119,15 @@ Object.keys(T).forEach(id => {
     if (id === 'titres') { const c = t.calc(p); ok(c.depTot > 0 && c.coutC > 0 && near(c.rc, c.prixC - c.coutC), id + ' titres ' + s); }
     if (id === 'inventaire') { const c = t.calc(p); ok(near(c.R, p.R0 + c.inc.reduce((a, o) => a + o.v, 0), 0.05), id + ' résultat ' + s); if (prof === 'C') ok(!p.ops.some(o => o.k === 'litige' || o.k === 'change'), id + ' programme contrôleur'); }
     if (id === 'etats') { const c = t.calc(p); ok(near(c.AN, c.TP) && c.RN > 0 && p.b['512'] > 0, id + ' bilan équilibré ' + s); }
+    if (id === 'stocks') { const c = t.calc(p); ok(near(c.V0 + c.vin, c.csPeps + c.sfPeps, 0.02) && c.sfPeps > 0, id + ' PEPS ' + s); }
+    if (id === 'couts_partiels') { const c = t.calc(p); ok(c.m.every(o => o.MCV > 0) && near(c.R, c.tot.MCV - p.CF) && near(c.FI - p.at.F, c.ecart) && c.ecart !== 0, id + ' coûts partiels ' + s); }
+    if (id === 'couts_specifiques') { const c = t.calc(p); ok(near(c.R, c.RC.reduce((a, v) => a + v, 0)) && near(c.Rab, c.R - c.MCS[p.X]) && c.R > 0, id + ' coûts spécifiques ' + s); (cnt.cs = cnt.cs || [0, 0])[c.MCS[p.X] > 0 ? 0 : 1]++; }
     if (id === 'depreciations' && prof === 'C') ok(!p.items.some(i => i.k === 'litige'), id + ' programme contrôleur');
     nb++;
   }
-  console.log('  ' + id.padEnd(14) + nb + ' variantes');
+  console.log('  ' + id.padEnd(18) + nb + ' variantes');
 });
 if (!ONLY || ONLY.indexOf('plan_fin') >= 0) ok(cnt.plan_fin && cnt.plan_fin[0] > 300 && cnt.plan_fin[1] > 300, 'plan_fin : plans équilibrés et déséquilibrés ' + JSON.stringify(cnt.plan_fin));
+if (!ONLY || ONLY.indexOf('couts_specifiques') >= 0) ok(cnt.cs && cnt.cs[0] > 300 && cnt.cs[1] > 300, 'coûts spécifiques : maintien et abandon ' + JSON.stringify(cnt.cs));
 console.log('\n' + checks + ' vérifications, ' + fails + ' échec(s)');
 process.exit(fails ? 1 : 0);

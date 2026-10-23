@@ -37,15 +37,16 @@ function planDegTable(pd) {
 
 /* ---------- 5. Plan d'amortissement ---------- */
 T.amort = {
-  id: 'amort', nom: 'Plan d’amortissement (linéaire, dégressif)', famille: 'Immobilisations', ctrl: true, minutes: 15,
+  id: 'amort', nom: 'Plan d’amortissement (linéaire, dégressif, variable)', famille: 'Immobilisations', ctrl: true, minutes: 15,
   fiche: {
-    objectif: 'Déterminer le coût d’acquisition puis établir les plans linéaire et dégressif avec le bon prorata temporis.',
+    objectif: 'Déterminer le coût d’acquisition puis établir le plan d’amortissement linéaire, dégressif ou variable (en fonction des unités d’œuvre) avec le bon prorata.',
     etapes: [
       'Coût d’acquisition = prix net de remises + frais directement attribuables (transport, installation, montage, honoraires) ; on exclut la TVA récupérable, la formation du personnel, la publicité et les frais généraux.',
       'Linéaire : annuité = base ÷ durée ; prorata au jour près (année de 360 jours) à partir de la mise en service ; la dernière annuité complète le plan (durée + 1 exercice si départ en cours d’année).',
       'Dégressif : taux = (1 ÷ durée) × coefficient (1,25 pour 3-4 ans ; 1,75 pour 5-6 ans ; 2,25 au-delà), appliqué à la VNC ; prorata en mois à partir du 1er jour du mois d’acquisition.',
       'Passage au linéaire : dès que VNC ÷ nombre d’années restantes ≥ annuité dégressive (l’année entamée compte pour une année entière).',
       'Le plan dégressif comporte exactement autant d’exercices que la durée : pas d’annuité supplémentaire.',
+      'Mode variable (unités d’œuvre) : quand l’usage du bien se mesure (kilomètres, heures de fonctionnement, pièces produites), annuité = base × unités de l’exercice ÷ unités totales prévues sur la durée d’utilisation ; pas de prorata temporis, l’activité de l’exercice en tient lieu.',
       'Approche par composants : chaque composant significatif est amorti sur sa propre durée ; le terrain ne s’amortit pas.',
       'Écriture d’inventaire : D 6811 / C 28xx.'
     ],
@@ -54,11 +55,29 @@ T.amort = {
       'Intégrer la formation du personnel dans le coût.',
       'Appliquer le taux dégressif à la valeur d’origine au lieu de la VNC.',
       'Oublier la bascule en linéaire, ou la calculer sur la durée totale au lieu de la durée restante.',
-      'Amortir le terrain d’un immeuble.'
+      'Amortir le terrain d’un immeuble.',
+      'Mode variable : diviser par le nombre d’années au lieu du total des unités d’œuvre prévues, ou appliquer en plus un prorata temporis la première année.',
+      'Le mode variable n’est admis fiscalement que s’il est économiquement justifié ; à défaut, l’écart avec le linéaire fiscal donne lieu à un amortissement dérogatoire.'
     ],
     comptes: ['2154 Matériel industriel / 2183 Matériel informatique / 213 Constructions', '6811 Dotations aux amortissements', '28154 / 28183 / 2813 Amortissements']
   },
+  UO: [
+    { b: 4, u: 'kilomètres parcourus', u1: 'km', tot: [150, 300], k: 1000 },
+    { b: 0, u: 'heures de fonctionnement', u1: 'heures', tot: [8, 30], k: 1000 },
+    { b: 2, u: 'pièces produites', u1: 'pièces', tot: [100, 600], k: 1000 }
+  ],
   gen: function (r) {
+    if (r.chance(0.2)) {
+      // Mode variable : l'amortissement suit les unités d'œuvre consommées chaque exercice
+      var uo = r.pick(this.UO), bU = BIENS[uo.b];
+      var prixU = r.int(15, 150) * 1000, nU = r.int(4, 6), mU = r.int(2, 10);
+      var totU = r.int(uo.tot[0], uo.tot[1]) * uo.k, w = [], sw = 0;
+      for (var i = 0; i <= nU; i++) { var wi = i === 0 ? r.int(2, 6) * (13 - mU) / 12 : (i === nU ? r.int(1, 4) * (mU - 1) / 12 : r.int(6, 12)); w.push(wi); sw += wi; }
+      var unites = [], acc0 = 0;
+      w.forEach(function (wi, i) { var u = i < w.length - 1 ? Math.round(totU * wi / sw / 100) * 100 : totU - acc0; acc0 += u; unites.push(u); });
+      if (unites.some(function (u) { return u <= 0; })) unites = null;
+      if (unites) return { nom: U.nom(r), uo: uo.u, uo1: uo.u1, bien: bU, prix: prixU, remise: r.chance(0.3) ? r.pick([0.02, 0.05]) : 0, frais: genFrais(r, prixU), acq: { d: 1, m: mU }, mes: { d: 1, m: mU }, n: nU, tot: totU, unites: unites };
+    }
     if (r.chance(0.25)) {
       var P = r.int(60, 400) * 10000;
       var ter = U.r0(P * r.int(10, 25) / 100 / 1000) * 1000;
@@ -97,6 +116,7 @@ T.amort = {
       var com = 'L’approche par composants découpe l’immeuble en éléments dont les durées d’utilisation diffèrent nettement : la toiture ou les installations seront remplacées bien avant le gros œuvre. Amortir chaque composant sur sa propre durée donne une charge plus fidèle à la consommation réelle des avantages économiques. Le terrain, dont la durée d’utilisation est illimitée, n’est jamais amorti ; seule une dépréciation peut constater une perte de valeur. La dotation de N (' + e(totD) + ') ne porte que sur ' + mois + ' mois, du ' + U.dt(1, p.mes.m) + ' au 31/12/N. Lors du remplacement d’un composant, sa valeur nette sortira de l’actif et le nouveau composant sera immobilisé. Cette méthode, obligatoire en PCG pour les composants significatifs, augmente les dotations des premières années par rapport à un amortissement global sur la durée du gros œuvre.';
       return { enonce: en, questions: qs, journal: [U.entry('31/12/N', 'Dotation aux amortissements du bâtiment', [L('6811', totD, 0), L('2813', 0, totD)])], steps: [{ h: 'Dotations par composant', html: U.calc(c) }], comment: com };
     }
+    if (p.unites) return this.solveUO(p);
     var ca = coutAcq(p), base = ca.base;
     var pl = AM.lineaire(base, p.n, p.mes.d, p.mes.m), pd = AM.degressif(base, p.n, p.acq.m);
     var b = p.bien;
@@ -121,6 +141,33 @@ T.amort = {
       ['Bascule en linéaire', 'en ' + U.yl(pd.bascule) + ' : ' + n(pd.rows[pd.bascule].v0, 2) + ' ÷ ' + pd.rows[pd.bascule].rest + ' = ' + n(pd.rows[pd.bascule].v0 / pd.rows[pd.bascule].rest, 2) + ' ≥ ' + n(pd.rows[pd.bascule].v0 * pd.taux, 2), U.yl(pd.bascule)]];
     var com2 = 'L’amortissement constate la consommation des avantages économiques du bien : la base de ' + e(base) + ' ne retient que les coûts nécessaires pour mettre le bien en état de fonctionner' + ((p.frais || []).some(function (f) { return !f.incl; }) ? ', les autres frais restant en charges de l’exercice' : '') + '. En linéaire, la charge est constante (' + e(U.r2(pl.annu)) + ' par an), proratisée la première année à partir de la mise en service, ce qui reporte un reliquat sur un ' + (pl.rows.length > p.n ? (pl.rows.length) + 'e exercice' : 'exercice final') + '. Le dégressif concentre la charge sur les premières années (' + e(pd.rows[0].a) + ' dès N malgré le prorata) : il traduit mieux l’obsolescence rapide de certains équipements et procure un avantage fiscal de trésorerie, l’impôt étant différé. Il ne s’applique qu’aux biens neufs d’au moins 3 ans figurant sur la liste légale. Si l’entreprise conserve le linéaire en comptabilité et déduit le dégressif fiscalement, l’écart sera constaté en amortissement dérogatoire (compte 145). La VNC au 31/12/N+1 (' + e(r1.vnc) + ') sera la référence pour calculer une éventuelle plus ou moins-value de cession.';
     return { enonce: en2, questions: qs2, journal: [U.entry('31/12/N', 'Dotation aux amortissements (linéaire)', [L('6811', pl.rows[0].a, 0), L(b.amort, 0, pl.rows[0].a)])], steps: [{ h: 'Calculs', html: U.calc(c2) }, { h: 'Plan linéaire', html: planLinTable(pl) }, { h: 'Plan dégressif', html: planDegTable(pd) }], comment: com2 };
+  },
+  planUO: function (p) {
+    var base = coutAcq(p).base, rows = [], cum = 0;
+    p.unites.forEach(function (u, y) {
+      var a = y === p.unites.length - 1 ? U.r2(base - cum) : U.r2(base * u / p.tot);
+      cum = U.r2(cum + a); rows.push({ y: y, u: u, a: a, cum: cum, vnc: U.r2(base - cum) });
+    });
+    return { base: base, rows: rows };
+  },
+  solveUO: function (p) {
+    var e = U.e, n = U.n, L = U.L, ca = coutAcq(p), pu = this.planUO(p), base = pu.base, b = p.bien, r0 = pu.rows[0], r1 = pu.rows[1];
+    var en = '<p>La société <b>' + p.nom + '</b> a acquis et mis en service le ' + U.dt(1, p.acq.m) + ' ' + b.lib + '. Extrait de la facture (montants HT, TVA 20 % récupérable) :</p>';
+    var fr = [['Prix catalogue', e(p.prix)]];
+    if (p.remise) fr.push(['Remise', U.pcs(p.remise)]);
+    (p.frais || []).forEach(function (f) { fr.push([f.lib, e(f.mt)]); });
+    en += U.kv(fr);
+    en += '<p>L’usure du bien dépend directement de son utilisation : la société l’amortit en fonction des ' + p.uo + ' ; leur total prévu sur la durée d’utilisation est de ' + n(p.tot) + ' ' + p.uo1 + '. Prévisions d’utilisation :</p>';
+    en += U.tbl(['Exercice'].concat(p.unites.map(function (u, y) { return U.yl(y); })), [[p.uo1.charAt(0).toUpperCase() + p.uo1.slice(1)].concat(p.unites.map(function (u) { return n(u); }))]);
+    en += '<p class="consigne">1. Calculez le coût d’acquisition. 2. Établissez le plan d’amortissement selon le mode variable (unités d’œuvre). 3. Comparez la dotation de N avec celle d’un amortissement linéaire sur ' + p.n + ' ans. 4. Passez la dotation du 31/12/N.</p>';
+    var lin = AM.lineaire(base, p.n, 1, p.acq.m).rows[0].a;
+    var qs = [Q('cout', 'Coût d’acquisition', base, '€'), Q('cu', 'Coût d’amortissement pour 1 000 ' + p.uo1, U.r2(base * 1000 / p.tot), '€'), Q('a0', 'Dotation de N (mode variable)', r0.a, '€'), Q('a1', 'Dotation de N+1 (mode variable)', r1.a, '€'), Q('v1', 'VNC au 31/12/N+1', r1.vnc, '€'), Q('lin', 'Dotation de N en linéaire (pour comparaison)', lin, '€')];
+    var c = [['Coût d’acquisition', coutTxt(p, ca), '<b>' + e(base) + '</b>'], ['Coût par unité d’œuvre', n(base) + ' ÷ ' + n(p.tot) + ' ' + p.uo1, n(base / p.tot, 4) + ' € par ' + p.uo1.replace(/s$/, '') + ', soit ' + e(U.r2(base * 1000 / p.tot)) + ' pour 1 000 ' + p.uo1],
+      ['Dotation N', n(base) + ' × ' + n(r0.u) + ' ÷ ' + n(p.tot), '<b>' + e(r0.a) + '</b>'], ['Dotation N+1', n(base) + ' × ' + n(r1.u) + ' ÷ ' + n(p.tot), e(r1.a)],
+      ['Linéaire N (comparaison)', n(base) + ' ÷ ' + p.n + ' × ' + (13 - p.acq.m) + '/12', e(lin)]];
+    var plan = U.tbl(['Exercice', 'Unités d’œuvre', 'Calcul', 'Annuité', 'Cumul', 'VNC fin'], pu.rows.map(function (r, i) { return [U.yl(r.y), n(r.u), i === pu.rows.length - 1 ? 'solde' : n(base) + ' × ' + n(r.u) + ' / ' + n(p.tot), n(r.a, 2), n(r.cum, 2), n(r.vnc, 2)]; }));
+    var com = 'Le mode variable rattache la charge d’amortissement à l’usage effectif du bien : il convient aux équipements dont l’usure dépend de l’activité (' + p.uo + ') plutôt que du temps. Chaque ' + p.uo1.replace(/s$/, '') + ' consomme ' + n(base / p.tot, 4) + ' € de la valeur amortissable. En N, la dotation (' + e(r0.a) + ') est ' + (r0.a > lin ? 'supérieure' : 'inférieure') + ' à celle du linéaire (' + e(lin) + ') : elle suit le niveau réel d’utilisation et n’a pas besoin de prorata temporis, puisque les unités consommées ne portent que sur la période de mise en service. Ce mode reflète mieux la consommation des avantages économiques, mais il suppose une estimation fiable du total des unités, à revoir si l’utilisation prévue change (l’amortissement est alors modifié pour l’avenir). Fiscalement, il n’est admis que s’il est économiquement justifié ; à défaut, la différence avec le linéaire fiscal serait constatée en amortissement dérogatoire.';
+    return { enonce: en, questions: qs, journal: [U.entry('31/12/N', 'Dotation aux amortissements (mode variable)', [L('6811', r0.a, 0), L(b.amort, 0, r0.a)])], steps: [{ h: 'Calculs', html: U.calc(c) }, { h: 'Plan d’amortissement selon les unités d’œuvre', html: plan }], comment: com };
   }
 };
 
@@ -453,14 +500,15 @@ T.regul = {
 /* ---------- 18. Stocks au coût moyen pondéré ---------- */
 var MARCHANDISES = [['casques de vélo', 'casque'], ['théières en fonte', 'théière'], ['lampes frontales', 'lampe'], ['sacs à dos', 'sac'], ['bouilloires', 'bouilloire'], ['tapis de yoga', 'tapis'], ['gourdes isothermes', 'gourde']];
 T.stocks = {
-  id: 'stocks', nom: 'Stocks au coût moyen pondéré (CMUP)', famille: 'Travaux d’inventaire', ctrl: true, minutes: 15,
+  id: 'stocks', nom: 'Stocks : CMUP et PEPS', famille: 'Travaux d’inventaire', ctrl: true, minutes: 15,
   fiche: {
-    objectif: 'Valoriser les sorties et le stock final au coût unitaire moyen pondéré (CMUP), de fin de période ou après chaque entrée, puis passer les écritures d’inventaire.',
+    objectif: 'Valoriser les sorties et le stock final au coût unitaire moyen pondéré (CMUP), de fin de période ou après chaque entrée, ou selon la méthode « premier entré, premier sorti » (PEPS), puis passer les écritures d’inventaire.',
     etapes: [
       'Coût d’entrée = prix d’achat net de remises + frais accessoires (transport), hors TVA récupérable.',
       'CMUP de fin de période = (valeur du stock initial + coût des entrées) ÷ (quantité initiale + quantités entrées). Toutes les sorties de la période partent à ce coût unique.',
       'CMUP après chaque entrée : à chaque entrée, nouveau coût = (valeur du stock + coût de l’entrée) ÷ (quantité en stock + quantité entrée) ; les sorties suivantes partent à ce coût jusqu’à l’entrée suivante.',
       'Stock final = quantité restante × CMUP (arrondi au centime).',
+      'PEPS (premier entré, premier sorti, ou FIFO) : chaque sortie consomme d’abord les lots les plus anciens, à leur coût d’entrée ; quand un lot est épuisé, on passe au suivant. Le stock final est constitué des lots les plus récents.',
       'Inventaire intermittent au 31/12 : annuler le stock initial (D 6037 / C 37), puis constater le stock final (D 37 / C 6037).',
       'Variation de stock (6037) = stock initial − stock final : un stock qui augmente diminue les charges et augmente le résultat.',
       'Dépréciation si la valeur actuelle (prix de vente estimé − frais de vente) est inférieure au coût : (coût − valeur actuelle) × quantité, D 6817 / C 397.'
@@ -468,6 +516,9 @@ T.stocks = {
     pieges: [
       'Oublier le stock initial dans le calcul du CMUP de fin de période.',
       'Méthode permanente : valoriser une sortie au CMUP en vigueur à sa date, pas au CMUP de fin de période.',
+      'PEPS : une sortie qui chevauche deux lots se valorise en deux tranches, à deux coûts différents ; ne pas la valoriser au coût du dernier achat.',
+      'Le DEPS (dernier entré, premier sorti, ou LIFO) est interdit en PCG comme en IFRS : seuls le CMUP et le PEPS sont admis pour les biens interchangeables.',
+      'En période de hausse des prix, le PEPS donne un stock final plus élevé et un coût des ventes plus faible que le CMUP, donc un résultat plus élevé.',
       'Inverser les deux écritures d’inventaire : le stock initial sort par le crédit du 37, le stock final y entre au débit.',
       'Le stock se déprécie, il ne s’amortit pas ; la dépréciation est reprise l’exercice suivant (D 397 / C 7817).'
     ],
@@ -512,6 +563,17 @@ T.stocks = {
       }
     });
     x.sfp = v; x.sfpX = U.r2(vX);
+    // PEPS : file des lots, les sorties consomment les plus anciens
+    var lots = [{ q: p.q0, c: p.c0 }];
+    x.peps = [{ d: '01/01/N', lib: 'Stock initial', lots: lots.map(function (l) { return { q: l.q, c: l.c }; }) }]; x.csPeps = 0;
+    p.ev.forEach(function (ev) {
+      if (ev.k === 'e') { lots.push({ q: ev.q, c: ev.c }); x.peps.push({ d: ev.d, lib: 'Achat', en: { q: ev.q, c: ev.c }, lots: lots.map(function (l) { return { q: l.q, c: l.c }; }) }); return; }
+      var reste = ev.q, tr = [];
+      while (reste > 0) { var l = lots[0], pris = Math.min(reste, l.q); tr.push({ q: pris, c: l.c }); l.q -= pris; reste -= pris; if (!l.q) lots.shift(); }
+      var vs = U.r2(tr.reduce(function (a, t) { return a + t.q * t.c; }, 0)); x.csPeps = U.r2(x.csPeps + vs);
+      x.peps.push({ d: ev.d, lib: 'Vente', so: tr, vs: vs, lots: lots.map(function (l) { return { q: l.q, c: l.c }; }) });
+    });
+    x.sfPeps = U.r2(lots.reduce(function (a, l) { return a + l.q * l.c; }, 0)); x.lotsF = lots;
     if (p.va) { x.depU = U.r2(x.cmup - p.va); x.dep = U.r2(x.qf * x.depU); }
     return x;
   },
@@ -521,10 +583,11 @@ T.stocks = {
     var en = '<p>La société <b>' + p.nom + '</b> commercialise des ' + p.mar[0] + '. Au 01/01/N, le stock comprend ' + n(p.q0) + ' ' + p.mar[0] + ' évalués à ' + e2(p.c0) + ' l’unité. Mouvements de l’exercice N :</p>';
     en += U.ul(mv);
     en += '<p>Elle tient son inventaire de façon intermittente : le stock n’est enregistré en comptabilité qu’à la clôture.' + (p.va ? ' Au 31/12/N, la concurrence a fait baisser les prix : la valeur actuelle d’un ' + p.mar[1] + ' (prix de vente estimé diminué des frais de vente) n’est plus que de ' + e2(p.va) + '.' : '') + '</p>';
-    en += '<p class="consigne">1. Calculez le CMUP de fin de période, le coût des sorties et la valeur du stock final. 2. Établissez la fiche de stock au CMUP après chaque entrée et comparez. 3. Passez les écritures d’inventaire au 31/12/N' + (p.va ? ', dépréciation comprise' : '') + ' (stock final au CMUP de fin de période).</p>';
+    en += '<p class="consigne">1. Calculez le CMUP de fin de période, le coût des sorties et la valeur du stock final. 2. Établissez la fiche de stock au CMUP après chaque entrée, puis selon la méthode PEPS, et comparez. 3. Passez les écritures d’inventaire au 31/12/N' + (p.va ? ', dépréciation comprise' : '') + ' (stock final au CMUP de fin de période).</p>';
     var qs = [Q('cmup', 'CMUP de fin de période', x.cmup, '€', { tol: 0.01 }), Q('qf', 'Quantité en stock au 31/12/N', x.qf, 'u', { tol: 0 }),
       Q('cs', 'Coût des sorties au CMUP de fin de période', x.cs, '€', { alts: [x.csX] }), Q('sf', 'Stock final au CMUP de fin de période', x.sf, '€', { alts: [x.sfX] }),
       Q('cm2', 'CMUP après la seconde entrée (méthode permanente)', x.cmups[1], '€', { tol: 0.01 }), Q('sfp', 'Stock final au CMUP après chaque entrée', x.sfp, '€', { alts: [x.sfpX] }),
+      Q('csp', 'Coût des sorties selon le PEPS', x.csPeps, '€'), Q('sfps', 'Stock final selon le PEPS', x.sfPeps, '€'),
       Q('var', 'Variation des stocks (compte 6037 : stock initial − stock final)', x.vari, '€')];
     if (p.va) qs.push(Q('dep', 'Dépréciation du stock au 31/12/N', x.dep, '€'));
     var c = [['Valeur du stock initial', n(p.q0) + ' × ' + n(p.c0, 2), e(x.V0)]];
@@ -535,13 +598,20 @@ T.stocks = {
     if (p.va) c.push(['Dépréciation', n(x.qf) + ' × (' + n(x.cmup, 2) + ' − ' + n(p.va, 2) + ')', '<b>' + e(x.dep) + '</b>']);
     var tri = function (a) { return a ? [n(a[0]), n(a[1], 2), n(a[2], 2)] : ['', '', '']; };
     var fs = U.tbl(['Date', 'Libellé', 'Entrées Q', 'CU', 'Montant', 'Sorties Q', 'CU', 'Montant', 'Stock Q', 'CU', 'Montant'], x.fiche.map(function (l) { return [l.d, l.lib].concat(tri(l.en), tri(l.so), tri(l.st)); }));
+    var lt = function (a) { return a.length ? a.map(function (l) { return n(l.q) + ' × ' + n(l.c, 2); }).join(' + ') : '—'; };
+    var fp = U.tbl(['Date', 'Opération', 'Valorisation', 'Stock restant (lots)'], x.peps.map(function (l) {
+      return [l.d, l.lib, l.en ? 'entrée : ' + n(l.en.q) + ' × ' + n(l.en.c, 2) : l.so ? 'sortie : ' + lt(l.so) + ' = ' + n(l.vs, 2) : n(U.r2(p.q0 * p.c0), 2), lt(l.lots)];
+    }));
+    fp += U.calc([['Coût des sorties PEPS', 'somme des sorties', '<b>' + e(x.csPeps) + '</b>'], ['Stock final PEPS', lt(x.lotsF), '<b>' + e(x.sfPeps) + '</b>'], ['Contrôle', n(x.V0) + ' + ' + n(x.vin) + ' − ' + n(x.csPeps), e(U.r2(x.V0 + x.vin - x.csPeps))]]);
     var journal = [U.entry('31/12/N', 'Annulation du stock initial', [L('6037', x.V0, 0), L('37', 0, x.V0)]), U.entry('31/12/N', 'Constatation du stock final', [L('37', x.sf, 0), L('6037', 0, x.sf)])];
     if (p.va) journal.push(U.entry('31/12/N', 'Dépréciation du stock de marchandises', [L('6817', x.dep, 0), L('397', 0, x.dep)]));
     var hausse = p.ev[2].c > p.c0, ecart = U.r2(x.sfp - x.sf);
     var com = 'Le CMUP de fin de période (' + e2(x.cmup) + ') lisse les ' + (hausse ? 'hausses' : 'variations') + ' de prix de l’exercice : toutes les sorties partent au même coût, mais ce coût n’est connu qu’à la clôture, ce qui interdit de suivre la marge au fil des ventes. ';
     com += 'Le CMUP après chaque entrée suit mieux les prix récents : le stock final vaut ' + e(x.sfp) + ' contre ' + e(x.sf) + ', soit un écart de ' + e(Math.abs(ecart)) + (Math.abs(ecart) < 1 ? ', négligeable ici. ' : ' : la méthode choisie modifie le coût des ventes et donc le résultat. ');
+    var dP = U.r2(x.sfPeps - x.sf);
+    com += 'Selon le PEPS, les sorties consomment d’abord les lots les plus anciens : le stock final, composé des derniers achats, vaut ' + e(x.sfPeps) + (Math.abs(dP) < 1 ? ', presque autant qu’au CMUP. ' : ', soit ' + e(Math.abs(dP)) + (dP > 0 ? ' de plus' : ' de moins') + ' qu’au CMUP de fin de période : ' + (dP > 0 ? 'les prix ayant monté, le PEPS valorise le stock aux coûts récents et affiche un coût des ventes plus faible, donc un résultat plus élevé. ' : 'les derniers achats étant moins chers, le PEPS donne un stock plus faible et un coût des ventes plus élevé, donc un résultat moindre. ')) + 'Le PEPS et le CMUP sont les deux seules méthodes admises ; le DEPS (dernier entré, premier sorti) est interdit. La méthode retenue doit être appliquée de façon permanente. ';
     com += 'La variation des stocks (' + e(x.vari) + ') ' + (x.vari < 0 ? 'est créditrice : le stock a augmenté, ce qui réduit les charges de l’exercice. Les achats non vendus ne pèsent pas sur le résultat de N.' : 'est débitrice : le stock a diminué, l’entreprise a vendu une partie du stock initial, ce qui alourdit les charges de l’exercice.') + ' ';
     com += p.va ? 'La dépréciation de ' + e(x.dep) + ' applique la prudence : le stock ne peut figurer au bilan pour plus que sa valeur actuelle. Elle sera reprise en N+1, à la vente des marchandises ou si les prix se redressent.' : 'Aucune dépréciation n’est nécessaire si la valeur actuelle des ' + p.mar[0] + ' reste supérieure à leur coût.';
-    return { enonce: en, questions: qs, journal: journal, steps: [{ h: 'CMUP de fin de période', html: U.calc(c) }, { h: 'Fiche de stock au CMUP après chaque entrée', html: fs }], comment: com };
+    return { enonce: en, questions: qs, journal: journal, steps: [{ h: 'CMUP de fin de période', html: U.calc(c) }, { h: 'Fiche de stock au CMUP après chaque entrée', html: fs }, { h: 'Fiche de stock selon le PEPS', html: fp }], comment: com };
   }
 };
