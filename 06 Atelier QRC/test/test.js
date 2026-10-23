@@ -114,6 +114,10 @@ Object.keys(T).forEach(id => {
     if (id === 'rapprochement') { const c = t.calc(p); ok(c.Se > 0 && c.Sb > 0 && near(c.Se + c.tInc - c.tDec, p.R) && near(c.Sb - c.tChq + c.tRem, p.R) && near(ex.journal.reduce((a, en) => a + en.lines.filter(l => l.a === '512').reduce((b, l) => b + l.d - l.c, 0), 0), c.reg), id + ' rapprochement ' + s); }
     if (id === 'emprunt') { const c = t.calc(p); ok(near(c.rows.reduce((a, r) => a + r.A, 0), p.K) && c.rows[p.n - 1].cf === 0 && c.rows.every(r => r.A > 0 && r.I >= 0) && c.icne > 0 && c.icne < c.rows[0].I + 0.01, id + ' emprunt ' + s); if (p.mode === 'annuite') ok(c.rows.slice(0, -1).every(r => near(r.ann, c.a)), id + ' annuités ' + s); }
     if (id === 'subvention') { const c = t.calc(p); ok(c.qp > 0 && c.qp < c.dot && near(c.qp / c.dot, p.S / p.P, 0.01) && near(c.net + c.qp, p.S) && c.res < 0, id + ' subvention ' + s); }
+    if (id === 'immo_acq') { const c = t.calc(p); ok(c.cout > 0 && near(c.lignes.reduce((a, l) => a + l[1], 0), c.cout) && near(c.ttc, c.cout + c.chTot + c.tva), id + ' coût ' + s); }
+    if (id === 'titres') { const c = t.calc(p); ok(c.depTot > 0 && c.coutC > 0 && near(c.rc, c.prixC - c.coutC), id + ' titres ' + s); }
+    if (id === 'inventaire') { const c = t.calc(p); ok(near(c.R, p.R0 + c.inc.reduce((a, o) => a + o.v, 0), 0.05), id + ' résultat ' + s); if (prof === 'C') ok(!p.ops.some(o => o.k === 'litige' || o.k === 'change'), id + ' programme contrôleur'); }
+    if (id === 'etats') { const c = t.calc(p); ok(near(c.AN, c.TP) && c.RN > 0 && p.b['512'] > 0, id + ' bilan équilibré ' + s); }
     if (id === 'depreciations' && prof === 'C') ok(!p.items.some(i => i.k === 'litige'), id + ' programme contrôleur');
     nb++;
   }
