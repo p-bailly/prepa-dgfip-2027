@@ -5140,13 +5140,32 @@ ANNALES = [
     var d = Math.ceil((s.due - Date.now()) / DAY);
     return d <= 0 ? 'à revoir' : 'dans ' + d + ' j';
   }
-  function record(id, score, secs, mode) {
+  // Copie conservée pour revoir l'exercice : données de l'énoncé et réponses saisies (lignes de journal vides écartées)
+  var COPIES = 6;
+  function copie(ex) {
+    var a = {}; Object.keys(ex.answers).forEach(function (k) { if (String(ex.answers[k]).trim() !== '') a[k] = ex.answers[k]; });
+    var j = ex.jl.map(function (ls) { return ls.filter(function (l) { return String(l.a || '').trim() || String(l.d || '').trim() || String(l.c || '').trim(); }); });
+    return { seed: ex.seed, p: ex.params, a: a, j: j };
+  }
+  function record(id, score, secs, mode, ex) {
     var s = Object.assign({ n: 0, sum: 0, box: 0, due: 0, last: [] }, S.prog.types[id] || {});
     s.n++; s.sum = U.r2(s.sum + score);
     if (score >= 0.8) s.box = Math.min(5, s.box + 1); else if (score >= 0.5) s.box = Math.max(0, s.box - 1); else s.box = 0;
     s.due = Date.now() + INTERVALS[s.box] * DAY - (s.box ? 3 * 3600000 : 0);
-    s.last = [{ s: U.rd(score, 3), t: Math.round(secs), d: Date.now(), m: mode }].concat(s.last || []).slice(0, 12);
+    var e = { s: U.rd(score, 3), t: Math.round(secs), d: Date.now(), m: mode };
+    if (ex) { var c = copie(ex); e.seed = c.seed; e.p = c.p; e.a = c.a; e.j = c.j; if (ex.src) e.src = ex.src; }
+    // Seules les dernières copies sont gardées en entier, pour ne pas alourdir la synchronisation
+    s.last = [e].concat(s.last || []).slice(0, 12).map(function (x, i) { if (i < COPIES) return x; var y = { s: x.s, t: x.t, d: x.d, m: x.m }; return y; });
     S.prog.types[id] = s;
+  }
+  // Revoir un exercice de l'historique : il est reconstruit à partir des données et des réponses conservées, corrigé affiché
+  function reviewTrain(id, i) {
+    var e = ((S.prog.types[id] || {}).last || [])[i]; if (!e || !e.p || !T[id]) return;
+    var ex = makeEx(id, { params: e.p, seed: e.seed, src: e.src });
+    ex.answers = e.a || {};
+    ex.jl = ex.data.journal.map(function (en, k) { var l = ((e.j || [])[k] || []).map(function (r) { return { a: r.a || '', d: r.d || '', c: r.c || '' }; }); while (l.length < en.lines.length) l.push({ a: '', d: '', c: '' }); return l; });
+    ex.res = grade(ex); ex.checked = true; ex.secs = e.t; ex.start = e.d; ex.corr = true; ex.revue = e;
+    S.view = 'train'; S.trainType = id; S.confirmTdel = null; S.train = ex; render(); window.scrollTo(0, 0);
   }
   // Supprimer un entraînement de l'historique d'un type : la moyenne est corrigée ; si tout l'historique est
   // encore là (12 derniers), le niveau et la prochaine révision sont recalculés en rejouant les notes restantes.
@@ -5285,9 +5304,9 @@ ANNALES = [
     }
     h += '<div class="tw"><table class="t"><thead><tr><th>Date</th><th class="hide-sm">Mode</th><th class="num">Temps</th><th class="num">Note / 20</th><th aria-label="Supprimer"></th></tr></thead><tbody>' + l.map(function (e, i) {
       var dt = new Date(e.d), day = dt.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
-      return '<tr><td>' + day + ' <span class="small muted">' + dt.getHours() + ' h ' + String(dt.getMinutes()).padStart(2, '0') + '</span></td><td class="hide-sm">' + (MODES[e.m] || 'Entraînement') + '</td><td class="num">' + mmss(e.t) + '</td><td class="num"><b class="' + (e.s >= 0.8 ? 'ok' : e.s >= 0.5 ? 'warn' : 'bad') + '">' + note(e.s) + '</b></td><td class="num"><button type="button" class="btn sm ghost" data-tdelask="' + i + '" aria-label="Supprimer l’exercice du ' + day + '" title="Supprimer">' + ico('trash') + '</button></td></tr>';
+      return '<tr' + (e.p ? ' class="click" data-hrev="' + id + ':' + i + '" tabindex="0" title="Revoir le sujet, tes réponses et le corrigé"' : '') + '><td>' + day + ' <span class="small muted">' + dt.getHours() + ' h ' + String(dt.getMinutes()).padStart(2, '0') + '</span></td><td class="hide-sm">' + (MODES[e.m] || 'Entraînement') + '</td><td class="num">' + mmss(e.t) + '</td><td class="num"><b class="' + (e.s >= 0.8 ? 'ok' : e.s >= 0.5 ? 'warn' : 'bad') + '">' + note(e.s) + '</b></td><td class="num"><button type="button" class="btn sm ghost" data-tdelask="' + i + '" aria-label="Supprimer l’exercice du ' + day + '" title="Supprimer">' + ico('trash') + '</button></td></tr>';
     }).join('') + '</tbody></table></div>';
-    if (s.n > l.length) h += '<p class="small muted">Seuls les 12 derniers exercices sont détaillés ; ta moyenne compte les ' + s.n + '.</p>';
+    h += '<p class="small muted">Clique sur un exercice pour revoir son sujet, tes réponses et le corrigé (les ' + COPIES + ' derniers de chaque type).' + (s.n > l.length ? ' Seuls les 12 derniers exercices sont listés ; ta moyenne compte les ' + s.n + '.' : '') + '</p>';
     return h + '</article>';
   }
   function exHtml(ex, mode) {
@@ -5340,9 +5359,21 @@ ANNALES = [
     var cfg = EXAMS[profil()], ep = S.prog.epreuves.filter(function (e) { return e.p === profil(); });
     var h = '<section class="hero"><h1 class="h-page">' + (due ? '<mark class="hl">' + due + ' type' + (due > 1 ? 's' : '') + '</mark> à revoir aujourd’hui' : !nEx ? '<mark class="hl">' + el.length + ' types</mark> à découvrir' : 'Rien à revoir aujourd’hui') + '</h1></section>';
     h += '<div class="stats"><div class="stat"><span>Exercices corrigés</span><b>' + nEx + '</b></div><div class="stat"><span>Note moyenne</span><b>' + (nEx ? note(sum / nEx) + ' <small>/ 20</small>' : '—') + '</b></div><div class="stat"><span>Types maîtrisés</span><b>' + solid + ' <small>/ ' + el.length + '</small></b></div><div class="stat"><span>Épreuves blanches</span><b>' + ep.length + '</b>' + (ep.length ? '<span>dernière : ' + noteTxt(ep[0].s) + '</span>' : '') + '</div></div>';
+    h += recentHtml();
     h += '<article class="sheet"><h2 class="h-sec">Progression par type</h2>' + typesTable(el, true) + '</article>';
     if (ep.length) h += '<article class="sheet"><h2 class="h-sec">Dernières épreuves blanches</h2>' + epTable(ep.slice(0, 6), false) + '</article>';
     return h;
+  }
+  // Derniers exercices tous types confondus, à revoir d'un clic quand la copie a été conservée
+  function recentHtml() {
+    var all = [];
+    Object.keys(S.prog.types).forEach(function (id) { if (!T[id]) return; (S.prog.types[id].last || []).forEach(function (e, i) { all.push({ id: id, i: i, e: e }); }); });
+    if (!all.length) return '';
+    all.sort(function (a, b) { return b.e.d - a.e.d; });
+    return '<article class="sheet"><h2 class="h-sec">Derniers exercices</h2><div class="tw"><table class="t"><thead><tr><th>Date</th><th>Exercice</th><th class="hide-sm">Mode</th><th class="num">Note / 20</th><th></th></tr></thead><tbody>' + all.slice(0, 10).map(function (x) {
+      var e = x.e, day = new Date(e.d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+      return '<tr' + (e.p ? ' class="click" data-hrev="' + x.id + ':' + x.i + '" tabindex="0"' : '') + '><td>' + day + '</td><td>' + esc(T[x.id].nom) + '</td><td class="hide-sm">' + (MODES[e.m] || 'Entraînement') + '</td><td class="num"><b class="' + (e.s >= 0.8 ? 'ok' : e.s >= 0.5 ? 'warn' : 'bad') + '">' + note(e.s) + '</b></td><td class="r small">' + (e.p ? 'Revoir ' + ico('arrow') : '<span class="muted">non conservé</span>') + '</td></tr>';
+    }).join('') + '</tbody></table></div></article>';
   }
   // Tableau des types : une ligne cliquable par type, qui lance un exercice
   function typesTable(list, fam) {
@@ -5373,6 +5404,11 @@ ANNALES = [
   function viewTrain() {
     var el = eligible();
     if (S.trainType && !el.some(function (t) { return t.id === S.trainType; })) { S.trainType = null; S.train = null; }
+    if (S.train && S.train.revue) {
+      var rv = S.train.revue;
+      return '<div class="row"><button type="button" class="btn sm ghost" data-train="' + S.train.typeId + '">' + ico('back') + 'Retour à l’historique</button><button type="button" class="btn sm ghost" data-act="choose">Choisir un autre exercice</button></div>'
+        + '<div class="callout"><span class="ic">' + ico('info') + '</span><p>Ton exercice du ' + new Date(rv.d).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) + ' (' + (MODES[rv.m] || 'Entraînement').toLowerCase() + ', ' + mmss(rv.t) + ') : énoncé, tes réponses telles que tu les as rendues et le corrigé.</p></div>' + exHtml(S.train, 'review');
+    }
     if (S.train) return '<div class="row"><button type="button" class="btn sm ghost" data-act="choose">' + ico('back') + 'Choisir un autre exercice</button></div>' + exHtml(S.train, 'train');
     // Aucun exercice en cours : on choisit avant de commencer
     var fams = []; el.forEach(function (t) { if (fams.indexOf(t.famille) < 0) fams.push(t.famille); });
@@ -5483,7 +5519,7 @@ ANNALES = [
     examSwitch(E.cur);
     E.used = Math.min(E.dur, (Date.now() - E.start) / 1000);
     var tot = 0;
-    E.items.forEach(function (ex, i) { ex.res = grade(ex); ex.checked = true; ex.secs = E.spent[i]; tot += ex.res.score; record(ex.typeId, ex.res.score, E.spent[i], 'epreuve'); });
+    E.items.forEach(function (ex, i) { ex.res = grade(ex); ex.checked = true; ex.secs = E.spent[i]; tot += ex.res.score; record(ex.typeId, ex.res.score, E.spent[i], 'epreuve', ex); });
     E.score = tot / E.items.length; E.done = true; E.cur = 0;
     S.prog.epreuves = [{ d: Date.now(), p: profil(), s: U.rd(E.score, 3), t: Math.round(E.used), x: E.items.map(function (ex, i) {
       // Données et réponses conservées pour revoir la copie ; lignes de journal vides écartées
@@ -5552,7 +5588,7 @@ ANNALES = [
   }
 
   document.addEventListener('click', function (ev) {
-    var b = ev.target.closest('button, a[data-v], a[data-fiche], tr[data-train], tr[data-pill], tr[data-eprev]'); if (!b) return;
+    var b = ev.target.closest('button, a[data-v], a[data-fiche], tr[data-train], tr[data-pill], tr[data-eprev], tr[data-hrev]'); if (!b) return;
     var ds = b.dataset, ex = currentEx();
     if (b.tagName === 'A') ev.preventDefault();
     if (ds.v) return go(ds.v);
@@ -5562,6 +5598,7 @@ ANNALES = [
     if (ds.annale) { S.annale = annaleEx(ds.annale); render(); window.scrollTo(0, 0); return; }
     if (ds.pcg !== undefined) { S.prog.settings.pcgOld = ds.pcg === '1'; Store.save(); return render(); }
     if (ds.eprev) return reviewExam(ds.eprev);
+    if (ds.hrev) { var hr = ds.hrev.split(':'); return reviewTrain(hr[0], Number(hr[1])); }
     if (ds.epdelask) { S.confirmDel = ds.epdelask; return render(); }
     if (ds.tdelask !== undefined && S.train) { S.confirmTdel = { id: S.train.typeId, i: Number(ds.tdelask) }; render(); var cf = $('.confirm'); if (cf) cf.scrollIntoView({ block: 'center' }); return; }
     if (ds.epdel) { S.prog.epreuves = S.prog.epreuves.filter(function (e) { return String(e.d) !== ds.epdel; }); S.confirmDel = null; Store.save(); return render(); }
@@ -5574,7 +5611,7 @@ ANNALES = [
       case 'check':
         if (!ex) return;
         ex.secs = elapsed(ex); ex.res = grade(ex); ex.checked = true;
-        record(ex.typeId, ex.res.score, ex.secs, S.view === 'annales' ? 'sujet' : 'entrainement'); Store.save();
+        record(ex.typeId, ex.res.score, ex.secs, S.view === 'annales' ? 'sujet' : 'entrainement', ex); Store.save();
         render(); var sc = $('#ex' + ex.uid + ' .score'); if (sc) sc.scrollIntoView({ block: 'center' }); return;
       case 'corr':
         if (!ex) return; ex.corr = !ex.corr; render(); if (ex.corr) { var c = $('#corr' + ex.uid); if (c) c.scrollIntoView({ block: 'start' }); } return;
@@ -5600,6 +5637,7 @@ ANNALES = [
   document.addEventListener('keydown', function (ev) {
     if (ev.key === 'Enter' && ev.target.matches && ev.target.matches('tr[data-train]')) startTrain(ev.target.dataset.train);
     if (ev.key === 'Enter' && ev.target.matches && ev.target.matches('tr[data-eprev]')) reviewExam(ev.target.dataset.eprev);
+    if (ev.key === 'Enter' && ev.target.matches && ev.target.matches('tr[data-hrev]')) { var hr = ev.target.dataset.hrev.split(':'); reviewTrain(hr[0], Number(hr[1])); }
   });
   function onInput(ev) {
     var t = ev.target;
