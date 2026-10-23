@@ -40,8 +40,26 @@ T.amort = {
   id: 'amort', nom: 'Plan d’amortissement (linéaire, dégressif, variable)', famille: 'Immobilisations', ctrl: true, minutes: 15,
   fiche: {
     objectif: 'Déterminer le coût d’acquisition puis établir le plan d’amortissement linéaire, dégressif ou variable (en fonction des unités d’œuvre) avec le bon prorata.',
+    cours: [
+      { t: 'Point d’attention : la valeur résiduelle', l: [
+        'Définition : montant, net des coûts de sortie attendus, que l’entreprise obtiendrait de la cession du bien à la fin de sa durée d’utilisation. Elle est estimée dès l’origine, pour établir le plan.',
+        'Base amortissable = coût d’entrée − valeur résiduelle, mais seulement si cette valeur est à la fois significative et mesurable (véhicules ou matériels revendus bien avant leur usure complète, par exemple) ; sinon, elle est nulle et on amortit tout le coût d’entrée.',
+        'Exemple : camion de 60 000 €, revendu après 4 ans pour 12 000 € (prix du marché de l’occasion) : base amortissable 48 000 €, annuité linéaire 12 000 €. La VNC en fin de plan est égale à 12 000 €, et non à zéro.',
+        'Fiscalement, l’amortissement se calcule sur le coût d’entrée total, sans déduire la valeur résiduelle : l’écart entre l’amortissement fiscal et l’amortissement comptable est constaté en amortissement dérogatoire (compte 145).',
+        'Révision : si l’estimation de la valeur résiduelle change de façon significative, le plan est modifié pour l’avenir (base = VNC − nouvelle valeur résiduelle, répartie sur la durée restante), sans retraiter les exercices passés.'
+      ] },
+      { t: 'Point d’attention : la valeur vénale', l: [
+        'Définition : montant qui pourrait être obtenu, à la date de clôture, de la vente du bien lors d’une transaction conclue à des conditions normales de marché, net des coûts de sortie.',
+        'À ne pas confondre avec la valeur résiduelle : la valeur vénale s’apprécie aujourd’hui, à la date de l’inventaire ; la valeur résiduelle est estimée pour la fin de l’utilisation.',
+        'Test de dépréciation : en cas d’indice de perte de valeur, on compare la VNC à la valeur actuelle, qui est la plus élevée de la valeur vénale et de la valeur d’usage (avantages économiques attendus de l’utilisation du bien).',
+        'Valeur actuelle < VNC : dépréciation (D 6816 / C 29xx), puis plan d’amortissement révisé pour l’avenir sur la nouvelle base (VNC dépréciée − valeur résiduelle) et la durée restante.',
+        'Valeur vénale > VNC : aucune écriture ; la plus-value latente n’est jamais comptabilisée (prudence, coût historique).',
+        'Valeur d’entrée : la valeur vénale sert aussi de coût d’entrée pour les biens reçus à titre gratuit ou par voie d’échange.'
+      ] }
+    ],
     etapes: [
       'Coût d’acquisition = prix net de remises + frais directement attribuables (transport, installation, montage, honoraires) ; on exclut la TVA récupérable, la formation du personnel, la publicité et les frais généraux.',
+      'Base amortissable = coût d’acquisition − valeur résiduelle (seulement si elle est significative et mesurable ; à défaut, base = coût d’acquisition).',
       'Linéaire : annuité = base ÷ durée ; prorata au jour près (année de 360 jours) à partir de la mise en service ; la dernière annuité complète le plan (durée + 1 exercice si départ en cours d’année).',
       'Dégressif : taux = (1 ÷ durée) × coefficient (1,25 pour 3-4 ans ; 1,75 pour 5-6 ans ; 2,25 au-delà), appliqué à la VNC ; prorata en mois à partir du 1er jour du mois d’acquisition.',
       'Passage au linéaire : dès que VNC ÷ nombre d’années restantes ≥ annuité dégressive (l’année entamée compte pour une année entière).',
@@ -57,6 +75,9 @@ T.amort = {
       'Oublier la bascule en linéaire, ou la calculer sur la durée totale au lieu de la durée restante.',
       'Amortir le terrain d’un immeuble.',
       'Mode variable : diviser par le nombre d’années au lieu du total des unités d’œuvre prévues, ou appliquer en plus un prorata temporis la première année.',
+      'Confondre valeur résiduelle (estimée pour la fin de l’utilisation, elle réduit la base amortissable) et valeur vénale (prix de marché à la clôture, elle sert au test de dépréciation).',
+      'Déduire une valeur résiduelle non significative, ou oublier qu’elle ne réduit pas la base fiscale (amortissement dérogatoire).',
+      'Comptabiliser une hausse de la valeur vénale : seules les pertes de valeur sont constatées, par dépréciation.',
       'Le mode variable n’est admis fiscalement que s’il est économiquement justifié ; à défaut, l’écart avec le linéaire fiscal donne lieu à un amortissement dérogatoire.'
     ],
     comptes: ['2154 Matériel industriel / 2183 Matériel informatique / 213 Constructions', '6811 Dotations aux amortissements', '28154 / 28183 / 2813 Amortissements']
