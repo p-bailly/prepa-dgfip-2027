@@ -363,6 +363,20 @@ function save(remoteToo=true){
   try { localStorage.setItem(KEY, serialize()); } catch(e){}
   if(remoteToo && window.PrepaSync) PrepaSync.changed("qcm");
 }
+// Sauvegarde collée à la main : tolère ce qu'ajoutent un e-mail ou Notes (texte autour, espaces insécables, guillemets
+// typographiques). Renvoie l'état, ou le message d'erreur à afficher.
+function readSave(txt){
+  const t = String(txt||"").replace(/[\u200B-\u200D\uFEFF]/g,"").replace(/\u00A0/g," ").trim();
+  if(!t) return "Colle d'abord la sauvegarde dans le champ.";
+  const i = t.indexOf("{"), j = t.lastIndexOf("}"), n = t.length.toLocaleString("fr-FR");
+  const body = i<0 || j<i ? "" : t.slice(i, j+1);
+  for(const x of [body, body.replace(/[\u201C\u201D\u201E\u201F\u2033\u00AB\u00BB]/g,'"').replace(/[\u2018\u2019]/g,"'")]){
+    try { const v = JSON.parse(x); if(v && typeof v==="object" && v.cards && typeof v.cards==="object") return v; } catch(e){}
+  }
+  // Plus d'accolades ouvertes que fermées : le texte a été coupé en route.
+  if(!body || (body.match(/\{/g)||[]).length > (body.match(/\}/g)||[]).length) return "Sauvegarde incomplète ("+n+" caractères reçus, la fin manque) : recopie-la en entier.";
+  return "Texte illisible ("+n+" caractères) : copie la sauvegarde avec le bouton Copier, sans la retoucher.";
+}
 // Fusion appareil / compte : carte par carte (révision la plus récente), examens et cartes perso par identifiant (hors supprimés).
 function merge(a, b){
   const newer = a.u >= b.u ? a : b, other = newer===a ? b : a;
@@ -1237,7 +1251,8 @@ document.addEventListener("click", e => {
     case "rerender": render(); break;
     case "newday": S.daily=null; session=null; save(); toast("Session du jour recomposée."); go("jour"); break;
     case "copy": { const t=$("#exp"); try{ navigator.clipboard.writeText(t.value).then(()=>toast("Sauvegarde copiée."),()=>{ t.select(); toast("Texte sélectionné."); }); }catch(err){ t.select(); toast("Texte sélectionné."); } break; }
-    case "import": { try{ const v=JSON.parse($("#imp").value); S = merge(S, normalize(v)); save(); invalidate(); session=null; toast("Sauvegarde importée."); render(); }catch(err){ toast("Texte illisible : colle une sauvegarde complète."); } break; }
+    case "import": { const v = readSave($("#imp").value); if(typeof v==="string"){ toast(v); break; }
+      S = merge(S, normalize(v)); save(); invalidate(); session=null; toast("Sauvegarde importée : "+plural(Object.keys(v.cards).length,"carte")+"."); render(); break; }
     case "resetask": $("#resetbox").innerHTML = `<div class="confirm">Toutes tes réponses, examens et questions perso seront effacés. <button class="btn danger" data-act="reset">Oui, tout effacer</button><button class="btn" data-act="rerender">Annuler</button></div>`; break;
     case "reset": { const set=S.set; S = blank(); S.set=set; session=null; lastResult=null; save(); toast("Progression effacée."); go("jour"); break; }
   }
