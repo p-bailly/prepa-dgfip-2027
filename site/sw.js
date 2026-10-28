@@ -35,8 +35,10 @@ self.addEventListener("fetch", e => {
   const html = req.mode === "navigate" || (req.headers.get("accept") || "").includes("text/html");
   if (html) {
     // « no-cache » : le navigateur revalide toujours sa copie auprès du site (GitHub Pages la déclare valable 10 min),
-    // sans quoi une page publiée à l'instant reste à l'ancienne version.
-    e.respondWith(Promise.race([fetch(req, { cache: "no-cache" }).then(res => put(req, res)), timeout(6000)])
+    // sans quoi une page publiée à l'instant reste à l'ancienne version. Adresse seule : une requête de navigation
+    // n'accepte pas d'options ; une réponse redirigée (/qcm vers /qcm/) repasse par la requête d'origine.
+    const fresh = fetch(req.url, { cache: "no-cache", credentials: "same-origin" }).then(res => res.redirected ? fetch(req) : res);
+    e.respondWith(Promise.race([fresh.then(res => put(req, res)), timeout(6000)])
       .catch(() => caches.match(req, { ignoreSearch: true }).then(hit => hit || caches.match(BASE))));
     return;
   }
