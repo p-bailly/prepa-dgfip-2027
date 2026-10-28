@@ -60,10 +60,12 @@ function device(name, local) {
     setDoc: (ref, data) => {
       c.pending.set(ref.path, JSON.parse(JSON.stringify(data)));
       c.listeners.filter(l => l.path === ref.path).forEach(l => c.emit(l));
-      if (c.online) { c.flush(); return Promise.resolve(); }
+      if (c.online && !c.stuck) { c.flush(); return Promise.resolve(); }
       return new Promise(r => c.resolvers.push(r));
     },
-    deleteDoc: () => Promise.resolve()
+    deleteDoc: () => Promise.resolve(),
+    terminate: () => { c.terminated = true; return Promise.resolve(); },
+    clearIndexedDbPersistence: () => { c.cleared = true; return Promise.resolve(); }
   };
   const mods = {
     'firebase-app.js': { initializeApp: () => ({}) },
@@ -78,7 +80,8 @@ function device(name, local) {
     clearTimeout: id => { const i = timers.findIndex(x => x.id === id); if (i >= 0) timers.splice(i, 1); },
     setInterval: () => 0, clearInterval: () => { }, __imp: n => Promise.resolve(mods[n]), btoa: s => Buffer.from(s, 'binary').toString('base64'),
     document: { activeElement: null, hidden: false, querySelector: () => null, getElementById: () => null, addEventListener: (t, f) => (c.on[t] = c.on[t] || []).push(f) },
-    addEventListener: (t, f) => (c.on[t] = c.on[t] || []).push(f)
+    addEventListener: (t, f) => (c.on[t] = c.on[t] || []).push(f),
+    location: { reload: () => { c.reloaded = true; } }
   };
   c.on = {};
   c.fire = t => (c.on[t] || []).forEach(f => f());
@@ -217,6 +220,21 @@ const qrcTypes = c => c.eval('Object.keys(S.prog.types).filter(function(k){retur
   tel.ctx.document.hidden = true; tel.fire('visibilitychange'); await advance(120000);
   tel.ctx.document.hidden = false; tel.fire('visibilitychange'); await advance(5000);
   ok(tel.listeners.length === 1 && server.writes.length === w10, `QCM : une seule écoute relancée, aucune écriture (${tel.listeners.length} écoutes, ${server.writes.length - w10} écritures)`);
+
+  /* 11. Envoi bloqué dans la file de Firestore (réseau présent) : signalé, puis « Réparer la synchro » rattrape tout */
+  reset();
+  pc = qcm('pc'); tel = qcm('tel'); await advance(3000);
+  tel.stuck = true;
+  qcmAnswer(tel, 1, 6); await advance(3000);
+  qcmAnswer(pc, 7, 9); await advance(40000);
+  ok(qcmN(pc) === 3 && qcmN(tel) === 6, `QCM : l'envoi bloqué du tel ne part pas et masque ce qui arrive (pc ${qcmN(pc)}, tel ${qcmN(tel)})`);
+  const lab = tel.eval('PrepaSync.label()');
+  ok(/attend depuis/.test(lab), `QCM : le tel signale l'envoi bloqué au lieu de « synchronisée » (${lab})`);
+  tel.eval('PrepaSync.repair()'); await advance(1000);
+  ok(tel.terminated && tel.cleared && tel.reloaded, 'QCM : réparer arrête Firestore, efface son cache et recharge la page');
+  server.clients.splice(server.clients.indexOf(tel), 1);
+  const tel2 = qcm('tel', Object.fromEntries(Object.entries(tel.store).filter(([k]) => k === 'qcm-dgfip-2027'))); await advance(5000);
+  ok(qcmN(tel2) === 9 && qcmN(pc) === 9 && /synchronisée/.test(tel2.eval('PrepaSync.label()')), `QCM : après rechargement, tel et PC ont les 9 cartes (tel ${qcmN(tel2)}, pc ${qcmN(pc)})`);
 
   console.log(`\n${checks} vérifications, ${fails} échec(s)`);
   process.exit(fails ? 1 : 0);

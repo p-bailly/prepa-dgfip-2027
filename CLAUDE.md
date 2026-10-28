@@ -43,6 +43,10 @@ Les dossiers numérotés 05 (sources des fiches) et 08 (`08 Depots/`, dépôts r
   périmé puis écrire effaçait du compte ce que l'autre appareil y avait mis). Écoute relancée après une erreur (5 s à 60 s),
   au retour au premier plan après 30 s de veille, au retour du réseau et par le bouton « Resynchroniser » du bloc Compte,
   qui affiche aussi l'identifiant de l'appareil et les heures du dernier échange (pour comparer deux appareils).
+- Envoi non confirmé depuis 30 s, réseau présent (ou écriture en attente héritée d'une ouverture précédente) : le libellé
+  dit « l'envoi au compte attend depuis … » au lieu de « synchronisée ». Tant qu'une écriture attend, les versions du
+  compte sont masquées par elle. « Réparer la synchro » : `terminate` + `clearIndexedDbPersistence` puis rechargement
+  (la progression est dans le `localStorage`, la connexion est gardée) ; l'état est renvoyé au premier passage serveur.
 - `merge(o)` d'une appli doit être idempotente : après chaque fusion distante, si l'état local diffère de celui du compte,
   la synchro le renvoie (4 renvois par minute au plus). Sans cela, un appareil qui écrit depuis un état périmé (hors
   connexion) écrase le compte et l'autre appareil garde ses données pour lui jusqu'à sa prochaine sauvegarde.

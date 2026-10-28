@@ -840,7 +840,7 @@ details.fold:not([open]) { gap: 0; }
   var SDK = "https://www.gstatic.com/firebasejs/12.19.0/";
   // L'identifiant devient une adresse interne : aucun courrier n'y est envoyé, il n'y a donc pas de « mot de passe oublié ».
   var DOMAIN = "prepa.pbailly.fr";
-  var FLAG = "prepa-sync-compte", MAX = 900000;
+  var FLAG = "prepa-sync-compte", MAX = 900000, STUCK = 30000;
 
   var apps = {}, listeners = [], fb = null, F = null, user = null, state = "local", err = "", started = false;
   var DEV = (function () {
@@ -855,6 +855,20 @@ details.fold:not([open]) { gap: 0; }
     if (o === null || typeof o !== "object") return JSON.stringify(o);
     if (Array.isArray(o)) return "[" + o.map(canon).join(",") + "]";
     return "{" + Object.keys(o).sort().filter(function (k) { return o[k] !== undefined; }).map(function (k) { return JSON.stringify(k) + ":" + canon(o[k]); }).join(",") + "}";
+  }
+  function hm(t) { return new Date(t).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }); }
+  // Envoi le plus ancien qui attend la confirmation du serveur depuis plus de 30 s, réseau présent (0 sinon).
+  function blocked() {
+    if (navigator.onLine === false) return 0;
+    var t = 0; Object.keys(apps).forEach(function (k) { var p = apps[k].pend; if (p && Date.now() - p > STUCK && (!t || p < t)) t = p; });
+    return t;
+  }
+  // File d'attente de Firestore bloquée sur l'appareil : on efface son cache local (la progression, elle, est dans le
+  // navigateur et la connexion au compte est gardée), puis on recharge ; la page renvoie alors son état au compte.
+  function repair() {
+    var go = function () { location.reload(); };
+    if (!F) return go();
+    F.Fs.terminate(F.db).then(function () { return F.Fs.clearIndexedDbPersistence(F.db); }).then(go, go);
   }
   function emit() { var s = api.status(); listeners.forEach(function (f) { try { f(s); } catch (e) { } }); }
   function setState(s, e) { state = s; err = e || ""; emit(); }
@@ -900,10 +914,15 @@ details.fold:not([open]) { gap: 0; }
     a.first = true;
     // Métadonnées comprises : le passage du cache au serveur arrive aussi quand les données n'ont pas changé.
     a.unsub = F.Fs.onSnapshot(a.ref, { includeMetadataChanges: true }, function (snap) {
-      if (snap.metadata.hasPendingWrites) return; // écho de nos propres écritures
+      if (!snap.metadata.fromCache) a.srv = Date.now(); // serveur joint (même avec un envoi en attente)
+      // Écho de nos propres écritures. Une écriture en attente sans envoi de cette page vient d'une ouverture précédente
+      // (Firestore garde sa file d'une session à l'autre) : elle compte comme envoi en attente.
+      if (snap.metadata.hasPendingWrites) { if (!a.fly && !a.pend) { a.pend = Date.now(); setTimeout(emit, STUCK + 1000); } return; }
+      if (!a.fly) a.pend = 0;
       var d = snap.exists() ? snap.data() : null;
+      if (d && !snap.metadata.fromCache) a.rx = { at: Date.now(), u: d.u || 0, mine: d.dev === DEV };
       if (d && d.json && d.json !== a.last) {
-        a.last = d.json; a.rx = { at: Date.now(), u: d.u || 0, mine: d.dev === DEV };
+        a.last = d.json;
         try { var o = JSON.parse(d.json); a.canon = canon(o); a.merge(o); if (!a.first) echo(key); } catch (e) { }
       }
       // Premier envoi seulement sur une version venue du serveur : celle du cache peut être périmée, et l'état fusionné
@@ -949,7 +968,11 @@ details.fold:not([open]) { gap: 0; }
       var json = JSON.stringify(o);
       if (json.length > MAX) { setState("plein"); return; }
       a.canon = c; a.last = json;
-      F.Fs.setDoc(a.ref, { json: json, u: Date.now(), dev: DEV }).then(function () { a.tx = Date.now(); if (state !== "erreur") setState(navigator.onLine === false ? "attente" : "ok"); }, function (e) { setState("erreur", (e && e.code) || "erreur"); });
+      // Envoi non confirmé par le serveur : compté, pour signaler une file d'attente bloquée au lieu d'afficher « synchronisée ».
+      a.fly = (a.fly || 0) + 1; if (!a.pend) a.pend = Date.now();
+      setTimeout(emit, STUCK + 1000);
+      var done = function () { if (--a.fly <= 0) { a.fly = 0; a.pend = 0; } };
+      F.Fs.setDoc(a.ref, { json: json, u: Date.now(), dev: DEV }).then(function () { done(); a.tx = Date.now(); if (state !== "erreur") setState(navigator.onLine === false ? "attente" : "ok"); }, function (e) { done(); setState("erreur", (e && e.code) || "erreur"); });
     }, now ? 0 : 1200);
   }
 
@@ -1003,6 +1026,7 @@ details.fold:not([open]) { gap: 0; }
     device: DEV,
     // Relance à la demande (bouton « Resynchroniser » du bloc Compte).
     refresh: refresh,
+    repair: repair,
     // Reprend la session enregistrée sur l'appareil sans appli attachée (page d'accueil).
     resume: function () { if (hasFlag()) start().catch(function () { }); },
     connected: hasFlag,
@@ -1016,6 +1040,7 @@ details.fold:not([open]) { gap: 0; }
     status: function () { return { state: state, error: err, user: user ? (user.displayName || (user.email || "").split("@")[0]) : "" }; },
     label: function () {
       var s = api.status();
+      if (s.user && blocked()) return "sur cet appareil : l'envoi au compte " + s.user + " attend depuis " + hm(blocked()) + " (bouton « Réparer la synchro » ci-dessous)";
       if (s.user) return state === "ok" ? "synchronisée avec le compte " + s.user : state === "plein" ? "trop volumineuse pour le compte, sur cet appareil seulement" : state === "erreur" ? "sur cet appareil (synchro en erreur)" : "sur cet appareil, envoi au compte " + s.user + " dès que le réseau revient";
       return state === "connexion" ? "sur cet appareil (connexion…)" : "sur cet appareil";
     },
@@ -1047,12 +1072,13 @@ details.fold:not([open]) { gap: 0; }
       function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
       // Où en est l'échange avec le compte, pour comparer deux appareils d'un coup d'œil.
       function trace() {
-        var hm = function (t) { return new Date(t).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }); };
         var p = ["Appareil " + DEV];
         Object.keys(apps).forEach(function (k) {
           var a = apps[k];
-          if (a.rx) p.push("version du compte " + (a.rx.u ? "du " + new Date(a.rx.u).toLocaleDateString("fr-FR") + " à " + hm(a.rx.u) : "reçue à " + hm(a.rx.at)) + (a.rx.mine ? " (écrite ici)" : " (écrite par un autre appareil)"));
-          if (a.tx) p.push("dernier envoi à " + hm(a.tx));
+          p.push(a.srv ? "compte joint à " + hm(a.srv) : "compte pas encore joint");
+          if (a.rx) p.push("version du compte du " + new Date(a.rx.u || a.rx.at).toLocaleDateString("fr-FR") + " à " + hm(a.rx.u || a.rx.at) + (a.rx.mine ? ", écrite ici" : ", écrite par un autre appareil"));
+          if (a.tx) p.push("dernier envoi confirmé à " + hm(a.tx));
+          if (a.pend) p.push("envoi en attente depuis " + hm(a.pend));
         });
         return p.join(" · ") + ".";
       }
@@ -1063,7 +1089,7 @@ details.fold:not([open]) { gap: 0; }
           el.innerHTML = '<div class="sync-box"><p>Connecté en tant que <b>' + esc(s.user) + '</b>. Ta progression est ' + esc(api.label()) + '.</p>' +
             '<p class="small muted">Connecte-toi avec le même identifiant sur tes autres appareils : tout se synchronise en direct, et hors connexion les changements partent dès le retour du réseau.</p>' +
             '<p class="small muted">' + esc(trace()) + '</p>' +
-            '<div class="row"><button type="button" class="btn" data-sync="now">Resynchroniser</button><button type="button" class="btn" data-sync="out">Se déconnecter</button></div></div>';
+            '<div class="row"><button type="button" class="btn" data-sync="now">Resynchroniser</button><button type="button" class="btn" data-sync="fix">Réparer la synchro</button><button type="button" class="btn" data-sync="out">Se déconnecter</button></div></div>';
         } else {
           el.innerHTML = '<form class="sync-box" novalidate><p class="small muted">Sans compte, la progression reste sur cet appareil. Avec un compte, elle se synchronise entre tous tes appareils.</p>' +
             '<label class="field"><span>Identifiant</span><input class="input" name="u" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>' +
@@ -1083,7 +1109,8 @@ details.fold:not([open]) { gap: 0; }
       el.onclick = function (e) {
         var b = e.target.closest("[data-sync]"); if (!b) return;
         if (b.dataset.sync === "up") { e.preventDefault(); go("up"); }
-        if (b.dataset.sync === "now") { refresh(); draw(); }
+        if (b.dataset.sync === "now") { refresh(); draw(); setTimeout(draw, 4000); }
+        if (b.dataset.sync === "fix") { b.disabled = true; repair(); }
         if (b.dataset.sync === "out") { b.disabled = true; api.signOut().then(function () { draw(); }); }
       };
       if (!el._syncListen) { el._syncListen = true; listeners.push(function () { if (el.isConnected && !el.contains(document.activeElement)) draw(); }); }
