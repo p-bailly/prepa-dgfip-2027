@@ -1827,6 +1827,260 @@ T.couts_specifiques = {
   }
 };
 
+/* ---------- Charges fixes et charges variables ---------- */
+// [libellé, nature (0 variable, 1 fixe, 2 semi-variable), justification]
+var CHARGES_CLASSEES = [
+  ['Matières premières consommées par la production', 0, 'la consommation augmente avec chaque unité produite'],
+  ['Commissions des représentants (3 % du chiffre d’affaires)', 0, 'proportionnelles au chiffre d’affaires réalisé'],
+  ['Emballages des produits expédiés', 0, 'un emballage par colis expédié'],
+  ['Main-d’œuvre directe rémunérée à la pièce', 0, 'payée selon le nombre de pièces produites'],
+  ['Transport sur ventes facturé au colis', 0, 'facturé en proportion du nombre de colis'],
+  ['Loyer des bâtiments (montant mensuel constant)', 1, 'montant indépendant du niveau d’activité'],
+  ['Prime d’assurance des locaux', 1, 'prime forfaitaire sans lien avec le volume produit'],
+  ['Amortissement linéaire du matériel', 1, 'annuité constante quelle que soit l’utilisation'],
+  ['Salaire du directeur administratif et financier', 1, 'rémunération mensuelle fixe'],
+  ['Abonnement de télésurveillance de l’entrepôt', 1, 'forfait mensuel constant'],
+  ['Facture d’électricité de l’atelier (abonnement + consommation au kWh)', 2, 'abonnement fixe et consommation variable'],
+  ['Location du photocopieur (forfait mensuel + prix par copie)', 2, 'forfait fixe et coût variable à la copie'],
+  ['Contrat de maintenance des machines (forfait + interventions facturées à l’heure)', 2, 'forfait fixe et interventions variables'],
+  ['Forfait téléphonique (abonnement + minutes hors forfait)', 2, 'abonnement fixe et minutes supplémentaires variables']
+];
+// Charges semi-variables : activité x de min à max par pas, charge variable unitaire a, charge fixe b
+var MIXTES = [
+  { lib: 'Maintenance des machines', un: 'heures-machine', x: [400, 1200, 20], a: [3, 4, 5, 6, 8, 10, 12], b: [2000, 9000, 500] },
+  { lib: 'Énergie de l’atelier', un: 'heures de fonctionnement', x: [300, 900, 10], a: [2, 2.5, 3, 4, 4.5, 6], b: [1500, 6000, 250] },
+  { lib: 'Frais de transport', un: 'kilomètres parcourus', x: [8000, 30000, 500], a: [0.4, 0.5, 0.6, 0.8, 1.2], b: [1000, 5000, 250] },
+  { lib: 'Frais de livraison', un: 'colis expédiés', x: [1000, 6000, 100], a: [2, 2.5, 3, 3.5, 4.5], b: [2000, 8000, 500] }
+];
+function cap1(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+T.charges_fv = {
+  id: 'charges_fv', nom: 'Charges fixes et charges variables', famille: 'Comptabilité de gestion', ctrl: true, minutes: 18,
+  fiche: {
+    objectif: 'Classer les charges selon leur comportement face à l’activité, décomposer une charge semi-variable en part fixe et part variable par la méthode des points extrêmes, et en déduire la charge prévue et le coût unitaire.',
+    cours: [
+      { t: 'Charges variables, fixes et semi-variables', l: [
+        'Charge variable (opérationnelle) : son montant total évolue avec le niveau d’activité (matières, énergie de production, commissions, emballages) ; si elle est proportionnelle, son montant par unité reste constant.',
+        'Charge fixe (de structure) : son montant total ne dépend pas du niveau d’activité à court terme (loyers, assurances, amortissements linéaires, salaires du personnel permanent) ; par unité, elle diminue quand l’activité augmente.',
+        'Charge semi-variable (mixte) : elle comprend une part fixe et une part variable (électricité : abonnement + consommation ; maintenance : forfait + interventions) ; elle doit être décomposée avant tout calcul de marge.',
+        'Charges fixes par paliers (semi-fixes) : fixes dans un intervalle d’activité, elles augmentent par sauts au-delà d’une capacité (nouvel atelier, nouvel entrepôt, embauche).',
+        'Intervalle de pertinence : le classement fixe ou variable n’est valable que pour une plage d’activité et un horizon de court terme ; à long terme, toutes les charges deviennent variables.',
+        'Ne pas confondre : charges variables ou fixes (comportement face à l’activité) et charges directes ou indirectes (affectation au produit) ; une charge fixe peut être directe (amortissement d’une machine dédiée) et une charge variable indirecte (énergie d’un atelier commun).'
+      ] },
+      { t: 'Décomposition d’une charge semi-variable', l: [
+        'Méthode des points extrêmes (haut-bas) : on retient les périodes d’activité la plus haute et la plus basse ; charge variable unitaire a = (charge haute − charge basse) ÷ (activité haute − activité basse).',
+        'Charge fixe b = charge haute − a × activité haute (le calcul avec la période basse donne le même résultat) ; charge prévue pour une activité X = b + a × X.',
+        'Ajustement linéaire (moindres carrés) : droite y = a x + b qui minimise l’écart avec l’ensemble des périodes ; plus fiable quand les données sont dispersées, mais lourd à la main ; les points extrêmes ignorent toutes les périodes intermédiaires.',
+        'Coût unitaire = a + b ÷ X : la part variable est constante, la part fixe se dilue quand l’activité augmente (effet de taille).',
+        'Utilité : compte de résultat différentiel, seuil de rentabilité, coût marginal, budgets flexibles (voir les fiches « Seuil de rentabilité » et « Commande spéciale »).'
+      ] }
+    ],
+    etapes: [
+      'Classer chaque charge : variable (évolue avec l’activité), fixe (indépendante de l’activité dans l’intervalle de pertinence) ou semi-variable (à décomposer) ; une charge fixe par paliers se calcule palier par palier.',
+      'Repérer la période d’activité la plus haute et celle d’activité la plus basse du tableau (on raisonne sur l’activité, pas sur le montant des charges).',
+      'Charge variable unitaire a = (charge haute − charge basse) ÷ (activité haute − activité basse).',
+      'Charge fixe b = charge haute − a × activité haute ; contrôle avec la période basse : charge basse − a × activité basse.',
+      'Charge prévue = b + a × activité prévue ; coût unitaire = charge prévue ÷ activité prévue, soit a + b ÷ activité.',
+      'Charge fixe par paliers : nombre de paliers = activité ÷ capacité d’un palier, arrondi à l’entier supérieur ; charge fixe = nombre de paliers × charge d’un palier.'
+    ],
+    pieges: [
+      'Retenir comme période haute et basse celles de charge extrême au lieu de celles d’activité extrême.',
+      'Diviser l’écart de charges par l’écart de mois ou par le nombre de périodes au lieu de l’écart d’activité.',
+      'Traiter une charge semi-variable comme entièrement variable : la marge sur coût variable serait faussée et le seuil de rentabilité aussi.',
+      'Croire que la charge fixe unitaire est constante : c’est la charge fixe totale qui est constante, la charge fixe par unité diminue quand l’activité augmente.',
+      'Oublier d’arrondir au palier supérieur : pour un besoin de 2,3 entrepôts, il faut en louer 3 et non 2,3.'
+    ],
+    comptes: []
+  },
+  gen: function (r) {
+    for (var t = 0; t < 200; t++) {
+      var m = r.pick(MIXTES), g = [], v;
+      for (v = m.x[0]; v <= m.x[1]; v += m.x[2]) g.push(v);
+      var xs = r.pickN(g, 6), lo = Math.min.apply(null, xs), hi = Math.max.apply(null, xs);
+      if (hi - lo < (m.x[1] - m.x[0]) * 0.4) continue;
+      var a = r.pick(m.a), b = r.int(m.b[0], m.b[1], m.b[2]), m0 = r.int(0, 6);
+      // points extrêmes exactement sur la droite, périodes intermédiaires dispersées de ± 4 %
+      var mois = xs.map(function (x, i) {
+        var y = U.r0(b + a * x);
+        if (x !== lo && x !== hi) y += U.r0(y * r.int(-4, 4) / 100);
+        return { m: U.MOIS[m0 + i], x: x, y: y };
+      });
+      var cap = r.pick([500, 800, 1000, 1200, 1500, 2000]), k = r.int(1, 3);
+      var pal = { cap: cap, F: r.int(6, 24) * 1000, V: cap * k + r.int(1, 9) * cap / 10 };
+      return { nom: U.nom(r), lib: m.lib, un: m.un, mois: mois, prev: r.int(lo, hi, m.x[2]), pal: pal, cls: this.classes(r) };
+    }
+  },
+  // quatre charges à classer : au moins une de chaque nature
+  classes: function (r) {
+    var par = [[], [], []], ch = [];
+    CHARGES_CLASSEES.forEach(function (c, i) { par[c[1]].push(i); });
+    par.forEach(function (l) { ch.push(r.pick(l)); });
+    var reste = CHARGES_CLASSEES.map(function (c, i) { return i; }).filter(function (i) { return ch.indexOf(i) < 0; });
+    ch.push(r.pick(reste));
+    return r.shuffle(ch);
+  },
+  calc: function (p) {
+    var d = p.mois, hi = 0, lo = 0;
+    d.forEach(function (o, i) { if (o.x > d[hi].x) hi = i; if (o.x < d[lo].x) lo = i; });
+    var a = (d[hi].y - d[lo].y) / (d[hi].x - d[lo].x), b = U.r2(d[hi].y - a * d[hi].x), bLo = U.r2(d[lo].y - a * d[lo].x);
+    var P = U.r2(b + a * p.prev), np = Math.ceil(p.pal.V / p.pal.cap - 1e-9), dev = 0, devM = '';
+    d.forEach(function (o, i) { var ec = o.y - (b + a * o.x); if (i !== hi && i !== lo && Math.abs(ec) > Math.abs(dev)) { dev = ec; devM = o.m; } });
+    return { ihi: hi, ilo: lo, xhi: d[hi].x, xlo: d[lo].x, yhi: d[hi].y, ylo: d[lo].y, a: a, b: b, bLo: bLo, P: P, cfu: b / p.prev, ctu: P / p.prev,
+      np: np, cfp: U.r2(np * p.pal.F), dev: dev, devM: devM };
+  },
+  solve: function (p) {
+    var x = this.calc(p), e = U.e, e2 = U.e2, n = U.n, d = p.mois, ci = p.cls.map(function (i) { return CHARGES_CLASSEES[i]; });
+    var NAT = ['variable', 'fixe', 'semi-variable'];
+    var en = '<p>La société <b>' + p.nom + '</b> étudie le comportement de ses charges face à l’activité. Le contrôleur de gestion doit d’abord classer les charges suivantes :</p>' + U.ul(ci.map(function (c) { return c[0]; }));
+    en += '<p>Il étudie ensuite la charge « ' + p.lib + ' », qui varie avec l’activité (' + p.un + ') sans lui être proportionnelle. Relevé des six derniers mois :</p>';
+    en += U.tbl(['Mois', 'Activité (' + p.un + ')', 'Charge'], d.map(function (o) { return [cap1(o.m), n(o.x), e(o.y)]; }));
+    en += '<p>Par ailleurs, la société stocke ses produits dans des entrepôts d’une capacité de ' + n(p.pal.cap) + ' unités, loués ' + e(p.pal.F) + ' par an chacun. Elle prévoit de stocker ' + n(p.pal.V) + ' unités sur l’année.</p>';
+    en += '<p class="consigne">1. Définissez les charges fixes et les charges variables, puis classez les quatre charges ci-dessus. 2. Décomposez la charge « ' + p.lib + ' » en part fixe et part variable par la méthode des points extrêmes. 3. Calculez la charge prévue pour une activité de ' + n(p.prev) + ' ' + p.un + ' et le coût unitaire correspondant ; commentez l’évolution du coût unitaire avec l’activité. 4. Calculez la charge fixe annuelle de stockage.</p>';
+    var qs = ci.map(function (c, i) { return QC('c' + i, 'Nature – ' + c[0], ['Charge variable', 'Charge fixe', 'Charge semi-variable'], c[1]); });
+    qs.push(Q('cv', 'Charge variable par unité d’activité', x.a, '€', { tol: 0.01 }), Q('cf', 'Charge fixe mensuelle', x.b, '€'), Q('pv', 'Charge prévue pour ' + n(p.prev) + ' ' + p.un, x.P, '€'),
+      Q('cfu', 'Charge fixe par unité d’activité à ce niveau', x.cfu, '€', { tol: 0.01 }), Q('ctu', 'Coût unitaire total à ce niveau', x.ctu, '€', { tol: 0.01 }), Q('pal', 'Charge fixe annuelle de stockage', x.cfp, '€'));
+    var def = U.p('Une charge variable évolue avec le niveau d’activité (proportionnellement dans le cas simple) ; une charge fixe est indépendante de l’activité, sur un intervalle de pertinence et à court terme ; une charge semi-variable comprend une part fixe et une part variable, qu’il faut séparer.')
+      + U.tbl(['Charge', 'Nature', 'Justification'], ci.map(function (c) { return [c[0], '<b>' + NAT[c[1]] + '</b>', c[2]]; }));
+    var c1 = [['Activité la plus haute', cap1(d[x.ihi].m), n(x.xhi) + ' ' + p.un + ' pour ' + e(x.yhi)], ['Activité la plus basse', cap1(d[x.ilo].m), n(x.xlo) + ' ' + p.un + ' pour ' + e(x.ylo)],
+      ['Charge variable par unité (a)', '(' + n(x.yhi) + ' − ' + n(x.ylo) + ') ÷ (' + n(x.xhi) + ' − ' + n(x.xlo) + ')', '<b>' + e2(x.a) + '</b>'],
+      ['Charge fixe (b), avec la période haute', n(x.yhi) + ' − ' + n(x.a) + ' × ' + n(x.xhi), '<b>' + e(x.b) + '</b>'],
+      ['Contrôle avec la période basse', n(x.ylo) + ' − ' + n(x.a) + ' × ' + n(x.xlo), e(x.bLo)],
+      ['Équation de la charge mensuelle', 'y = a x + b', 'y = ' + n(x.a) + ' x + ' + n(x.b)]];
+    var niv = [['Activité basse', x.xlo], ['Activité prévue', p.prev], ['Activité haute', x.xhi]].map(function (o, i) {
+      var ch = U.r2(x.b + x.a * o[1]), cells = [o[0], n(o[1]), e(ch), e2(x.a), e2(x.b / o[1]), e2(ch / o[1])];
+      return i === 1 ? { cls: 'tot', cells: cells } : cells;
+    });
+    var c2 = [['Charge prévue', n(x.b) + ' + ' + n(x.a) + ' × ' + n(p.prev), '<b>' + e(x.P) + '</b>'], ['Charge fixe par unité', n(x.b) + ' ÷ ' + n(p.prev), e2(x.cfu)], ['Coût unitaire total', n(x.P) + ' ÷ ' + n(p.prev), '<b>' + e2(x.ctu) + '</b>']];
+    var c3 = [['Nombre d’entrepôts', n(p.pal.V) + ' ÷ ' + n(p.pal.cap) + ' = ' + n(p.pal.V / p.pal.cap, 2), '<b>' + n(x.np) + '</b> (arrondi à l’entier supérieur)'], ['Charge fixe annuelle de stockage', n(x.np) + ' × ' + n(p.pal.F), '<b>' + e(x.cfp) + '</b>']];
+    var com = 'La charge « ' + p.lib + ' » est semi-variable : elle comprend une part fixe de ' + e(x.b) + ' par mois, due même sans activité, et une part variable de ' + e2(x.a) + ' par unité d’activité, soit l’équation y = ' + n(x.a) + ' x + ' + n(x.b) + '. ';
+    com += 'La méthode des points extrêmes est simple mais fragile, car elle ne retient que deux périodes sur six : ' + (Math.abs(x.dev) < 0.5 ? 'ici les autres mois se placent sur la droite.' : 'ici, en ' + x.devM + ', la charge réelle s’écarte de ' + e(Math.abs(U.r2(x.dev))) + ' de la droite ; un ajustement par les moindres carrés exploiterait toutes les périodes.') + ' ';
+    com += 'À ' + n(p.prev) + ' ' + p.un + ', le coût unitaire de ' + e2(x.ctu) + ' se décompose en ' + e2(x.a) + ' de charge variable, identique à tout niveau d’activité, et ' + e2(x.cfu) + ' de charge fixe, qui se dilue quand l’activité augmente (' + e2(x.b / x.xlo) + ' à l’activité basse, ' + e2(x.b / x.xhi) + ' à l’activité haute) : comparer des coûts unitaires de périodes d’activité différentes sans séparer le fixe du variable fausse l’analyse. ';
+    com += 'Cette décomposition est la condition du compte de résultat différentiel : la part variable entre dans la marge sur coût variable, la part fixe dans les charges fixes, d’où le seuil de rentabilité et le coût marginal. ';
+    com += 'Les entrepôts illustrent les charges fixes par paliers : la charge ne varie pas avec chaque unité stockée, mais un entrepôt supplémentaire devient nécessaire dès que la capacité est atteinte. Pour ' + n(p.pal.V) + ' unités, il faut ' + n(x.np) + ' entrepôts, soit ' + e(x.cfp) + ' par an ; la charge n’est fixe que dans l’intervalle de pertinence de ' + n(p.pal.cap) + ' unités par palier.';
+    return { enonce: en, questions: qs, journal: [], steps: [{ h: 'Définitions et classement des charges', html: def }, { h: 'Décomposition par les points extrêmes', html: U.calc(c1) }, { h: 'Charge prévue et coût unitaire', html: U.calc(c2) + U.tbl(['Niveau', 'Activité', 'Charge totale', 'Variable par unité', 'Fixe par unité', 'Coût unitaire'], niv) }, { h: 'Charge fixe par paliers', html: U.calc(c3) }], comment: com };
+  }
+};
+
+/* ---------- Méthode ABC (Activity Based Costing) ---------- */
+var ABC_PAIRES = [['Tables standard', 'Tables sur mesure'], ['Vélos de série', 'Vélos personnalisés'], ['Portes standard', 'Portes sur mesure'], ['Cartes électroniques standard', 'Cartes électroniques spécifiques'], ['Escaliers préfabriqués', 'Escaliers sur mesure']];
+function minus1(s) { return s.charAt(0).toLowerCase() + s.slice(1); }
+
+T.abc = {
+  id: 'abc', nom: 'Méthode ABC (coûts par activités)', famille: 'Comptabilité de gestion', ctrl: false, minutes: 25,
+  fiche: {
+    objectif: 'Répartir les charges indirectes par activités et inducteurs de coût (méthode ABC), calculer le coût de revient de chaque produit et le comparer à celui de la méthode des centres d’analyse pour repérer les produits sur- ou sous-évalués.',
+    cours: [
+      { t: 'Principe de la méthode ABC (Activity Based Costing)', l: [
+        'Idée : les produits consomment des activités et les activités consomment des ressources (les charges) ; on impute donc les charges indirectes aux produits en suivant la consommation d’activités, et non le seul volume de production.',
+        'Activité : ensemble de tâches homogènes qui consomme des ressources pour un résultat utile (lancer une série, contrôler la qualité, traiter une commande, livrer).',
+        'Pool de coûts : ensemble des charges d’une même activité ; il remplace les centres d’analyse de la méthode classique, sans répartition secondaire.',
+        'Inducteur de coût (cost driver) : mesure de l’activité qui explique le niveau de ses charges (nombre de lancements, de contrôles, de commandes, d’heures-machine) ; il joue le rôle de l’unité d’œuvre.',
+        'Coût de l’inducteur = coût de l’activité ÷ nombre total d’inducteurs ; charge imputée à un produit = nombre d’inducteurs qu’il consomme × coût de l’inducteur.',
+        'Coût de revient = charges directes + charges indirectes imputées par les inducteurs ; le total imputé doit égaler le total des charges indirectes.'
+      ] },
+      { t: 'Méthode ABC et méthode des centres d’analyse', l: [
+        'Unité d’œuvre classique (heure de MOD, kg de matière) : proportionnelle au volume ; elle ignore la taille des séries et la complexité des produits.',
+        'Inducteur ABC : indépendant du volume pour les activités liées aux séries (un lancement coûte autant pour 50 que pour 5 000 pièces) ; il révèle le coût des petites séries, des produits complexes et des commandes fractionnées.',
+        'Subventions croisées : la méthode classique surévalue les produits standard en grandes séries et sous-évalue les produits spécifiques en petites séries ; ABC corrige cet effet.',
+        'Hiérarchie des activités : liées à l’unité produite (heures-machine), au lot (lancement, réglage, commande), au produit (conception, gamme) ou à l’entreprise (direction, locaux) ; les dernières n’ont pas d’inducteur pertinent et sont souvent traitées à part.',
+        'Limites : mise en œuvre longue et coûteuse (enquêtes, système d’information), choix des inducteurs parfois subjectif ; ABC reste une méthode de coût complet, dont une partie des charges fixes ne disparaîtrait pas avec le produit.'
+      ] }
+    ],
+    etapes: [
+      'Identifier les activités et regrouper les charges indirectes par activité (un pool de coûts par activité).',
+      'Choisir pour chaque activité l’inducteur qui explique le mieux ses charges (lancements, contrôles, commandes, heures-machine).',
+      'Coût de l’inducteur = coût de l’activité ÷ nombre total d’inducteurs consommés par l’ensemble des produits.',
+      'Imputer à chaque produit : nombre d’inducteurs consommés × coût de l’inducteur, activité par activité, puis additionner.',
+      'Coût de revient du produit = matières + main-d’œuvre directe + charges indirectes ABC ; diviser par la quantité pour le coût unitaire.',
+      'Comparer au coût de la méthode des centres d’analyse : un écart marqué signale des subventions croisées entre produits ; calculer les résultats analytiques et commenter.'
+    ],
+    pieges: [
+      'Diviser le coût de l’activité par la quantité produite au lieu du nombre d’inducteurs.',
+      'Diviser par le nombre d’inducteurs d’un seul produit : le dénominateur est la somme des consommations de tous les produits.',
+      'Oublier une activité ou compter deux fois des charges : le total imputé aux produits doit égaler le total des charges indirectes.',
+      'Conclure à l’abandon d’un produit dont le résultat ABC est négatif : ABC est un coût complet ; il faut regarder la marge sur coût variable et les charges réellement évitables.',
+      'Choisir une mesure de volume pour une activité qui dépend du nombre de séries ou de commandes : c’est le défaut que la méthode ABC veut corriger.'
+    ],
+    comptes: []
+  },
+  gen: function (r) {
+    for (var t = 0; t < 300; t++) {
+      var pa = r.pick(ABC_PAIRES), th = r.int(14, 30);
+      var S = { nom: pa[0], q: r.int(20, 60) * 100, h: r.int(10, 30) / 10, m: r.int(8, 40), mh: r.int(5, 15) / 10 };
+      var M = { nom: pa[1], q: r.int(3, 10) * 100, h: r.int(15, 40) / 10, m: r.int(10, 50), mh: r.int(8, 20) / 10 };
+      // [activité, inducteur, nombre total, part des produits sur mesure (%), coût de l’inducteur] : les petites séries pèsent sur les lancements, contrôles et commandes
+      var acts = [['Lancement et préparation des séries', 'lancements de série', r.int(30, 90), r.int(55, 80), r.int(40, 150) * 10], ['Contrôle qualité', 'contrôles réalisés', r.int(150, 400), r.int(40, 65), r.int(10, 60) * 5],
+        ['Gestion des commandes et livraisons', 'commandes traitées', r.int(300, 900), r.int(35, 60), r.int(20, 80)]].map(function (s) {
+        var nM = U.r0(s[2] * s[3] / 100);
+        return { nom: s[0], ind: s[1], u: s[4], n: [s[2] - nM, nM] };
+      });
+      acts.push({ nom: 'Maintenance et énergie des machines', ind: 'heures-machine', u: r.int(4, 12), n: [U.r0(S.q * S.mh), U.r0(M.q * M.mh)] });
+      var swap = r.chance(0.5), iM = swap ? 0 : 1, iS = 1 - iM;
+      if (swap) acts.forEach(function (a) { a.n.reverse(); });
+      var p = { nom: U.nom(r), th: th, prod: swap ? [M, S] : [S, M], acts: acts };
+      var x = this.calc(p);
+      if (!(x.pr[iM].cua > x.pr[iM].cut * 1.1 && x.pr[iS].cua < x.pr[iS].cut)) continue;
+      p.prod[iS].v = U.r0(x.pr[iS].cut * r.int(108, 130) / 100);
+      // prix des produits sur mesure : tantôt fixé sur l’ancien coût (le produit s’avère déficitaire en ABC), tantôt sur le coût ABC (il reste rentable)
+      p.prod[iM].v = r.chance(0.4) ? U.r0(x.pr[iM].cua * r.int(103, 125) / 100) : U.r0(x.pr[iM].cut * r.int(100, 120) / 100);
+      return p;
+    }
+  },
+  calc: function (p) {
+    var x = {}, hT = 0;
+    x.act = p.acts.map(function (a) { var nt = a.n[0] + a.n[1]; return { T: nt, C: U.r2(a.u * nt), imp: [U.r2(a.n[0] * a.u), U.r2(a.n[1] * a.u)] }; });
+    x.Ctot = U.r2(x.act.reduce(function (s, a) { return s + a.C; }, 0));
+    p.prod.forEach(function (o) { hT += o.q * o.h; });
+    x.H = U.r2(hT); x.uo = x.Ctot / x.H;
+    x.pr = p.prod.map(function (o, i) {
+      var y = { mat: U.r2(o.q * o.m), mod: U.r2(o.q * o.h * p.th), it: U.r2(o.q * o.h * x.uo) };
+      y.ia = U.r2(x.act.reduce(function (s, a) { return s + a.imp[i]; }, 0));
+      y.cra = U.r2(y.mat + y.mod + y.ia); y.crt = U.r2(y.mat + y.mod + y.it); y.cua = y.cra / o.q; y.cut = y.crt / o.q;
+      if (o.v) { y.ca = U.r2(o.q * o.v); y.ra = U.r2(y.ca - y.cra); y.rt = U.r2(y.ca - y.crt); }
+      return y;
+    });
+    // produit que la méthode actuelle sous-évalue : celui dont le coût ABC dépasse le plus le coût classique
+    x.iM = x.pr[0].cua / x.pr[0].cut > x.pr[1].cua / x.pr[1].cut ? 0 : 1;
+    return x;
+  },
+  solve: function (p) {
+    var x = this.calc(p), e = U.e, e2 = U.e2, n = U.n, P = p.prod, I = x.iM, J = 1 - I, cm = x.pr[I], cs = x.pr[J];
+    var en = '<p>La société <b>' + p.nom + '</b> fabrique deux gammes de produits : les ' + minus1(P[0].nom) + ' et les ' + minus1(P[1].nom) + '. Données de l’exercice N (production égale aux ventes, aucun stock) :</p>';
+    en += U.tbl(['', P[0].nom, P[1].nom], [['Quantités produites et vendues', n(P[0].q), n(P[1].q)], ['Prix de vente unitaire HT', e(P[0].v), e(P[1].v)], ['Matière première par unité', e(P[0].m), e(P[1].m)],
+      ['Main-d’œuvre directe par unité (heures)', n(P[0].h, 1), n(P[1].h, 1)], ['Temps machine par unité (heures)', n(P[0].mh, 1), n(P[1].mh, 1)]]);
+    en += '<p>La main-d’œuvre directe coûte ' + e(p.th) + ' de l’heure, charges comprises. Les charges indirectes de l’exercice s’élèvent à ' + e(x.Ctot) + ' ; elles sont regroupées par activité :</p>';
+    en += U.tbl(['Activité', 'Charges', 'Inducteur', P[0].nom, P[1].nom], p.acts.map(function (a, i) { return [a.nom, e(x.act[i].C), a.ind, n(a.n[0]), n(a.n[1])]; }));
+    en += '<p>Jusqu’ici, la société répartit toutes ses charges indirectes dans un centre unique, au prorata des heures de main-d’œuvre directe (unité d’œuvre : l’heure de main-d’œuvre directe).</p>';
+    en += '<p class="consigne">1. Rappelez le principe de la méthode ABC et ses différences avec la méthode des centres d’analyse. 2. Calculez le coût de chaque inducteur, puis le coût de revient unitaire de chaque produit par la méthode ABC. 3. Calculez le coût de revient unitaire par la méthode actuelle. 4. Calculez le résultat analytique de chaque produit dans les deux méthodes, comparez et commentez.</p>';
+    var qs = p.acts.map(function (a, i) { return Q('i' + (i + 1), 'Coût de l’inducteur « ' + a.ind + ' »', a.u, '€', { tol: 0.01 }); });
+    qs.push(Q('cua0', 'Coût de revient unitaire ABC – ' + P[0].nom, x.pr[0].cua, '€', { tol: 0.02 }), Q('cua1', 'Coût de revient unitaire ABC – ' + P[1].nom, x.pr[1].cua, '€', { tol: 0.02 }),
+      Q('uo', 'Coût de l’heure de main-d’œuvre directe (méthode actuelle)', x.uo, '€', { tol: 0.01 }),
+      Q('cut0', 'Coût de revient unitaire actuel – ' + P[0].nom, x.pr[0].cut, '€', { tol: 0.02 }), Q('cut1', 'Coût de revient unitaire actuel – ' + P[1].nom, x.pr[1].cut, '€', { tol: 0.02 }),
+      Q('ram', 'Résultat analytique ABC – ' + P[I].nom, cm.ra, '€'), QC('sous', 'Produit sous-évalué par la méthode actuelle', [P[0].nom, P[1].nom], I));
+    var def = U.p('La méthode ABC part du constat que les produits consomment des activités, et les activités des ressources. Les charges indirectes sont regroupées par activité ; le coût de chaque activité est ramené à un inducteur (lancement, contrôle, commande, heure-machine), puis imputé aux produits selon le nombre d’inducteurs qu’ils consomment. Contrairement à l’unité d’œuvre classique, proportionnelle au volume, l’inducteur mesure la cause de la dépense : un produit en petites séries déclenche beaucoup de lancements, de contrôles et de commandes pour peu d’heures de main-d’œuvre.');
+    var ind = U.tbl(['Activité', 'Charges', 'Inducteur', 'Nombre d’inducteurs', 'Coût de l’inducteur'], p.acts.map(function (a, i) { return [a.nom, e(x.act[i].C), a.ind, n(x.act[i].T) + ' (' + n(a.n[0]) + ' + ' + n(a.n[1]) + ')', e2(a.u)]; }));
+    var imp = p.acts.map(function (a, i) { return [a.nom, n(a.n[0]) + ' × ' + n(a.u, 2) + ' = ' + n(x.act[i].imp[0], 2), n(a.n[1]) + ' × ' + n(a.u, 2) + ' = ' + n(x.act[i].imp[1], 2)]; });
+    imp.push({ cls: 'tot', cells: ['Total des charges indirectes', n(x.pr[0].ia, 2), n(x.pr[1].ia, 2)] });
+    var abc = U.tbl(['Coût de revient ABC', P[0].nom, P[1].nom], [['Matière première', n(P[0].q) + ' × ' + n(P[0].m) + ' = ' + n(x.pr[0].mat, 2), n(P[1].q) + ' × ' + n(P[1].m) + ' = ' + n(x.pr[1].mat, 2)],
+      ['Main-d’œuvre directe', n(P[0].q * P[0].h) + ' h × ' + n(p.th) + ' = ' + n(x.pr[0].mod, 2), n(P[1].q * P[1].h) + ' h × ' + n(p.th) + ' = ' + n(x.pr[1].mod, 2)], ['Charges indirectes (ABC)', n(x.pr[0].ia, 2), n(x.pr[1].ia, 2)],
+      { cls: 'tot', cells: ['Coût de revient', n(x.pr[0].cra, 2), n(x.pr[1].cra, 2)] }, ['Coût de revient unitaire', n(x.pr[0].cua, 2), n(x.pr[1].cua, 2)],
+      ['Chiffre d’affaires', n(x.pr[0].ca, 2), n(x.pr[1].ca, 2)], { cls: 'tot', cells: ['Résultat analytique', n(x.pr[0].ra, 2), n(x.pr[1].ra, 2)] }]);
+    var sg = function (v) { return (v > 0 ? '+' : '') + n(v, 2); };
+    var cmp = U.calc([['Coût de l’heure de main-d’œuvre directe', n(x.Ctot) + ' ÷ ' + n(x.H) + ' h', '<b>' + e(x.uo, 4) + '</b>']])
+      + U.tbl(['Comparaison', P[0].nom, P[1].nom], [['Charges indirectes par unité, méthode actuelle', n(P[0].h, 1) + ' h × ' + n(x.uo, 4) + ' = ' + n(x.pr[0].it / P[0].q, 2), n(P[1].h, 1) + ' h × ' + n(x.uo, 4) + ' = ' + n(x.pr[1].it / P[1].q, 2)],
+        ['Charges indirectes par unité, ABC', n(x.pr[0].ia / P[0].q, 2), n(x.pr[1].ia / P[1].q, 2)], ['Coût de revient unitaire, méthode actuelle', n(x.pr[0].cut, 2), n(x.pr[1].cut, 2)], ['Coût de revient unitaire, ABC', n(x.pr[0].cua, 2), n(x.pr[1].cua, 2)],
+        { cls: 'tot', cells: ['Écart ABC − méthode actuelle', sg(x.pr[0].cua - x.pr[0].cut), sg(x.pr[1].cua - x.pr[1].cut)] }, ['Résultat analytique, méthode actuelle', n(x.pr[0].rt, 2), n(x.pr[1].rt, 2)], ['Résultat analytique, ABC', n(x.pr[0].ra, 2), n(x.pr[1].ra, 2)]]);
+    var shH = U.r2(P[I].q * P[I].h) / x.H, parts = p.acts.slice(0, 3).map(function (a) { return U.pc(a.n[I] / (a.n[0] + a.n[1]), 0) + ' des ' + a.ind; });
+    var res = function (v) { return v >= 0 ? 'un bénéfice de ' + e(v) : 'une perte de ' + e(-v); };
+    var com = [];
+    com.push('Avec la méthode actuelle, les ' + minus1(P[I].nom) + ' semblent coûter ' + e2(cm.cut) + ' l’unité et dégager ' + res(cm.rt) + '. La méthode ABC les fait coûter ' + e2(cm.cua) + ', soit ' + e2(cm.cua - cm.cut) + ' de plus (' + U.pc(cm.cua / cm.cut - 1, 0) + '), et ramène leur résultat à ' + res(cm.ra) + '. À l’inverse, les ' + minus1(P[J].nom) + ' passent de ' + e2(cs.cut) + ' à ' + e2(cs.cua) + ' l’unité : leur coût était surévalué.');
+    com.push('L’écart vient de l’unité d’œuvre. Les ' + minus1(P[I].nom) + ' ne représentent que ' + U.pc(shH, 0) + ' des heures de main-d’œuvre directe, donc ' + U.pc(shH, 0) + ' des charges indirectes avec la méthode actuelle, mais cette gamme consomme ' + parts[0] + ', ' + parts[1] + ' et ' + parts[2] + '. Ces activités dépendent du nombre de séries et de commandes, non du nombre d’unités : la méthode actuelle faisait supporter aux ' + minus1(P[J].nom) + ' des coûts causés par les petites séries (subvention croisée).');
+    com.push((cm.ra < 0 ? 'Le résultat négatif des ' + minus1(P[I].nom) + ' en ABC montre que leur prix ne couvre pas les activités mobilisées ;' : 'Les ' + minus1(P[I].nom) + ' restent rentables en ABC, mais bien moins que la méthode actuelle ne le laissait croire ; ') + 'l’entreprise peut relever leur prix, facturer les options et les petites commandes, regrouper les séries et les livraisons pour réduire les lancements, les contrôles et les commandes, ou standardiser les composants.');
+    com.push('ABC reste une méthode de coût complet : une partie de ces charges est fixe et ne disparaîtrait pas avec le produit. Avant toute décision d’abandon, il faut raisonner en marge sur coût variable ou en coût spécifique. La méthode a aussi un coût de mise en œuvre (enquêtes sur les activités, suivi des inducteurs) qui se justifie quand les charges indirectes sont élevées et la gamme diversifiée.');
+    return { enonce: en, questions: qs, journal: [], steps: [{ h: 'Principe de la méthode', html: def }, { h: 'Coût des inducteurs', html: ind }, { h: 'Imputation des charges indirectes aux produits', html: U.tbl(['Activité', P[0].nom, P[1].nom], imp) }, { h: 'Coût de revient et résultat (méthode ABC)', html: abc }, { h: 'Comparaison avec la méthode actuelle', html: cmp }], comment: com.join(' ') };
+  }
+};
+
 /* ===== Analyse financière : SIG et CAF, bilan fonctionnel, ratios ===== */
 function uK(p) { return p.k ? function (x) { return U.n(x) + ' K€'; } : U.e; }
 

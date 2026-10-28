@@ -122,6 +122,8 @@ Object.keys(T).forEach(id => {
     if (id === 'stocks') { const c = t.calc(p); ok(near(c.V0 + c.vin, c.csPeps + c.sfPeps, 0.02) && c.sfPeps > 0, id + ' PEPS ' + s); }
     if (id === 'couts_partiels') { const c = t.calc(p); ok(c.m.every(o => o.MCV > 0) && near(c.R, c.tot.MCV - p.CF) && near(c.FI - p.at.F, c.ecart) && c.ecart !== 0, id + ' coûts partiels ' + s); }
     if (id === 'couts_specifiques') { const c = t.calc(p); ok(near(c.R, c.RC.reduce((a, v) => a + v, 0)) && near(c.Rab, c.R - c.MCS[p.X]) && c.R > 0, id + ' coûts spécifiques ' + s); (cnt.cs = cnt.cs || [0, 0])[c.MCS[p.X] > 0 ? 0 : 1]++; }
+    if (id === 'charges_fv') { const c = t.calc(p), nat = ex.questions.filter(q => q.kind === 'choice').map(q => q.ans); ok(nat.length === 4 && [0, 1, 2].every(k => nat.indexOf(k) >= 0) && near(c.a * 100, Math.round(c.a * 100), 1e-6) && near(c.b, Math.round(c.b), 1e-6) && c.b > 0 && near(c.b, c.bLo, 0.01) && near(c.P, c.b + c.a * p.prev) && near(c.cfu + c.a, c.ctu, 0.011) && c.np >= 2 && near(c.cfp, c.np * p.pal.F), id + ' charges fixes et variables ' + s + ' ' + JSON.stringify(c)); }
+    if (id === 'abc') { const c = t.calc(p), M = c.iM, S = 1 - M; ok(near(c.pr[0].ia + c.pr[1].ia, c.Ctot, 0.02) && near(c.pr[0].it + c.pr[1].it, c.Ctot, 0.02) && c.pr[M].cua > c.pr[M].cut && c.pr[S].cua < c.pr[S].cut && near(c.pr[0].ra + c.pr[1].ra, c.pr[0].rt + c.pr[1].rt, 0.05) && c.pr.every(o => o.cra > 0 && o.ca > 0), id + ' ABC ' + s + ' ' + JSON.stringify(c.pr)); (cnt.abc = cnt.abc || [0, 0, 0, 0])[M]++; cnt.abc[c.pr[M].ra < 0 ? 2 : 3]++; }
     if (id === 'depreciations' && prof === 'C') ok(!p.items.some(i => i.k === 'litige'), id + ' programme contrôleur');
     nb++;
   }
@@ -129,5 +131,6 @@ Object.keys(T).forEach(id => {
 });
 if (!ONLY || ONLY.indexOf('plan_fin') >= 0) ok(cnt.plan_fin && cnt.plan_fin[0] > 300 && cnt.plan_fin[1] > 300, 'plan_fin : plans équilibrés et déséquilibrés ' + JSON.stringify(cnt.plan_fin));
 if (!ONLY || ONLY.indexOf('couts_specifiques') >= 0) ok(cnt.cs && cnt.cs[0] > 300 && cnt.cs[1] > 300, 'coûts spécifiques : maintien et abandon ' + JSON.stringify(cnt.cs));
+if (!ONLY || ONLY.indexOf('abc') >= 0) ok(cnt.abc && cnt.abc[0] > 300 && cnt.abc[1] > 300 && cnt.abc[2] > 100 && cnt.abc[3] > 100, 'ABC : produit sur mesure en 1re ou 2e position, déficitaire ou non ' + JSON.stringify(cnt.abc));
 console.log('\n' + checks + ' vérifications, ' + fails + ' échec(s)');
 process.exit(fails ? 1 : 0);
