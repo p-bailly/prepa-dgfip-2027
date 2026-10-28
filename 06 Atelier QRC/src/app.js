@@ -10,11 +10,11 @@
   var uid = 0;
   var COURT = { affectation: 'Affectation', tva_ca3: 'TVA CA3', tva_coef: 'Coef. TVA', tva_regul: 'Régul. TVA', amort: 'Amortissement', derog: 'Dérogatoire', cession: 'Cession', depreciations: 'Dépréciations', regul: 'Régularisations', augcap: 'Capital', seuil: 'Seuil', commande: 'Coût marginal', sig_caf: 'SIG et CAF', bilan_fonc: 'Bilan fonct.', ratios: 'Ratios', is: 'IS', devises: 'Devises', stocks: 'Stocks', cout_complet: 'Coût complet', flux_treso: 'Flux de tréso.', plan_fin: 'Plan de fin.', plan_treso: 'Budget tréso.',
     generalites: 'Principes', tenue: 'Tenue des comptes', facturation: 'Facturation', paie: 'Paie', rapprochement: 'Rapprochement', emprunt: 'Emprunt', subvention: 'Subvention', immo_acq: 'Coût d’entrée', titres: 'Titres', inventaire: 'Inventaire', etats: 'Documents de synthèse', couts_partiels: 'Coûts partiels', couts_specifiques: 'Coûts spécifiques' };
-  function blank() { return { v: 1, updated: 0, types: {}, epreuves: [], settings: { profil: 'I', pcgOld: false } }; }
+  function blank() { return { v: 1, updated: 0, types: {}, epreuves: [], xdel: [], settings: { profil: 'I', pcgOld: false } }; }
   function normalize(p) {
     var b = blank();
     if (!p || typeof p !== 'object') return b;
-    b.updated = p.updated || 0; b.types = p.types || {}; b.epreuves = Array.isArray(p.epreuves) ? p.epreuves : [];
+    b.updated = p.updated || 0; b.types = p.types || {}; b.epreuves = Array.isArray(p.epreuves) ? p.epreuves : []; b.xdel = Array.isArray(p.xdel) ? p.xdel : [];
     b.settings = Object.assign(b.settings, p.settings || {});
     return b;
   }
@@ -43,6 +43,39 @@
   };
   function ico(n) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICO[n] + '</svg>'; }
 
+  /* ---------- Fusion appareil / compte ----------
+     Type d'exercice par type (le dernier modifié l'emporte) et épreuves par date. Un type vidé ou une progression effacée
+     laisse un type à zéro daté, une épreuve supprimée entre dans xdel : la suppression se propage au lieu d'être rétablie. */
+  function canon(o) {
+    if (o === null || typeof o !== 'object') return JSON.stringify(o);
+    if (Array.isArray(o)) return '[' + o.map(canon).join(',') + ']';
+    return '{' + Object.keys(o).sort().filter(function (k) { return o[k] !== undefined; }).map(function (k) { return JSON.stringify(k) + ':' + canon(o[k]); }).join(',') + '}';
+  }
+  function tu(s) { if (!s) return -1; var l = (s.last || [])[0]; return s.u || (l && l.d) || 0; }
+  function zero(u) { return { n: 0, sum: 0, box: 0, due: 0, last: [], u: u }; }
+  // Progression effacée : les réglages restent, chaque type passe à zéro daté et les épreuves rejoignent xdel.
+  function cleared(prev) {
+    var p = blank(), ts = Date.now(); p.settings = prev.settings;
+    Object.keys(prev.types).forEach(function (id) { p.types[id] = zero(ts); });
+    p.xdel = prev.xdel.concat(prev.epreuves.map(function (e) { return e.d; })).slice(-200);
+    return p;
+  }
+  function mergeProg(a, b) {
+    var out = normalize(JSON.parse(JSON.stringify((a.updated || 0) >= (b.updated || 0) ? a : b)));
+    out.updated = Math.max(a.updated || 0, b.updated || 0);
+    Object.keys(a.types).concat(Object.keys(b.types)).forEach(function (id) {
+      var x = a.types[id], y = b.types[id], ux = tu(x), uy = tu(y);
+      var w = ux !== uy ? (uy > ux ? y : x) : (canon(y || null) > canon(x || null) ? y : x);
+      out.types[id] = JSON.parse(JSON.stringify(w));
+    });
+    var gone = {}, seen = {}, ep = [];
+    a.xdel.concat(b.xdel).forEach(function (d) { gone[d] = 1; });
+    a.epreuves.concat(b.epreuves).forEach(function (e) { if (e && !gone[e.d] && !seen[e.d]) { seen[e.d] = 1; ep.push(e); } });
+    out.epreuves = ep.sort(function (p, q) { return q.d - p.d; }).slice(0, 30);
+    out.xdel = Object.keys(gone).map(Number).sort(function (p, q) { return p - q; }).slice(-200);
+    return out;
+  }
+
   /* ---------- Stockage : navigateur + compte synchronisé (commun/sync.js) ---------- */
   var Store = {
     loadLocal: function () { try { var s = localStorage.getItem(KEY); if (s) return JSON.parse(s); } catch (e) { } return null; },
@@ -51,14 +84,14 @@
       var loc = this.loadLocal(); if (loc && loc.v === 1) S.prog = normalize(loc);
       render();
       if (!window.PrepaSync) return;
-      // Progression entière : la version la plus récente l'emporte.
       PrepaSync.attach('qrc', {
         get: function () { return S.prog; },
         merge: function (o) {
-          if (o && o.v === 1 && (o.updated || 0) > (S.prog.updated || 0)) {
-            S.prog = normalize(JSON.parse(JSON.stringify(o))); Store.saveLocal();
-            var a = document.activeElement; if (!(a && a.closest && a.closest('input,select,textarea'))) render();
-          }
+          if (!o || o.v !== 1) return;
+          var m = mergeProg(S.prog, normalize(o));
+          if (canon(m) === canon(S.prog)) return;
+          S.prog = m; Store.saveLocal();
+          var a = document.activeElement; if (!(a && a.closest && a.closest('input,select,textarea'))) render();
         }
       });
       PrepaSync.onStatus(status);
@@ -105,7 +138,7 @@
     if (ex) { var c = copie(ex); e.seed = c.seed; e.p = c.p; e.a = c.a; e.j = c.j; if (ex.src) e.src = ex.src; }
     // Seules les dernières copies sont gardées en entier, pour ne pas alourdir la synchronisation
     s.last = [e].concat(s.last || []).slice(0, 12).map(function (x, i) { if (i < COPIES) return x; var y = { s: x.s, t: x.t, d: x.d, m: x.m }; return y; });
-    S.prog.types[id] = s;
+    s.u = Date.now(); S.prog.types[id] = s;
   }
   // Revoir un exercice de l'historique : il est reconstruit à partir des données et des réponses conservées, corrigé affiché
   function reviewTrain(id, i) {
@@ -122,7 +155,8 @@
     var s = S.prog.types[id]; if (!s || !s.last || !s.last[i]) return;
     var full = s.n === s.last.length, e = s.last.splice(i, 1)[0];
     s.n = Math.max(0, s.n - 1); s.sum = s.n ? Math.max(0, U.r2(s.sum - e.s)) : 0;
-    if (!s.n) { delete S.prog.types[id]; return; }
+    s.u = Date.now();
+    if (!s.n) { S.prog.types[id] = zero(s.u); return; }
     if (full) {
       var box = 0, due = 0;
       s.last.slice().reverse().forEach(function (x) {
@@ -550,7 +584,7 @@
     if (ds.hrev) { var hr = ds.hrev.split(':'); return reviewTrain(hr[0], Number(hr[1])); }
     if (ds.epdelask) { S.confirmDel = ds.epdelask; return render(); }
     if (ds.tdelask !== undefined && S.train) { S.confirmTdel = { id: S.train.typeId, i: Number(ds.tdelask) }; render(); var cf = $('.confirm'); if (cf) cf.scrollIntoView({ block: 'center' }); return; }
-    if (ds.epdel) { S.prog.epreuves = S.prog.epreuves.filter(function (e) { return String(e.d) !== ds.epdel; }); S.confirmDel = null; Store.save(); return render(); }
+    if (ds.epdel) { S.prog.epreuves = S.prog.epreuves.filter(function (e) { return String(e.d) !== ds.epdel; }); S.prog.xdel = S.prog.xdel.concat(Number(ds.epdel)).slice(-200); S.confirmDel = null; Store.save(); return render(); }
     if (ds.pill !== undefined) { examSwitch(Number(ds.pill)); render(); var e2 = $('.exambar'); if (e2) e2.scrollIntoView({ block: 'start' }); return; }
     switch (ds.act) {
       case 'choose': S.train = null; S.trainType = null; render(); window.scrollTo(0, 0); return;
@@ -580,7 +614,7 @@
       case 'reset': S.confirmReset = true; return render();
       case 'resetno': S.confirmReset = false; return render();
       case 'resetyes':
-        var keep = S.prog.settings; S.prog = blank(); S.prog.settings = keep; S.confirmReset = false; Store.save(); return render();
+        S.prog = cleared(S.prog); S.confirmReset = false; Store.save(); return render();
     }
   });
   document.addEventListener('keydown', function (ev) {

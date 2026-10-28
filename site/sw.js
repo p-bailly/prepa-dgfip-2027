@@ -3,7 +3,7 @@
 //  - polices et SDK Firebase (adresses versionnées) : cache d'abord ;
 //  - autres fichiers du site (PDF, icônes) : copie en cache servie tout de suite, rafraîchie en arrière-plan.
 // La synchro Firestore et la connexion passent toujours par le réseau (non interceptées).
-const CACHE = "prepa-v3";
+const CACHE = "prepa-v4";
 // Chemins relatifs à l'emplacement du service worker : le site marche à la racine d'un domaine comme dans un sous-dossier.
 const BASE = self.registration.scope;
 const CORE = ["", "qcm/", "qrc/", "atelier/", "docs/", "manifest.webmanifest", "sync.js", "prepa.svg", "icones/icone-192.png"].map(p => new URL(p, BASE).href);

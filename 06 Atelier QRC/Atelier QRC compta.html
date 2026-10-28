@@ -714,7 +714,8 @@ table.journal td:nth-child(3), table.journal td:nth-child(4) { text-align: right
 /* Synchro commune aux applis Prépa DGFiP 2027 : compte (identifiant + mot de passe) et Firestore.
    Une appli s'enregistre avec PrepaSync.attach(clé, { get, merge }) :
      get()    renvoie l'état local à synchroniser (objet JSON) ;
-     merge(o) fusionne l'état distant o dans l'état local, le sauvegarde et réaffiche, sans rappeler changed().
+     merge(o) fusionne l'état distant o dans l'état local, le sauvegarde et réaffiche, sans rappeler changed() :
+              si le résultat diffère de o, la synchro le renvoie au compte (la fusion doit donc être idempotente).
    Après chaque sauvegarde locale, l'appli appelle PrepaSync.changed(clé).
    Données : users/{uid}/apps/{clé} = { json, u, dev }. Firestore garde les écritures hors connexion
    et les envoie au retour du réseau ; chaque appareil reçoit les changements des autres en direct.
@@ -774,10 +775,12 @@ table.journal td:nth-child(3), table.journal td:nth-child(4) { text-align: right
       f.Au.onAuthStateChanged(f.auth, function (u) {
         Object.keys(apps).forEach(stop);
         depWatchers.forEach(depStop);
+        peeks.forEach(peekStop);
         user = u;
         if (u) { flag(true); setState("attente"); Object.keys(apps).forEach(watch); }
         else { flag(false); setState("local"); }
         depWatchers.forEach(depSub);
+        peeks.forEach(peekSub);
       });
       return f;
     }, function (e) { started = false; throw e; });
@@ -793,11 +796,19 @@ table.journal td:nth-child(3), table.journal td:nth-child(4) { text-align: right
       var d = snap.exists() ? snap.data() : null;
       if (d && d.json && d.json !== a.last) {
         a.last = d.json;
-        try { var o = JSON.parse(d.json); a.canon = canon(o); a.merge(o); } catch (e) { }
+        try { var o = JSON.parse(d.json); a.canon = canon(o); a.merge(o); if (!a.first) echo(key); } catch (e) { }
       }
       if (a.first) { a.first = false; push(key, !d); }
       setState(snap.metadata.fromCache ? "attente" : "ok");
     }, function (e) { setState("erreur", (e && e.code) || "erreur"); });
+  }
+  // Après une fusion, renvoie l'état fusionné s'il diffère de celui du compte : sans cela, un appareil qui a écrit
+  // depuis un état périmé (hors connexion) écrase le compte, et l'autre appareil garde ses données pour lui jusqu'à
+  // sa prochaine sauvegarde. Quatre renvois par minute au plus, au cas où une fusion ne convergerait pas.
+  function echo(key) {
+    var a = apps[key], n = Date.now();
+    if (n - (a.eAt || 0) > 60000) { a.eAt = n; a.e = 0; }
+    if (a.e++ < 4) push(key);
   }
   function push(key, now) {
     var a = apps[key]; if (!a) return;
@@ -811,6 +822,17 @@ table.journal td:nth-child(3), table.journal td:nth-child(4) { text-align: right
       a.canon = c; a.last = json;
       F.Fs.setDoc(a.ref, { json: json, u: Date.now(), dev: DEV }).then(function () { if (state !== "erreur") setState(navigator.onLine === false ? "attente" : "ok"); }, function (e) { setState("erreur", (e && e.code) || "erreur"); });
     }, now ? 0 : 1200);
+  }
+
+  var peeks = [];
+  function peekStop(w) { if (w.unsub) { w.unsub(); w.unsub = null; } }
+  function peekSub(w) {
+    peekStop(w);
+    if (!user || !F) return;
+    w.unsub = F.Fs.onSnapshot(F.Fs.doc(F.db, "users", user.uid, "apps", w.key), function (snap) {
+      var d = snap.exists() ? snap.data() : null;
+      if (d && d.json) { try { w.cb(JSON.parse(d.json)); } catch (e) { } }
+    }, function () { });
   }
 
   var MSG = {
@@ -851,6 +873,12 @@ table.journal td:nth-child(3), table.journal td:nth-child(4) { text-align: right
     // Reprend la session enregistrée sur l'appareil sans appli attachée (page d'accueil).
     resume: function () { if (hasFlag()) start().catch(function () { }); },
     connected: hasFlag,
+    // Lecture seule de l'état d'une appli dans le compte (page d'accueil) : cb(état) à chaque version reçue, rien n'est écrit.
+    peek: function (key, cb) {
+      var w = { key: key, cb: cb, unsub: null }; peeks.push(w);
+      if (user) peekSub(w); else if (hasFlag()) start().catch(function () { });
+      return function () { peekStop(w); peeks = peeks.filter(function (x) { return x !== w; }); };
+    },
     onStatus: function (f) { listeners.push(f); f(api.status()); },
     status: function () { return { state: state, error: err, user: user ? (user.displayName || (user.email || "").split("@")[0]) : "" }; },
     label: function () {
@@ -5061,11 +5089,11 @@ ANNALES = [
   var uid = 0;
   var COURT = { affectation: 'Affectation', tva_ca3: 'TVA CA3', tva_coef: 'Coef. TVA', tva_regul: 'Régul. TVA', amort: 'Amortissement', derog: 'Dérogatoire', cession: 'Cession', depreciations: 'Dépréciations', regul: 'Régularisations', augcap: 'Capital', seuil: 'Seuil', commande: 'Coût marginal', sig_caf: 'SIG et CAF', bilan_fonc: 'Bilan fonct.', ratios: 'Ratios', is: 'IS', devises: 'Devises', stocks: 'Stocks', cout_complet: 'Coût complet', flux_treso: 'Flux de tréso.', plan_fin: 'Plan de fin.', plan_treso: 'Budget tréso.',
     generalites: 'Principes', tenue: 'Tenue des comptes', facturation: 'Facturation', paie: 'Paie', rapprochement: 'Rapprochement', emprunt: 'Emprunt', subvention: 'Subvention', immo_acq: 'Coût d’entrée', titres: 'Titres', inventaire: 'Inventaire', etats: 'Documents de synthèse', couts_partiels: 'Coûts partiels', couts_specifiques: 'Coûts spécifiques' };
-  function blank() { return { v: 1, updated: 0, types: {}, epreuves: [], settings: { profil: 'I', pcgOld: false } }; }
+  function blank() { return { v: 1, updated: 0, types: {}, epreuves: [], xdel: [], settings: { profil: 'I', pcgOld: false } }; }
   function normalize(p) {
     var b = blank();
     if (!p || typeof p !== 'object') return b;
-    b.updated = p.updated || 0; b.types = p.types || {}; b.epreuves = Array.isArray(p.epreuves) ? p.epreuves : [];
+    b.updated = p.updated || 0; b.types = p.types || {}; b.epreuves = Array.isArray(p.epreuves) ? p.epreuves : []; b.xdel = Array.isArray(p.xdel) ? p.xdel : [];
     b.settings = Object.assign(b.settings, p.settings || {});
     return b;
   }
@@ -5094,6 +5122,39 @@ ANNALES = [
   };
   function ico(n) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICO[n] + '</svg>'; }
 
+  /* ---------- Fusion appareil / compte ----------
+     Type d'exercice par type (le dernier modifié l'emporte) et épreuves par date. Un type vidé ou une progression effacée
+     laisse un type à zéro daté, une épreuve supprimée entre dans xdel : la suppression se propage au lieu d'être rétablie. */
+  function canon(o) {
+    if (o === null || typeof o !== 'object') return JSON.stringify(o);
+    if (Array.isArray(o)) return '[' + o.map(canon).join(',') + ']';
+    return '{' + Object.keys(o).sort().filter(function (k) { return o[k] !== undefined; }).map(function (k) { return JSON.stringify(k) + ':' + canon(o[k]); }).join(',') + '}';
+  }
+  function tu(s) { if (!s) return -1; var l = (s.last || [])[0]; return s.u || (l && l.d) || 0; }
+  function zero(u) { return { n: 0, sum: 0, box: 0, due: 0, last: [], u: u }; }
+  // Progression effacée : les réglages restent, chaque type passe à zéro daté et les épreuves rejoignent xdel.
+  function cleared(prev) {
+    var p = blank(), ts = Date.now(); p.settings = prev.settings;
+    Object.keys(prev.types).forEach(function (id) { p.types[id] = zero(ts); });
+    p.xdel = prev.xdel.concat(prev.epreuves.map(function (e) { return e.d; })).slice(-200);
+    return p;
+  }
+  function mergeProg(a, b) {
+    var out = normalize(JSON.parse(JSON.stringify((a.updated || 0) >= (b.updated || 0) ? a : b)));
+    out.updated = Math.max(a.updated || 0, b.updated || 0);
+    Object.keys(a.types).concat(Object.keys(b.types)).forEach(function (id) {
+      var x = a.types[id], y = b.types[id], ux = tu(x), uy = tu(y);
+      var w = ux !== uy ? (uy > ux ? y : x) : (canon(y || null) > canon(x || null) ? y : x);
+      out.types[id] = JSON.parse(JSON.stringify(w));
+    });
+    var gone = {}, seen = {}, ep = [];
+    a.xdel.concat(b.xdel).forEach(function (d) { gone[d] = 1; });
+    a.epreuves.concat(b.epreuves).forEach(function (e) { if (e && !gone[e.d] && !seen[e.d]) { seen[e.d] = 1; ep.push(e); } });
+    out.epreuves = ep.sort(function (p, q) { return q.d - p.d; }).slice(0, 30);
+    out.xdel = Object.keys(gone).map(Number).sort(function (p, q) { return p - q; }).slice(-200);
+    return out;
+  }
+
   /* ---------- Stockage : navigateur + compte synchronisé (commun/sync.js) ---------- */
   var Store = {
     loadLocal: function () { try { var s = localStorage.getItem(KEY); if (s) return JSON.parse(s); } catch (e) { } return null; },
@@ -5102,14 +5163,14 @@ ANNALES = [
       var loc = this.loadLocal(); if (loc && loc.v === 1) S.prog = normalize(loc);
       render();
       if (!window.PrepaSync) return;
-      // Progression entière : la version la plus récente l'emporte.
       PrepaSync.attach('qrc', {
         get: function () { return S.prog; },
         merge: function (o) {
-          if (o && o.v === 1 && (o.updated || 0) > (S.prog.updated || 0)) {
-            S.prog = normalize(JSON.parse(JSON.stringify(o))); Store.saveLocal();
-            var a = document.activeElement; if (!(a && a.closest && a.closest('input,select,textarea'))) render();
-          }
+          if (!o || o.v !== 1) return;
+          var m = mergeProg(S.prog, normalize(o));
+          if (canon(m) === canon(S.prog)) return;
+          S.prog = m; Store.saveLocal();
+          var a = document.activeElement; if (!(a && a.closest && a.closest('input,select,textarea'))) render();
         }
       });
       PrepaSync.onStatus(status);
@@ -5156,7 +5217,7 @@ ANNALES = [
     if (ex) { var c = copie(ex); e.seed = c.seed; e.p = c.p; e.a = c.a; e.j = c.j; if (ex.src) e.src = ex.src; }
     // Seules les dernières copies sont gardées en entier, pour ne pas alourdir la synchronisation
     s.last = [e].concat(s.last || []).slice(0, 12).map(function (x, i) { if (i < COPIES) return x; var y = { s: x.s, t: x.t, d: x.d, m: x.m }; return y; });
-    S.prog.types[id] = s;
+    s.u = Date.now(); S.prog.types[id] = s;
   }
   // Revoir un exercice de l'historique : il est reconstruit à partir des données et des réponses conservées, corrigé affiché
   function reviewTrain(id, i) {
@@ -5173,7 +5234,8 @@ ANNALES = [
     var s = S.prog.types[id]; if (!s || !s.last || !s.last[i]) return;
     var full = s.n === s.last.length, e = s.last.splice(i, 1)[0];
     s.n = Math.max(0, s.n - 1); s.sum = s.n ? Math.max(0, U.r2(s.sum - e.s)) : 0;
-    if (!s.n) { delete S.prog.types[id]; return; }
+    s.u = Date.now();
+    if (!s.n) { S.prog.types[id] = zero(s.u); return; }
     if (full) {
       var box = 0, due = 0;
       s.last.slice().reverse().forEach(function (x) {
@@ -5601,7 +5663,7 @@ ANNALES = [
     if (ds.hrev) { var hr = ds.hrev.split(':'); return reviewTrain(hr[0], Number(hr[1])); }
     if (ds.epdelask) { S.confirmDel = ds.epdelask; return render(); }
     if (ds.tdelask !== undefined && S.train) { S.confirmTdel = { id: S.train.typeId, i: Number(ds.tdelask) }; render(); var cf = $('.confirm'); if (cf) cf.scrollIntoView({ block: 'center' }); return; }
-    if (ds.epdel) { S.prog.epreuves = S.prog.epreuves.filter(function (e) { return String(e.d) !== ds.epdel; }); S.confirmDel = null; Store.save(); return render(); }
+    if (ds.epdel) { S.prog.epreuves = S.prog.epreuves.filter(function (e) { return String(e.d) !== ds.epdel; }); S.prog.xdel = S.prog.xdel.concat(Number(ds.epdel)).slice(-200); S.confirmDel = null; Store.save(); return render(); }
     if (ds.pill !== undefined) { examSwitch(Number(ds.pill)); render(); var e2 = $('.exambar'); if (e2) e2.scrollIntoView({ block: 'start' }); return; }
     switch (ds.act) {
       case 'choose': S.train = null; S.trainType = null; render(); window.scrollTo(0, 0); return;
@@ -5631,7 +5693,7 @@ ANNALES = [
       case 'reset': S.confirmReset = true; return render();
       case 'resetno': S.confirmReset = false; return render();
       case 'resetyes':
-        var keep = S.prog.settings; S.prog = blank(); S.prog.settings = keep; S.confirmReset = false; Store.save(); return render();
+        S.prog = cleared(S.prog); S.confirmReset = false; Store.save(); return render();
     }
   });
   document.addEventListener('keydown', function (ev) {

@@ -1,7 +1,8 @@
 /* Synchro commune aux applis Prépa DGFiP 2027 : compte (identifiant + mot de passe) et Firestore.
    Une appli s'enregistre avec PrepaSync.attach(clé, { get, merge }) :
      get()    renvoie l'état local à synchroniser (objet JSON) ;
-     merge(o) fusionne l'état distant o dans l'état local, le sauvegarde et réaffiche, sans rappeler changed().
+     merge(o) fusionne l'état distant o dans l'état local, le sauvegarde et réaffiche, sans rappeler changed() :
+              si le résultat diffère de o, la synchro le renvoie au compte (la fusion doit donc être idempotente).
    Après chaque sauvegarde locale, l'appli appelle PrepaSync.changed(clé).
    Données : users/{uid}/apps/{clé} = { json, u, dev }. Firestore garde les écritures hors connexion
    et les envoie au retour du réseau ; chaque appareil reçoit les changements des autres en direct.
@@ -61,10 +62,12 @@
       f.Au.onAuthStateChanged(f.auth, function (u) {
         Object.keys(apps).forEach(stop);
         depWatchers.forEach(depStop);
+        peeks.forEach(peekStop);
         user = u;
         if (u) { flag(true); setState("attente"); Object.keys(apps).forEach(watch); }
         else { flag(false); setState("local"); }
         depWatchers.forEach(depSub);
+        peeks.forEach(peekSub);
       });
       return f;
     }, function (e) { started = false; throw e; });
@@ -80,11 +83,19 @@
       var d = snap.exists() ? snap.data() : null;
       if (d && d.json && d.json !== a.last) {
         a.last = d.json;
-        try { var o = JSON.parse(d.json); a.canon = canon(o); a.merge(o); } catch (e) { }
+        try { var o = JSON.parse(d.json); a.canon = canon(o); a.merge(o); if (!a.first) echo(key); } catch (e) { }
       }
       if (a.first) { a.first = false; push(key, !d); }
       setState(snap.metadata.fromCache ? "attente" : "ok");
     }, function (e) { setState("erreur", (e && e.code) || "erreur"); });
+  }
+  // Après une fusion, renvoie l'état fusionné s'il diffère de celui du compte : sans cela, un appareil qui a écrit
+  // depuis un état périmé (hors connexion) écrase le compte, et l'autre appareil garde ses données pour lui jusqu'à
+  // sa prochaine sauvegarde. Quatre renvois par minute au plus, au cas où une fusion ne convergerait pas.
+  function echo(key) {
+    var a = apps[key], n = Date.now();
+    if (n - (a.eAt || 0) > 60000) { a.eAt = n; a.e = 0; }
+    if (a.e++ < 4) push(key);
   }
   function push(key, now) {
     var a = apps[key]; if (!a) return;
@@ -98,6 +109,17 @@
       a.canon = c; a.last = json;
       F.Fs.setDoc(a.ref, { json: json, u: Date.now(), dev: DEV }).then(function () { if (state !== "erreur") setState(navigator.onLine === false ? "attente" : "ok"); }, function (e) { setState("erreur", (e && e.code) || "erreur"); });
     }, now ? 0 : 1200);
+  }
+
+  var peeks = [];
+  function peekStop(w) { if (w.unsub) { w.unsub(); w.unsub = null; } }
+  function peekSub(w) {
+    peekStop(w);
+    if (!user || !F) return;
+    w.unsub = F.Fs.onSnapshot(F.Fs.doc(F.db, "users", user.uid, "apps", w.key), function (snap) {
+      var d = snap.exists() ? snap.data() : null;
+      if (d && d.json) { try { w.cb(JSON.parse(d.json)); } catch (e) { } }
+    }, function () { });
   }
 
   var MSG = {
@@ -138,6 +160,12 @@
     // Reprend la session enregistrée sur l'appareil sans appli attachée (page d'accueil).
     resume: function () { if (hasFlag()) start().catch(function () { }); },
     connected: hasFlag,
+    // Lecture seule de l'état d'une appli dans le compte (page d'accueil) : cb(état) à chaque version reçue, rien n'est écrit.
+    peek: function (key, cb) {
+      var w = { key: key, cb: cb, unsub: null }; peeks.push(w);
+      if (user) peekSub(w); else if (hasFlag()) start().catch(function () { });
+      return function () { peekStop(w); peeks = peeks.filter(function (x) { return x !== w; }); };
+    },
     onStatus: function (f) { listeners.push(f); f(api.status()); },
     status: function () { return { state: state, error: err, user: user ? (user.displayName || (user.email || "").split("@")[0]) : "" }; },
     label: function () {
