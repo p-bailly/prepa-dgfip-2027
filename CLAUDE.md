@@ -66,7 +66,7 @@ Les dossiers numérotés 05 (sources des fiches) et 08 (`08 Depots/`, dépôts r
 - `pages.yml` à chaque push sur `main` : build + vérifications, puis `_site` = accueil (`site/`), `/qcm/`, `/qrc/`,
   `/atelier/`, `/docs/`, `sync.js`, `prepa.svg`, icônes. Domaine `prepa.pbailly.fr` (Settings › Pages, CNAME chez OVH).
 - `.gitignore` : `*.pdf` ignorés sauf `site/docs/**` (fiches, sujets, guides ENFiP, rapports de jury publiés).
-- `site/sw.js` (cache `prepa-v4`) : HTML réseau d'abord (6 s), polices/SDK cache d'abord, le reste servi du cache puis
+- `site/sw.js` (cache `prepa-v5`) : HTML réseau d'abord (6 s, `cache: "no-cache"` car Pages sert `max-age=600`), polices/SDK cache d'abord, le reste servi du cache puis
   rafraîchi ; la synchro n'est jamais interceptée. Changer le nom du cache pour forcer le renouvellement.
 
 ## Charte « Pastille » (en service ; l'ancienne « Copie double » n'est plus employée, voir `07 Charte DA/charte.html`)

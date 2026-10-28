@@ -3,7 +3,7 @@
 //  - polices et SDK Firebase (adresses versionnées) : cache d'abord ;
 //  - autres fichiers du site (PDF, icônes) : copie en cache servie tout de suite, rafraîchie en arrière-plan.
 // La synchro Firestore et la connexion passent toujours par le réseau (non interceptées).
-const CACHE = "prepa-v4";
+const CACHE = "prepa-v5";
 // Chemins relatifs à l'emplacement du service worker : le site marche à la racine d'un domaine comme dans un sous-dossier.
 const BASE = self.registration.scope;
 const CORE = ["", "qcm/", "qrc/", "atelier/", "docs/", "manifest.webmanifest", "sync.js", "prepa.svg", "icones/icone-192.png"].map(p => new URL(p, BASE).href);
@@ -34,7 +34,9 @@ self.addEventListener("fetch", e => {
   if (!same) return;
   const html = req.mode === "navigate" || (req.headers.get("accept") || "").includes("text/html");
   if (html) {
-    e.respondWith(Promise.race([fetch(req).then(res => put(req, res)), timeout(6000)])
+    // « no-cache » : le navigateur revalide toujours sa copie auprès du site (GitHub Pages la déclare valable 10 min),
+    // sans quoi une page publiée à l'instant reste à l'ancienne version.
+    e.respondWith(Promise.race([fetch(req, { cache: "no-cache" }).then(res => put(req, res)), timeout(6000)])
       .catch(() => caches.match(req, { ignoreSearch: true }).then(hit => hit || caches.match(BASE))));
     return;
   }
