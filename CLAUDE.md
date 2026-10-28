@@ -11,7 +11,8 @@ Les dossiers numérotés 05 (sources des fiches) et 08 (`08 Depots/`, dépôts r
   - `node commun/test_sync.js` (synchro entre deux appareils : vrai `sync.js` et vrai code de fusion sur un faux Firestore ;
     lit `06 Appli QCM/app.html` et `06 Atelier QRC/src/app.js` par extraction de texte, donc à relancer si ces blocs bougent)
 - Chaque `build.js` assemble une page HTML autonome : charte (`07 Charte DA/pastille/tokens.css` puis `appli.css`) +
-  `commun/sync.js` + sources de l'appli. Ces pages (`QCM_DGFiP_2027.html`, `Atelier QRC compta.html`,
+  `commun/sync.js` + sources de l'appli + `commun/ecran.js` (iPhone, appli installée seulement : barre d'onglets du bas
+  restée à mi-hauteur après le clavier, bug WebKit d'iOS 26 ; recalcul forcé puis décalage mesuré). Ces pages (`QCM_DGFiP_2027.html`, `Atelier QRC compta.html`,
   `Atelier Ecrit Oral.html`, `06 Atelier QRC/dist/*`) sont **versionnées mais générées** : éditer les sources, relancer
   `build.js`, ne jamais modifier la page à la main. Le build échoue si une source contient `</script>`.
 - Le bloc PWA (manifeste, `theme-color` = `--side` clair/sombre, icônes, enregistrement du service worker, chemins
@@ -38,10 +39,15 @@ Les dossiers numérotés 05 (sources des fiches) et 08 (`08 Depots/`, dépôts r
   `atelier`, puis appelle `PrepaSync.changed(clé)` après chaque sauvegarde locale.
   État : `users/{uid}/apps/{clé}` = `{json, u, dev}`, envoi différé de 1,2 s, comparaison canonique (clés triées) ; au-delà
   de 900 000 caractères l'état reste local (statut « plein »).
+- Écoute avec `includeMetadataChanges` ; le premier envoi attend une version venue du serveur (fusionner avec un cache
+  périmé puis écrire effaçait du compte ce que l'autre appareil y avait mis). Écoute relancée après une erreur (5 s à 60 s),
+  au retour au premier plan après 30 s de veille, au retour du réseau et par le bouton « Resynchroniser » du bloc Compte,
+  qui affiche aussi l'identifiant de l'appareil et les heures du dernier échange (pour comparer deux appareils).
 - `merge(o)` d'une appli doit être idempotente : après chaque fusion distante, si l'état local diffère de celui du compte,
   la synchro le renvoie (4 renvois par minute au plus). Sans cela, un appareil qui écrit depuis un état périmé (hors
   connexion) écrase le compte et l'autre appareil garde ses données pour lui jusqu'à sa prochaine sauvegarde.
-  Fusions : QCM carte par carte (révision la plus récente), QRC type par type (champ `u` ; un type vidé ou effacé reste à
+  Fusions : QCM carte par carte (planning de la révision la plus récente ; compteurs de réponses par appareil, 9e élément
+  `{appareil: [réponses, justes]}` de la carte, fusionnés au maximum, les 7e et 8e étant les compteurs figés d'avant), QRC type par type (champ `u` ; un type vidé ou effacé reste à
   zéro daté, une épreuve supprimée entre dans `xdel`), atelier entrée par entrée (`updatedAt`, pierres tombales).
 - `PrepaSync.peek(clé, cb)` : lecture seule du compte. L'accueil l'utilise pour afficher la plus récente des deux
   progressions (navigateur, compte), car les applis ne fusionnent dans le navigateur que lorsqu'elles sont ouvertes.

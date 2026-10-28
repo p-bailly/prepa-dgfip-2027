@@ -25,18 +25,23 @@ class FakeDate extends Date { constructor(...a) { if (a.length) super(...a); els
 
 function device(name, local) {
   const c = { name, online: true, listeners: [], pending: new Map(), cache: new Map(), resolvers: [] }, store = {};
-  const view = p => c.pending.has(p) ? c.pending.get(p) : (c.online ? server.docs[p] : c.cache.get(p));
-  c.emit = (l, force) => {
-    const data = view(l.path), hasP = c.pending.has(l.path), sig = JSON.stringify([data, hasP]);
+  // fromCache : réseau coupé, ou première réponse d'une écoute servie par le cache local (comme Firestore) avant le serveur.
+  c.emit = (l, force, cached) => {
+    const hasP = c.pending.has(l.path), fromCache = !c.online || !!cached || !!c.slow;
+    const data = hasP ? c.pending.get(l.path) : fromCache ? c.cache.get(l.path) : server.docs[l.path], sig = JSON.stringify([data, hasP, fromCache]);
     if (!force && l.sig === sig) return; l.sig = sig;
-    if (data === undefined && !c.online) return;
-    if (!hasP && c.online && data !== undefined) c.cache.set(l.path, data);
-    l.next({ exists: () => data !== undefined, data: () => data, metadata: { hasPendingWrites: hasP, fromCache: !c.online } });
+    if (data === undefined && fromCache) return;
+    if (!hasP && !fromCache && data !== undefined) c.cache.set(l.path, data);
+    l.next({ exists: () => data !== undefined, data: () => data, metadata: { hasPendingWrites: hasP, fromCache } });
   };
+  // Serveur injoignable pour les lectures (connexion lente) : les écoutes restent sur le cache, les écritures passent.
+  c.setSlow = v => { c.slow = v; c.listeners.forEach(l => c.emit(l)); };
+  // Firestore arrête une écoute en erreur (droits, quota…) : elle n'envoie plus rien.
+  c.breakListeners = () => { const ls = c.listeners; c.listeners = []; ls.forEach(l => l.error && l.error({ code: 'unavailable' })); };
   c.flush = () => {
     for (const [p, d] of [...c.pending]) {
       server.docs[p] = d; c.pending.delete(p); c.cache.set(p, d); server.writes.push({ from: name, path: p });
-      server.clients.forEach(o => { if (o !== c && o.online) o.listeners.filter(l => l.path === p).forEach(l => o.emit(l)); });
+      server.clients.forEach(o => { if (o !== c && o.online && !o.slow) o.listeners.filter(l => l.path === p).forEach(l => o.emit(l)); });
     }
     c.listeners.forEach(l => c.emit(l)); c.resolvers.splice(0).forEach(r => r());
   };
@@ -46,7 +51,12 @@ function device(name, local) {
   const Fs = {
     initializeFirestore: () => ({}), persistentLocalCache: () => ({}), persistentMultipleTabManager: () => ({}), getFirestore: () => ({}),
     doc: (db, ...s) => ({ path: s.join('/') }), collection: (db, ...s) => ({ path: s.join('/') }),
-    onSnapshot: (ref, next) => { const l = { path: ref.path, next, sig: null }; c.listeners.push(l); Promise.resolve().then(() => c.emit(l, true)); return () => { c.listeners = c.listeners.filter(x => x !== l); }; },
+    onSnapshot: (ref, a, b, e) => {
+      const [next, error] = typeof a === 'function' ? [a, b] : [b, e];
+      const l = { path: ref.path, next, error, sig: null }; c.listeners.push(l);
+      Promise.resolve().then(() => { if (c.cache.has(l.path)) c.emit(l, true, true); }).then(() => c.emit(l, !c.cache.has(l.path)));
+      return () => { c.listeners = c.listeners.filter(x => x !== l); };
+    },
     setDoc: (ref, data) => {
       c.pending.set(ref.path, JSON.parse(JSON.stringify(data)));
       c.listeners.filter(l => l.path === ref.path).forEach(l => c.emit(l));
@@ -67,8 +77,11 @@ function device(name, local) {
     setTimeout: (fn, ms) => { const id = ++tid; timers.push({ id, at: clock.t + (ms || 0), fn }); return id; },
     clearTimeout: id => { const i = timers.findIndex(x => x.id === id); if (i >= 0) timers.splice(i, 1); },
     setInterval: () => 0, clearInterval: () => { }, __imp: n => Promise.resolve(mods[n]), btoa: s => Buffer.from(s, 'binary').toString('base64'),
-    document: { activeElement: null, querySelector: () => null, getElementById: () => null, addEventListener() { } }
+    document: { activeElement: null, hidden: false, querySelector: () => null, getElementById: () => null, addEventListener: (t, f) => (c.on[t] = c.on[t] || []).push(f) },
+    addEventListener: (t, f) => (c.on[t] = c.on[t] || []).push(f)
   };
+  c.on = {};
+  c.fire = t => (c.on[t] || []).forEach(f => f());
   ctx.window = ctx; ctx.globalThis = ctx;
   Object.assign(store, { 'prepa-sync-compte': '1', 'prepa-appareil': name }, local || {});
   c.store = store; c.ctx = vm.createContext(ctx); c.eval = src => vm.runInContext(src, c.ctx);
@@ -86,6 +99,7 @@ const QCM_PRE = 'const KEY="qcm-dgfip-2027"; function dayNum(d=new Date()){ retu
 function qcm(name, local) { const c = device(name, local); c.eval(QCM_PRE + QCM + '\ninitSync();'); return c; }
 const qcmAnswer = (c, a, b) => c.eval(`for(let i=${a};i<=${b};i++) review("q"+i, true); save();`);
 const qcmN = c => c.eval('Object.keys(S.cards).length');
+const qcmAns = c => c.eval('Object.values(S.cards).reduce((s, r) => s + answers(r)[0], 0)');
 const qcmLocal = (a, b, u) => { const cards = {}; for (let i = a; i <= b; i++) cards['q' + i] = [20000, 3, 250, 1, 0, u / 1000, 1, 1]; return { 'qcm-dgfip-2027': JSON.stringify({ v: 2, u, cards }) }; };
 
 /* ---------- Atelier QRC : fusion et stockage pris dans src/app.js ---------- */
@@ -165,6 +179,44 @@ const qrcTypes = c => c.eval('Object.keys(S.prog.types).filter(function(k){retur
   got = home.eval('globalThis.__got');
   ok(got && Object.keys(got.cards).length === 12, 'Accueil : l\'état du compte arrive en lecture seule');
   ok(server.writes.every(x => x.from === 'pc'), 'Accueil : aucune écriture depuis l\'accueil');
+
+  /* 7. QCM : les mêmes cartes travaillées sur les deux appareils entre deux synchros, toutes les réponses comptent */
+  reset();
+  pc = qcm('pc'); tel = qcm('tel'); await advance(3000);
+  qcmAnswer(pc, 1, 5); await advance(3000);
+  tel.setOnline(false);
+  qcmAnswer(pc, 1, 5); await advance(3000);
+  qcmAnswer(tel, 1, 5); qcmAnswer(tel, 1, 5); await advance(3000);
+  tel.setOnline(true); await advance(5000);
+  ok(qcmAns(pc) === 20 && qcmAns(tel) === 20, `QCM : 5 + 5 + 10 réponses aux mêmes cartes comptées des deux côtés (pc ${qcmAns(pc)}, tel ${qcmAns(tel)})`);
+  const w7 = server.writes.length; await advance(3600000);
+  ok(server.writes.length === w7, `QCM : compteurs par appareil, pas de renvoi en boucle (${server.writes.length - w7} de trop)`);
+
+  /* 8. QCM : ouverture sur un cache périmé, serveur lent ; l'autre appareil est fermé */
+  reset();
+  pc = qcm('pc'); await advance(3000);
+  qcmAnswer(pc, 1, 5); await advance(3000);
+  const stale = server.docs['users/u1/apps/qcm'];
+  qcmAnswer(pc, 6, 15); await advance(3000);
+  server.clients.splice(server.clients.indexOf(pc), 1); // le PC est fermé
+  tel = qcm('tel', qcmLocal(16, 18, clock.t - 1000)); tel.cache.set('users/u1/apps/qcm', stale); tel.setSlow(true);
+  await advance(10000);
+  ok(Object.keys(doc('qcm').cards).length === 15, `QCM : rien n'est écrit tant que seul le cache a répondu (${Object.keys(doc('qcm').cards).length} cartes au compte)`);
+  tel.setSlow(false); await advance(5000);
+  ok(qcmN(tel) === 18 && Object.keys(doc('qcm').cards).length === 18, `QCM : une fois le serveur joint, compte et tel ont les 18 cartes (tel ${qcmN(tel)}, compte ${Object.keys(doc('qcm').cards).length})`);
+
+  /* 9. Une écoute arrêtée sur erreur est relancée */
+  reset();
+  pc = qcm('pc'); tel = qcm('tel'); await advance(3000);
+  tel.breakListeners(); await advance(1000);
+  qcmAnswer(pc, 1, 7); await advance(15000);
+  ok(qcmN(tel) === 7, `QCM : après une erreur d'écoute, le tel reçoit de nouveau (${qcmN(tel)} cartes)`);
+
+  /* 10. Retour au premier plan après une longue veille : l'écoute est relancée, sans écriture inutile */
+  const w10 = server.writes.length;
+  tel.ctx.document.hidden = true; tel.fire('visibilitychange'); await advance(120000);
+  tel.ctx.document.hidden = false; tel.fire('visibilitychange'); await advance(5000);
+  ok(tel.listeners.length === 1 && server.writes.length === w10, `QCM : une seule écoute relancée, aucune écriture (${tel.listeners.length} écoutes, ${server.writes.length - w10} écritures)`);
 
   console.log(`\n${checks} vérifications, ${fails} échec(s)`);
   process.exit(fails ? 1 : 0);

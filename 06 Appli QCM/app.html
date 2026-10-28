@@ -318,13 +318,28 @@ function load(){
   try { const raw = localStorage.getItem(KEY); if(raw){ return normalize(JSON.parse(raw)); } } catch(e){}
   return blank();
 }
-// Cartes stockées sous forme compacte : [échéance, intervalle, facilité×100, répétitions, échecs, dernière révision (s), réponses, justes].
+// Cartes stockées sous forme compacte : [échéance, intervalle, facilité×100, répétitions, échecs, dernière révision (s),
+// réponses, justes, {appareil: [réponses, justes]}]. Les deux premiers compteurs sont ceux d'avant le décompte par appareil
+// (figés) ; chaque appareil n'augmente que sa propre entrée, si bien qu'une fusion garde les réponses de tous les appareils.
+const DEV = (window.PrepaSync && PrepaSync.device) || "local";
 function unpackRec(r){
-  if(Array.isArray(r)) return {d:r[0],i:r[1],e:r[2]/100,r:r[3],p:r[4],l:r[5]*1000,k:[r[6],r[7]]};
+  if(Array.isArray(r)) return {d:r[0],i:r[1],e:r[2]/100,r:r[3],p:r[4],l:r[5]*1000,k:[r[6],r[7]],m:{...(r[8]||{})}};
   const k = r.k||[0,0];
-  return {d:r.d||0,i:r.i||0,e:r.e||2.5,r:r.r||0,p:r.p||0,l:r.l||0,k: k.length===6 ? [k[0]+k[2]+k[4], k[1]+k[3]+k[5]] : [k[0]||0,k[1]||0]};
+  return {d:r.d||0,i:r.i||0,e:r.e||2.5,r:r.r||0,p:r.p||0,l:r.l||0,k: k.length===6 ? [k[0]+k[2]+k[4], k[1]+k[3]+k[5]] : [k[0]||0,k[1]||0],m:{...(r.m||{})}};
 }
-function packRec(r){ return [r.d, r.i, Math.round(r.e*100), r.r, r.p, Math.round(r.l/1000), r.k[0], r.k[1]]; }
+function packRec(r){ const p = [r.d, r.i, Math.round(r.e*100), r.r, r.p, Math.round(r.l/1000), r.k[0], r.k[1]]; if(Object.keys(r.m).length) p.push(r.m); return p; }
+// Réponses et justes de la carte, tous appareils compris.
+function answers(r){ let n=r.k[0], ok=r.k[1]; for(const v of Object.values(r.m)){ n+=v[0]; ok+=v[1]; } return [n, ok]; }
+const morePair = (x, y) => y[0] > x[0] || (y[0]===x[0] && y[1] > x[1]);
+// Fusion d'une carte : planning de la révision la plus récente, compteurs au plus haut appareil par appareil.
+function mergeRec(m, c){
+  if(!m) return c; if(!c) return m;
+  const out = {...((c.l||0) > (m.l||0) ? c : m)};
+  out.k = morePair(m.k, c.k) ? c.k.slice() : m.k.slice();
+  out.m = {...m.m};
+  for(const [dv, v] of Object.entries(c.m)) if(!out.m[dv] || morePair(out.m[dv], v)) out.m[dv] = v.slice();
+  return out;
+}
 function normalize(s){
   const o = Object.assign(blank(), s||{});
   o.set = Object.assign({...DEFAULT_SET}, (s&&s.set)||{});
@@ -353,7 +368,7 @@ function merge(a, b){
   const newer = a.u >= b.u ? a : b, other = newer===a ? b : a;
   const out = normalize(JSON.parse(JSON.stringify({...newer, cards:{}})));
   out.cards = {...newer.cards};
-  for(const [id, c] of Object.entries(other.cards||{})){ const m=out.cards[id]; if(!m || (c.l||0) > (m.l||0)) out.cards[id]=c; }
+  for(const [id, c] of Object.entries(other.cards||{})) out.cards[id] = mergeRec(out.cards[id], c);
   const ex = new Map(); [...(other.exams||[]), ...(newer.exams||[])].forEach(e=>ex.set(e.id,e));
   out.xdel = [...new Set([...(newer.xdel||[]), ...(other.xdel||[])])];
   out.exams = [...ex.values()].filter(e=>!out.xdel.includes(e.id)).sort((x,y)=>y.at-x.at).slice(0,40);
@@ -392,11 +407,11 @@ function invalidate(){ CARD_MAP=null; }
 function themesOn(){ return MODULES[S.set.mod].t; }
 function eligible(c){ return !c.d && themesOn().includes(c.t) && (S.set.act || !c.act); }
 function rec(id){ return S.cards[id]; }
-function newRec(){ return {d:0,i:0,e:2.5,r:0,p:0,l:0,k:[0,0]}; }
+function newRec(){ return {d:0,i:0,e:2.5,r:0,p:0,l:0,k:[0,0],m:{}}; }
 // Répétition espacée (SM-2 adapté au calendrier du concours) : 3 j, 7 j, puis intervalle × facilité, plafonné à 40 j.
 function review(id, ok){
   const r = S.cards[id] || newRec();
-  r.k[0]++; if(ok) r.k[1]++;
+  const v = r.m[DEV] = (r.m[DEV]||[0,0]).slice(); v[0]++; if(ok) v[1]++;
   const today = dayNum();
   r.l = Date.now();
   const q = ok ? 4 : 1;
@@ -835,7 +850,7 @@ function themeStats(t){
     total++;
     const r = rec(c.id); if(!r || !r.l) continue;
     seen++; if(status(c.id)==="acquise") acq++;
-    n += r.k[0]; ok += r.k[1];
+    const [a, b] = answers(r); n += a; ok += b;
   }
   let xn=0, xok=0;
   for(const x of S.exams){ const v=x.by && x.by[t]; if(v){ xn+=v[0]; xok+=v[1]; } }

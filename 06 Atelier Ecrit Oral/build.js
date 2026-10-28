@@ -19,9 +19,11 @@ const css = [
 const js = [SRC('data.js'), SRC('core.js'), SRC('app.js')].join('\n');
 // Synchro du compte, partagée avec les autres applis ; manifeste et service worker du site (chemins relatifs à /atelier/).
 const sync = fs.readFileSync(path.join(__dirname, '..', 'commun', 'sync.js'), 'utf8');
-if (/<\/script/i.test(sync + js)) { console.error('Un script contient </script>'); process.exit(1); }
+// Correctif iOS de la barre d'onglets du bas, commun aux trois applis.
+const ecran = fs.readFileSync(path.join(__dirname, '..', 'commun', 'ecran.js'), 'utf8');
+if (/<\/script/i.test(sync + ecran + js)) { console.error('Un script contient </script>'); process.exit(1); }
 const pwa = '<link rel="manifest" href="../manifest.webmanifest">\n<meta name="theme-color" content="#F7F5FF" media="(prefers-color-scheme: light)">\n<meta name="theme-color" content="#1A1926" media="(prefers-color-scheme: dark)">\n<link rel="icon" href="../prepa.svg" type="image/svg+xml">\n<link rel="apple-touch-icon" href="../icones/icone-180.png">\n';
-const sw = '<script>if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("../sw.js").catch(function(){});</script>\n';
+const sw = '<script>\n' + ecran + '</script>\n<script>if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("../sw.js").catch(function(){});</script>\n';
 
 const page = '<!doctype html>\n<html lang="fr">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n'
   + pwa + SRC('head.html') + '\n<style>\n' + reset + '\n' + css + '\n</style>\n</head>\n<body>\n'

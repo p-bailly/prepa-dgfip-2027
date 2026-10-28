@@ -810,22 +810,44 @@ input[type=checkbox] { width: 18px; height: 18px; }
     }, function (e) { started = false; throw e; });
   }
 
-  function stop(key) { var a = apps[key]; if (a && a.unsub) { a.unsub(); a.unsub = null; a.ref = null; } }
+  function stop(key) { var a = apps[key]; if (a) { clearTimeout(a.retry); if (a.unsub) { a.unsub(); a.unsub = null; a.ref = null; } } }
   function watch(key) {
     var a = apps[key]; if (!a || !user || !F || a.unsub) return;
     a.ref = F.Fs.doc(F.db, "users", user.uid, "apps", key);
     a.first = true;
-    a.unsub = F.Fs.onSnapshot(a.ref, function (snap) {
+    // Métadonnées comprises : le passage du cache au serveur arrive aussi quand les données n'ont pas changé.
+    a.unsub = F.Fs.onSnapshot(a.ref, { includeMetadataChanges: true }, function (snap) {
       if (snap.metadata.hasPendingWrites) return; // écho de nos propres écritures
       var d = snap.exists() ? snap.data() : null;
       if (d && d.json && d.json !== a.last) {
-        a.last = d.json;
+        a.last = d.json; a.rx = { at: Date.now(), u: d.u || 0, mine: d.dev === DEV };
         try { var o = JSON.parse(d.json); a.canon = canon(o); a.merge(o); if (!a.first) echo(key); } catch (e) { }
       }
-      if (a.first) { a.first = false; push(key, !d); }
+      // Premier envoi seulement sur une version venue du serveur : celle du cache peut être périmée, et l'état fusionné
+      // avec elle écraserait dans le compte ce que l'autre appareil y a mis entre-temps.
+      if (!snap.metadata.fromCache) { a.fails = 0; if (a.first) { a.first = false; push(key, !d); } }
       setState(snap.metadata.fromCache ? "attente" : "ok");
-    }, function (e) { setState("erreur", (e && e.code) || "erreur"); });
+    }, function (e) {
+      // Une écoute en erreur est arrêtée par Firestore : on la relance, sinon l'appareil ne reçoit plus rien.
+      a.unsub = null; a.ref = null; setState("erreur", (e && e.code) || "erreur");
+      a.fails = (a.fails || 0) + 1; clearTimeout(a.retry);
+      a.retry = setTimeout(function () { watch(key); }, Math.min(60000, 5000 * a.fails));
+    });
   }
+  // Relance les écoutes (retour au premier plan après une veille, retour du réseau) : une connexion restée muette
+  // pendant la veille d'un ordinateur ou d'un téléphone laisserait l'appareil sur une version périmée.
+  function refresh() {
+    if (!user || !F) return;
+    Object.keys(apps).forEach(function (k) { stop(k); watch(k); });
+    peeks.forEach(peekSub);
+  }
+  var hiddenAt = 0;
+  if (typeof document !== "undefined" && document.addEventListener) {
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) hiddenAt = Date.now(); else if (hiddenAt && Date.now() - hiddenAt > 30000) refresh();
+    });
+  }
+  if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("online", refresh);
   // Après une fusion, renvoie l'état fusionné s'il diffère de celui du compte : sans cela, un appareil qui a écrit
   // depuis un état périmé (hors connexion) écrase le compte, et l'autre appareil garde ses données pour lui jusqu'à
   // sa prochaine sauvegarde. Quatre renvois par minute au plus, au cas où une fusion ne convergerait pas.
@@ -844,7 +866,7 @@ input[type=checkbox] { width: 18px; height: 18px; }
       var json = JSON.stringify(o);
       if (json.length > MAX) { setState("plein"); return; }
       a.canon = c; a.last = json;
-      F.Fs.setDoc(a.ref, { json: json, u: Date.now(), dev: DEV }).then(function () { if (state !== "erreur") setState(navigator.onLine === false ? "attente" : "ok"); }, function (e) { setState("erreur", (e && e.code) || "erreur"); });
+      F.Fs.setDoc(a.ref, { json: json, u: Date.now(), dev: DEV }).then(function () { a.tx = Date.now(); if (state !== "erreur") setState(navigator.onLine === false ? "attente" : "ok"); }, function (e) { setState("erreur", (e && e.code) || "erreur"); });
     }, now ? 0 : 1200);
   }
 
@@ -894,6 +916,10 @@ input[type=checkbox] { width: 18px; height: 18px; }
       if (user) watch(key); else if (hasFlag()) start();
     },
     changed: function (key) { if (apps[key] && apps[key].ref) push(key); },
+    // Identifiant de cet appareil (navigateur) : les compteurs de réponses du QCM sont tenus par appareil.
+    device: DEV,
+    // Relance à la demande (bouton « Resynchroniser » du bloc Compte).
+    refresh: refresh,
     // Reprend la session enregistrée sur l'appareil sans appli attachée (page d'accueil).
     resume: function () { if (hasFlag()) start().catch(function () { }); },
     connected: hasFlag,
@@ -936,13 +962,25 @@ input[type=checkbox] { width: 18px; height: 18px; }
     mount: function (el) {
       if (!el) return;
       function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+      // Où en est l'échange avec le compte, pour comparer deux appareils d'un coup d'œil.
+      function trace() {
+        var hm = function (t) { return new Date(t).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }); };
+        var p = ["Appareil " + DEV];
+        Object.keys(apps).forEach(function (k) {
+          var a = apps[k];
+          if (a.rx) p.push("version du compte " + (a.rx.u ? "du " + new Date(a.rx.u).toLocaleDateString("fr-FR") + " à " + hm(a.rx.u) : "reçue à " + hm(a.rx.at)) + (a.rx.mine ? " (écrite ici)" : " (écrite par un autre appareil)"));
+          if (a.tx) p.push("dernier envoi à " + hm(a.tx));
+        });
+        return p.join(" · ") + ".";
+      }
       function draw(msgText) {
         var s = api.status();
         if (!s.user && state === "connexion" && hasFlag()) { el.innerHTML = '<p class="small muted">Connexion à ton compte…</p>'; return; }
         if (s.user) {
           el.innerHTML = '<div class="sync-box"><p>Connecté en tant que <b>' + esc(s.user) + '</b>. Ta progression est ' + esc(api.label()) + '.</p>' +
             '<p class="small muted">Connecte-toi avec le même identifiant sur tes autres appareils : tout se synchronise en direct, et hors connexion les changements partent dès le retour du réseau.</p>' +
-            '<div class="row"><button type="button" class="btn" data-sync="out">Se déconnecter</button></div></div>';
+            '<p class="small muted">' + esc(trace()) + '</p>' +
+            '<div class="row"><button type="button" class="btn" data-sync="now">Resynchroniser</button><button type="button" class="btn" data-sync="out">Se déconnecter</button></div></div>';
         } else {
           el.innerHTML = '<form class="sync-box" novalidate><p class="small muted">Sans compte, la progression reste sur cet appareil. Avec un compte, elle se synchronise entre tous tes appareils.</p>' +
             '<label class="field"><span>Identifiant</span><input class="input" name="u" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>' +
@@ -962,6 +1000,7 @@ input[type=checkbox] { width: 18px; height: 18px; }
       el.onclick = function (e) {
         var b = e.target.closest("[data-sync]"); if (!b) return;
         if (b.dataset.sync === "up") { e.preventDefault(); go("up"); }
+        if (b.dataset.sync === "now") { refresh(); draw(); }
         if (b.dataset.sync === "out") { b.disabled = true; api.signOut().then(function () { draw(); }); }
       };
       if (!el._syncListen) { el._syncListen = true; listeners.push(function () { if (el.isConnected && !el.contains(document.activeElement)) draw(); }); }
@@ -4051,13 +4090,28 @@ function load(){
   try { const raw = localStorage.getItem(KEY); if(raw){ return normalize(JSON.parse(raw)); } } catch(e){}
   return blank();
 }
-// Cartes stockées sous forme compacte : [échéance, intervalle, facilité×100, répétitions, échecs, dernière révision (s), réponses, justes].
+// Cartes stockées sous forme compacte : [échéance, intervalle, facilité×100, répétitions, échecs, dernière révision (s),
+// réponses, justes, {appareil: [réponses, justes]}]. Les deux premiers compteurs sont ceux d'avant le décompte par appareil
+// (figés) ; chaque appareil n'augmente que sa propre entrée, si bien qu'une fusion garde les réponses de tous les appareils.
+const DEV = (window.PrepaSync && PrepaSync.device) || "local";
 function unpackRec(r){
-  if(Array.isArray(r)) return {d:r[0],i:r[1],e:r[2]/100,r:r[3],p:r[4],l:r[5]*1000,k:[r[6],r[7]]};
+  if(Array.isArray(r)) return {d:r[0],i:r[1],e:r[2]/100,r:r[3],p:r[4],l:r[5]*1000,k:[r[6],r[7]],m:{...(r[8]||{})}};
   const k = r.k||[0,0];
-  return {d:r.d||0,i:r.i||0,e:r.e||2.5,r:r.r||0,p:r.p||0,l:r.l||0,k: k.length===6 ? [k[0]+k[2]+k[4], k[1]+k[3]+k[5]] : [k[0]||0,k[1]||0]};
+  return {d:r.d||0,i:r.i||0,e:r.e||2.5,r:r.r||0,p:r.p||0,l:r.l||0,k: k.length===6 ? [k[0]+k[2]+k[4], k[1]+k[3]+k[5]] : [k[0]||0,k[1]||0],m:{...(r.m||{})}};
 }
-function packRec(r){ return [r.d, r.i, Math.round(r.e*100), r.r, r.p, Math.round(r.l/1000), r.k[0], r.k[1]]; }
+function packRec(r){ const p = [r.d, r.i, Math.round(r.e*100), r.r, r.p, Math.round(r.l/1000), r.k[0], r.k[1]]; if(Object.keys(r.m).length) p.push(r.m); return p; }
+// Réponses et justes de la carte, tous appareils compris.
+function answers(r){ let n=r.k[0], ok=r.k[1]; for(const v of Object.values(r.m)){ n+=v[0]; ok+=v[1]; } return [n, ok]; }
+const morePair = (x, y) => y[0] > x[0] || (y[0]===x[0] && y[1] > x[1]);
+// Fusion d'une carte : planning de la révision la plus récente, compteurs au plus haut appareil par appareil.
+function mergeRec(m, c){
+  if(!m) return c; if(!c) return m;
+  const out = {...((c.l||0) > (m.l||0) ? c : m)};
+  out.k = morePair(m.k, c.k) ? c.k.slice() : m.k.slice();
+  out.m = {...m.m};
+  for(const [dv, v] of Object.entries(c.m)) if(!out.m[dv] || morePair(out.m[dv], v)) out.m[dv] = v.slice();
+  return out;
+}
 function normalize(s){
   const o = Object.assign(blank(), s||{});
   o.set = Object.assign({...DEFAULT_SET}, (s&&s.set)||{});
@@ -4086,7 +4140,7 @@ function merge(a, b){
   const newer = a.u >= b.u ? a : b, other = newer===a ? b : a;
   const out = normalize(JSON.parse(JSON.stringify({...newer, cards:{}})));
   out.cards = {...newer.cards};
-  for(const [id, c] of Object.entries(other.cards||{})){ const m=out.cards[id]; if(!m || (c.l||0) > (m.l||0)) out.cards[id]=c; }
+  for(const [id, c] of Object.entries(other.cards||{})) out.cards[id] = mergeRec(out.cards[id], c);
   const ex = new Map(); [...(other.exams||[]), ...(newer.exams||[])].forEach(e=>ex.set(e.id,e));
   out.xdel = [...new Set([...(newer.xdel||[]), ...(other.xdel||[])])];
   out.exams = [...ex.values()].filter(e=>!out.xdel.includes(e.id)).sort((x,y)=>y.at-x.at).slice(0,40);
@@ -4125,11 +4179,11 @@ function invalidate(){ CARD_MAP=null; }
 function themesOn(){ return MODULES[S.set.mod].t; }
 function eligible(c){ return !c.d && themesOn().includes(c.t) && (S.set.act || !c.act); }
 function rec(id){ return S.cards[id]; }
-function newRec(){ return {d:0,i:0,e:2.5,r:0,p:0,l:0,k:[0,0]}; }
+function newRec(){ return {d:0,i:0,e:2.5,r:0,p:0,l:0,k:[0,0],m:{}}; }
 // Répétition espacée (SM-2 adapté au calendrier du concours) : 3 j, 7 j, puis intervalle × facilité, plafonné à 40 j.
 function review(id, ok){
   const r = S.cards[id] || newRec();
-  r.k[0]++; if(ok) r.k[1]++;
+  const v = r.m[DEV] = (r.m[DEV]||[0,0]).slice(); v[0]++; if(ok) v[1]++;
   const today = dayNum();
   r.l = Date.now();
   const q = ok ? 4 : 1;
@@ -4568,7 +4622,7 @@ function themeStats(t){
     total++;
     const r = rec(c.id); if(!r || !r.l) continue;
     seen++; if(status(c.id)==="acquise") acq++;
-    n += r.k[0]; ok += r.k[1];
+    const [a, b] = answers(r); n += a; ok += b;
   }
   let xn=0, xok=0;
   for(const x of S.exams){ const v=x.by && x.by[t]; if(v){ xn+=v[0]; xok+=v[1]; } }
@@ -5019,5 +5073,46 @@ render();
 initSync();
 </script>
 
+<script>/* Barre d'onglets du bas sur iPhone (appli installée sur l'écran d'accueil) : après la fermeture du clavier, iOS garde
+   parfois la hauteur d'écran réduite, et une barre « position: fixed; bottom: 0 » reste à mi-hauteur, la page défilant
+   dessous (bug WebKit d'iOS 26, aussi signalé avec « Réduire les animations »). Quand la barre ne touche plus le bas de
+   l'écran, on force WebKit à recalculer la fenêtre (masquage et réaffichage de la page, défilement conservé) ; si elle
+   reste décalée, on la redescend de l'écart mesuré. Rien ne se passe sur ordinateur ni dans Safari. */
+(function () {
+  "use strict";
+  var standalone = navigator.standalone === true || (window.matchMedia && matchMedia("(display-mode: standalone)").matches);
+  if (!standalone || !/iPhone|iPad|iPod/.test(navigator.userAgent)) return;
+  var full = {}, healed = false; // plus grande hauteur vue, par largeur (orientation) ; recalcul déjà tenté
+  function typing() { var a = document.activeElement; return !!(a && a.matches && a.matches("input:not([type=checkbox]):not([type=radio]),textarea,select,[contenteditable]")); }
+  function bar() { var b = document.getElementById("bottomnav"); return b && b.getClientRects().length ? b : null; }
+  function gap(b) {
+    var w = innerWidth, h = innerHeight; full[w] = Math.max(full[w] || 0, h);
+    return Math.max(full[w] - h, h - b.getBoundingClientRect().bottom);
+  }
+  function check() {
+    var b = bar(); if (!b || typing()) return;
+    b.style.transform = "";
+    var g = gap(b);
+    if (g <= 4) { healed = false; return; }
+    if (!healed) { // une fois par épisode : un recalcul complet de la page coûte cher
+      healed = true;
+      var y = scrollY, x = scrollX, el = document.body;
+      el.style.display = "none"; void el.offsetHeight; el.style.display = "";
+      scrollTo(x, y); g = gap(b);
+    }
+    if (g > 4) b.style.transform = "translateY(" + g + "px)";
+  }
+  var t = 0;
+  function soon(ms) { clearTimeout(t); t = setTimeout(check, ms); }
+  document.addEventListener("focusout", function () { soon(150); setTimeout(check, 700); });
+  addEventListener("resize", function () { soon(150); });
+  if (window.visualViewport) visualViewport.addEventListener("resize", function () { soon(150); });
+  addEventListener("orientationchange", function () { full = {}; soon(400); });
+  addEventListener("pageshow", function () { soon(300); });
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) soon(300); });
+  addEventListener("scroll", function () { soon(250); }, { passive: true });
+  soon(500);
+})();
+</script>
 <script>if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("../sw.js").catch(function(){});</script>
 </body></html>
