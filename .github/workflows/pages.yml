@@ -38,6 +38,7 @@ jobs:
           cd "06 Appli QCM" && node verifier_banque.js && node build.js && cd ..
           cd "06 Atelier QRC" && node build.js && node test/test.js && cd ..
           cd "06 Atelier Ecrit Oral" && node build.js && node test/test.js && cd ..
+          node commun/test_sync.js
       - name: Assembler le site
         run: |
           mkdir -p _site/qcm _site/qrc _site/atelier

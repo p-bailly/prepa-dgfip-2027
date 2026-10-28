@@ -256,21 +256,41 @@ a.card:hover { border-color: var(--edge); }
 </script>
 <script>
 // Tableau de bord du jour : lit la progression que chaque appli garde dans ce navigateur
-// (qcm-dgfip-2027, atelier-qrc-v1, atelier-ecrit-oral-v1). Rien n'est écrit ; sans données, les cartes gardent leur texte d'accueil.
+// (qcm-dgfip-2027, atelier-qrc-v1, atelier-ecrit-oral-v1) et, une fois connecté, celle du compte (lecture seule, voir plus bas) :
+// la plus récente des deux s'affiche, car la synchro ne met le navigateur à jour que lorsqu'une appli est ouverte.
+// Rien n'est écrit ; sans données, les cartes gardent leur texte d'accueil.
 (function () {
-  var DAY = 86400000, now = Date.now();
+  var DAY = 86400000;
   // Dates des écrits, comme dans le QCM et l'atelier QRC.
   var EXAMS = { insp: { l: "inspecteur", d: new Date(2026, 11, 7) }, ctrl: { l: "contrôleur", d: new Date(2027, 0, 11) } };
   function read(k) { try { var s = localStorage.getItem(k); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
   function dayNum(d) { d = d || new Date(); return Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / DAY); }
   function $(id) { return document.getElementById(id); }
-  function set(id, t) { var el = $(id); if (el) el.textContent = t; }
+  // Chaque texte modifié est mémorisé avec son texte d'accueil, rétabli avant chaque affichage.
+  var base = {};
+  function set(id, t) { var el = $(id); if (!el) return; if (!(id in base)) base[id] = el.textContent; el.textContent = t; }
   function dec(x) { return (Math.round(x * 10) / 10).toLocaleString("fr-FR"); }
   function day(t) { return new Date(t).toLocaleDateString("fr-FR", { day: "numeric", month: "short" }); }
   function plural(n, w) { return n + " " + w + (n > 1 ? "s" : ""); }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
 
-  var q = read("qcm-dgfip-2027"), r = read("atelier-qrc-v1"), a = read("atelier-ecrit-oral-v1"), results = [];
+  var local = { qcm: read("qcm-dgfip-2027"), qrc: read("atelier-qrc-v1"), atelier: read("atelier-ecrit-oral-v1") }, remote = {};
+  // Version la plus récente entre le navigateur et le compte ; l'atelier est fusionné entrée par entrée (updatedAt), comme dans l'appli.
+  function newest(x, y, t) { return !x ? y : !y ? x : t(y) > t(x) ? y : x; }
+  function atelier(l, r) {
+    if (!l || !r) return l || r;
+    var upd = function (e) { return (e && e.updatedAt) || 0; }, out = { cur: newest(l.cur, r.cur, upd), ecrits: {}, oraux: {} };
+    ["ecrits", "oraux"].forEach(function (k) {
+      var x = l[k] || {}, y = r[k] || {};
+      Object.keys(x).concat(Object.keys(y)).forEach(function (id) { out[k][id] = newest(x[id], y[id], upd); });
+    });
+    return out;
+  }
+
+  function draw() {
+  Object.keys(base).forEach(function (id) { $(id).textContent = base[id]; });
+  var q = newest(local.qcm, remote.qcm, function (x) { return x.u || 0; }), r = newest(local.qrc, remote.qrc, function (x) { return x.updated || 0; }),
+      a = atelier(local.atelier, remote.atelier), results = [];
 
   var d0 = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
   set("today-date", d0.charAt(0).toUpperCase() + d0.slice(1));
@@ -299,7 +319,7 @@ a.card:hover { border-color: var(--edge); }
     set("q-of", "/ " + total + " questions");
     $("q-bar").style.width = Math.round(done * 100 / total) + "%";
     set("q-go", done >= total ? "Voir mes progrès" : done ? "Continuer la série" : "Commencer la série");
-    if (due) set("nav-qcm", due);
+    set("nav-qcm", due || "");
     (q.exams || []).slice(0, 3).forEach(function (x) { if (x && x.at && typeof x.note === "number") results.push({ t: x.at, k: "", l: "Épreuve blanche QCM", v: dec(x.note) + "/20" }); });
   }
 
@@ -308,13 +328,13 @@ a.card:hover { border-color: var(--edge); }
     var last = null, rdue = 0;
     Object.keys(r.types).forEach(function (id) {
       var s = r.types[id]; if (!s || !s.n) return;
-      if (s.due <= now) rdue++;
+      if (s.due <= Date.now()) rdue++;
       var l = (s.last || [])[0]; if (l && (!last || l.d > last.d)) last = l;
     });
     if (last) {
       set("r-title", rdue ? plural(rdue, "type") + " d'exercice à revoir" : "Rien à revoir aujourd'hui");
       set("r-go", rdue ? "Reprendre l'entraînement →" : "Un nouvel exercice →");
-      if (rdue) set("nav-qrc", rdue);
+      set("nav-qrc", rdue || "");
     }
     (r.epreuves || []).slice(0, 3).forEach(function (x) { if (x && x.d) results.push({ t: x.d, k: "qrc", l: "Épreuve QRC", v: Math.round(x.s * 100) + " %" }); });
   }
@@ -333,8 +353,11 @@ a.card:hover { border-color: var(--edge); }
   results = results.filter(function (x) { return x.t; }).sort(function (x, y) { return y.t - x.t; }).slice(0, 5);
   if (results.length) {
     $("results").innerHTML = results.map(function (x) { return '<li><span class="dot ' + x.k + '" aria-hidden="true"></span><span>' + esc(x.l) + '<small>' + esc(day(x.t)) + '</small></span><b>' + esc(x.v) + '</b></li>'; }).join("");
-    $("results").hidden = false; $("results-empty").hidden = true;
   }
+  $("results").hidden = !results.length; $("results-empty").hidden = !!results.length;
+  }
+  window.homeRemote = function (key, o) { remote[key] = o; draw(); };
+  draw();
 })();
 </script>
 <script src="sync.js"></script>
@@ -370,7 +393,11 @@ a.card:hover { border-color: var(--edge); }
     if (e.target.id === "open") open(form.hidden);
     if (out) { out.disabled = true; window.PrepaSync.signOut().then(draw); }
   });
-  if (window.PrepaSync) { PrepaSync.onStatus(draw); PrepaSync.resume(); }
+  if (window.PrepaSync) {
+    PrepaSync.onStatus(draw); PrepaSync.resume();
+    // Progression du compte, en lecture seule, pour le tableau de bord (les applis ne fusionnent dans le navigateur que lorsqu'elles sont ouvertes).
+    if (PrepaSync.peek) ["qcm", "qrc", "atelier"].forEach(function (k) { PrepaSync.peek(k, function (o) { if (window.homeRemote) window.homeRemote(k, o); }); });
+  }
   draw();
 })();
 </script>
