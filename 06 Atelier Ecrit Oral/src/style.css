@@ -229,3 +229,44 @@ details.fold:not([open]) { gap: 0; }
 .depst { display: flex; gap: 6px; align-items: center; color: var(--muted); }
 .depst.ok { color: var(--ok); font-weight: 800; }
 .depst svg { width: 16px; height: 16px; flex: none; }
+
+/* Exercices de plan */
+.exgrid { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.excard { display: flex; flex-direction: column; gap: 6px; text-align: left; padding: var(--s4); border: var(--bw) solid var(--line-2); border-radius: var(--r-md); background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; min-height: var(--tap); }
+.excard:hover { border-color: var(--edge); }
+.excard b { font-size: var(--t-base); font-weight: 800; }
+.exhead { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); }
+.exhead .eyebrow { flex: 1 1 auto; }
+.rtabs button svg { width: 16px; height: 16px; vertical-align: -3px; margin-right: 6px; }
+.chips button[disabled] { opacity: .45; cursor: default; }
+.xopts .opt .t { display: flex; flex-direction: column; gap: 4px; }
+.xopts .opt .t b { font-weight: 800; }
+.qbox p { margin: 0; }
+.tchk { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: var(--t-sm); }
+.tchk li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 6px; align-items: start; }
+.tchk li svg { width: 16px; height: 16px; margin-top: 2px; stroke-width: 2.4; }
+.tchk li.ok svg { color: var(--ok); }
+.tchk li.bad { color: var(--bad); font-weight: 700; }
+textarea.input.tt { min-height: 64px; }
+.tpart { display: flex; flex-direction: column; gap: var(--s2); }
+.ideas { display: flex; flex-direction: column; gap: var(--s2); }
+.idea { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border: var(--bw) solid var(--line); border-radius: var(--r-md); background: var(--surface); }
+.idea p { margin: 0; font-size: var(--t-md); }
+.idea.ok { border-color: var(--ok); background: var(--ok-soft); }
+.idea.bad { border-color: var(--bad); background: var(--bad-soft); }
+.idea .fb { display: flex; gap: 6px; align-items: flex-start; font-size: var(--t-sm); font-weight: 700; }
+.idea .fb svg { width: 16px; height: 16px; flex: none; margin-top: 2px; stroke-width: 2.4; }
+.idea.ok .fb { color: var(--ok); }
+.idea.bad .fb { color: var(--bad); }
+.seg.slots { align-self: flex-start; }
+.seg.slots button { min-width: 52px; font-variant-numeric: tabular-nums; }
+.seg.slots button[disabled] { cursor: default; }
+.planm { display: flex; flex-direction: column; gap: var(--s3); }
+.planm > div { display: flex; flex-direction: column; gap: 4px; }
+.planm .pI > b { font-weight: 900; }
+.planm .pA { display: flex; flex-direction: column; gap: 4px; margin-left: 4px; padding-left: 12px; border-left: 3px solid var(--app); }
+.planm .trx { padding: 8px 12px; border-radius: 10px; background: var(--side); }
+.consigne-x { margin: 0; font-weight: 700; }
+.docs-l { margin: 0; padding-left: 22px; columns: 2 260px; column-gap: var(--s5); }
+.docs-l li { break-inside: avoid; padding: 2px 0; }
+.xrow { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; padding: 8px 2px; border-bottom: var(--bw) solid var(--line); }

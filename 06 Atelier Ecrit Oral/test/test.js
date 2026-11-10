@@ -3,6 +3,7 @@ const fs = require('fs'), path = require('path'), assert = require('assert');
 const ROOT = path.join(__dirname, '..');
 const D = require(path.join(ROOT, 'src', 'data.js'));
 const C = require(path.join(ROOT, 'src', 'core.js'));
+const X = require(path.join(ROOT, 'src', 'exos.js'));
 let n = 0;
 const ok = (cond, msg) => { assert.ok(cond, msg); n++; };
 
@@ -46,6 +47,55 @@ pdfs.forEach(u => {
   ok(fs.existsSync(f), 'PDF introuvable : ' + f);
 });
 
+/* ---------- Exercices de plan ---------- */
+const sujets = D.SUJETS.map(s => s.id);
+const xids = new Set();
+const uniq = (pre, o) => { ok(!xids.has(pre + o.id), 'exercice en double : ' + pre + o.id); xids.add(pre + o.id); };
+const checkRefs = r => [].concat(r || []).forEach(x => { const [k, p] = String(x).split(':'); ok(D.SRC[k] && /^\d+$/.test(p || ''), 'source d’exercice : ' + x); });
+const passe = (t, mots) => C.titleCheck(t, mots).every(c => c.ok);
+checkRefs(X.METHODE.regles.flatMap(r => r.src));
+ok(X.TRI.length >= X.TRI_N * 2 && X.TRI.some(t => t.dyn) && X.TRI.some(t => !t.dyn), 'série de titres à trier');
+X.TRI.forEach(t => { uniq('tri:', t); ok(t.t && t.why && typeof t.dyn === 'boolean', 'titre à trier incomplet : ' + t.id); if (t.dyn) ok(passe(t.t), 'titre dynamique qui échoue aux repères : ' + t.t); });
+X.CHOIX.forEach(c => {
+  uniq('ch:', c); checkRefs(c.src); ok(sujets.includes(c.sujet), 'sujet inconnu : ' + c.id);
+  ok(c.o.length === 4 && new Set(c.o.map(o => o.t)).size === 4 && c.o.every(o => o.t && o.why), '4 intitulés distincts expliqués : ' + c.id);
+  ok(passe(c.o[0].t), 'bon intitulé qui échoue aux repères : ' + c.o[0].t);
+});
+X.REECRIRE.forEach(r => {
+  uniq('re:', r); checkRefs(r.src); ok(sujets.includes(r.sujet), 'sujet inconnu : ' + r.id);
+  ok(!passe(r.statique, r.mots), 'le titre statique doit échouer aux repères : ' + r.statique);
+  ok(r.modeles.length >= 1 && r.modeles.every(m => passe(m, r.mots)), 'proposition qui échoue aux repères : ' + r.id);
+});
+X.LIBELLES.forEach(l => {
+  uniq('lib:', l); ok(sujets.includes(l.sujet), 'sujet inconnu : ' + l.id);
+  // L’extrait cité vient mot pour mot de la consigne du dossier (ou, pour les annales, de celle de l’onglet Écrit)
+  const dos = X.DOSSIERS.find(d => d.sujet === l.sujet), cons = dos ? dos.consigne : D.SUJETS.find(x => x.id === l.sujet).consigne.join(' ');
+  ok(cons.includes(l.cle), 'extrait de consigne introuvable : ' + l.id);
+  ok(l.o.length === 3 && l.o.every(o => o.I && o.II && o.why), '3 plans expliqués : ' + l.id);
+  ok(passe(l.o[0].I) && passe(l.o[0].II), 'bon plan qui échoue aux repères : ' + l.id);
+});
+X.DOSSIERS.forEach(d => {
+  uniq('dos:', d); checkRefs(d.src); ok(sujets.includes(d.sujet), 'sujet inconnu : ' + d.id);
+  ok(d.parts.length === 4 && d.etiquettes.length === 4 && d.axes.length === 3, 'plan en 2 × 2 : ' + d.id);
+  ok(passe(d.I) && passe(d.II) && d.axes[0].I === d.I && d.axes[0].II === d.II, 'titres de parties du corrigé : ' + d.id);
+  d.parts.forEach((p, k) => ok(passe(p.titre, p.mots), 'titre ' + X.PARTS[k] + ' du corrigé qui échoue aux repères : ' + d.id));
+  [0, 1, 2, 3].forEach(k => ok(d.idees.filter(x => x.p === k).length >= 2, 'au moins 2 idées en ' + X.PARTS[k] + ' : ' + d.id));
+  ok(d.idees.every(x => x.t && [0, 1, 2, 3].includes(x.p)), 'idées placées : ' + d.id);
+  if (d.docs) {
+    const used = new Set(d.idees.flatMap(x => String(x.d || '').split(/,\s*/).filter(Boolean).map(Number)));
+    d.docs.forEach((t, i) => ok(used.has(i + 1), 'document ' + (i + 1) + ' inutilisé : ' + d.id));
+  }
+  ok(d.consigne && d.transition && d.annonce && d.pourquoi, 'consigne, transition, annonce et explication : ' + d.id);
+});
+// Repères automatiques sur des cas connus
+const fails = (t, id) => C.titleCheck(t).filter(c => !c.ok).map(c => c.id).includes(id);
+ok(fails('Constat', 'cat') && fails('Les enjeux du tourisme', 'long') && fails('Les limites de la stratégie nationale', 'cat'), 'étiquettes de dissertation repérées');
+ok(fails('Faut-il réguler le tourisme ?', 'forme') && fails('Faut-il réguler le tourisme ?', 'neutre'), 'question et injonction repérées');
+ok(fails('On doit protéger les sites fragiles du littoral', 'neutre'), 'avis repéré');
+ok(fails('La cosmétique et la crise sanitaire mondiale', 'lien'), 'thème sans lien repéré');
+ok(!fails('L’État finance seul l’entretien de son patrimoine', 'lien') && passe('Des jauges qui protègent les sites naturels les plus fragiles'), 'titre dynamique accepté');
+ok(C.titleCheck('Un titre sans aucun mot attendu ici', ['patrimoine']).find(c => c.id === 'mots').ok === false, 'mots du dossier absents repérés');
+
 /* ---------- Fusion pour la synchronisation ---------- */
 const A = C.blank(), B = C.blank();
 A.ecrits.e1 = { id: 'e1', note: 10, date: 1, updatedAt: 100 };
@@ -66,6 +116,13 @@ tie1.ecrits.x = { id: 'x', note: 1, updatedAt: 5 }; tie2.ecrits.x = { id: 'x', n
 ok(C.same(C.merge(tie1, tie2), C.merge(tie2, tie1)), 'égalité de date départagée de la même façon partout');
 ok(C.same(C.merge(A, null), A) && C.same(C.merge(A, 'n’importe quoi'), A), 'objet distant invalide ignoré');
 ok(C.normalize({ ecrits: [{ id: 'a', updatedAt: 1 }] }).ecrits.a, 'tableau accepté');
+const XA = C.blank(), XB = C.blank();
+XA.exos['tri:s01'] = { id: 'tri:s01', ok: 1, n: 1, updatedAt: 10 };
+XB.exos['tri:s01'] = { id: 'tri:s01', ok: 0, n: 1, updatedAt: 20 };
+XB.exos['dos:tour'] = { id: 'dos:tour', ok: 12, n: 18, updatedAt: 5 };
+const XM = C.merge(XA, XB);
+ok(XM.exos['tri:s01'].ok === 0 && XM.exos['dos:tour'] && C.same(XM, C.merge(XB, XA)) && C.same(C.merge(XM, XB), XM), 'résultats d’exercices fusionnés');
+ok(C.normalize({}).exos && typeof C.normalize({}).exos === 'object', 'exos présent dans un état ancien');
 
 /* ---------- Chrono par horodatages ---------- */
 const run = { start: 0, pausedMs: 0, pausedAt: null, endedAt: null };

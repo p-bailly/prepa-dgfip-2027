@@ -8,18 +8,19 @@ var CORE = (function () {
 
   /* ---------- État synchronisable ----------
      settings : profil choisi ; cur : entraînement écrit en cours (ou null) ;
-     ecrits / oraux : entrées indexées par id. Chaque objet porte updatedAt :
+     ecrits / oraux : entrées indexées par id ; exos : dernier résultat de chaque exercice de plan
+     ({ id, ok, n, tries, date }). Chaque objet porte updatedAt :
      la fusion garde la version la plus récente. Une suppression est une
      entrée marquée deleted (pierre tombale), pour qu’elle se propage. */
   function blank() {
-    return { v: 1, app: 'atelier', settings: { profil: 'I', updatedAt: 0 }, cur: { run: null, updatedAt: 0 }, ecrits: {}, oraux: {} };
+    return { v: 1, app: 'atelier', settings: { profil: 'I', updatedAt: 0 }, cur: { run: null, updatedAt: 0 }, ecrits: {}, oraux: {}, exos: {} };
   }
   function normalize(p) {
     var b = blank();
     if (!isObj(p)) return b;
     if (isObj(p.settings)) b.settings = { profil: p.settings.profil === 'C' ? 'C' : 'I', updatedAt: num(p.settings.updatedAt) };
     if (isObj(p.cur)) b.cur = { run: isObj(p.cur.run) ? p.cur.run : null, updatedAt: num(p.cur.updatedAt) };
-    ['ecrits', 'oraux'].forEach(function (k) {
+    ['ecrits', 'oraux', 'exos'].forEach(function (k) {
       var src = p[k], add = function (e) { if (isObj(e) && typeof e.id === 'string' && e.id) b[k][e.id] = e; };
       if (Array.isArray(src)) src.forEach(add);
       else if (isObj(src)) Object.keys(src).forEach(function (id) { add(src[id]); });
@@ -42,7 +43,7 @@ var CORE = (function () {
   // Fusion idempotente et commutative : merge(merge(L, R), R) = merge(L, R).
   function merge(local, remote) {
     var L = normalize(clone(local)), R = normalize(clone(remote));
-    ['ecrits', 'oraux'].forEach(function (k) {
+    ['ecrits', 'oraux', 'exos'].forEach(function (k) {
       Object.keys(R[k]).forEach(function (id) { L[k][id] = pick(L[k][id], R[k][id]); });
     });
     L.settings = pick(L.settings, R.settings);
@@ -105,6 +106,47 @@ var CORE = (function () {
     return pool[pool.length - 1];
   }
 
+  /* ---------- Repères automatiques pour un titre de plan ----------
+     Des indices, pas une note : ils repèrent les défauts que le guide et le jury signalent
+     (thème sans message, étiquette de dissertation, question, avis, paragraphe). */
+  function fold(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+  function words(s) { return String(s || '').replace(/[’']/g, ' ').split(/[^A-Za-zÀ-ÖØ-öø-ÿŒœÆæ0-9%€]+/).filter(Boolean); }
+  var LIENS = ['qui', 'que', 'qu', 'dont', 'ou', 'mais', 'malgre', 'grace', 'face', 'sans', 'pour', 'afin', 'car', 'donc', 'tandis', 'alors', 'si', 'prix', 'dela', 'service', 'faute', 'sous', 'desormais', 'encore', 'toujours', 'plus', 'moins', 'mieux', 'davantage', 'entre', 'vers', 'aussi', 'meme', 'pourtant', 'cependant', 'ainsi', 'levier', 'moteur', 'source', 'frein', 'atout', 'pilier', 'vecteur', 'outil', 'cle', 'devenu', 'devenue', 'devenus', 'devenues'];
+  // Noms courants qui ressemblent à des participes, à des infinitifs ou à des verbes conjugués
+  var NOMS = ('annee entree idee journee duree musee lycee vallee armee enfant habitant restaurant montant etudiant commercant occupant participant representant dirigeant intervenant '
+    + 'parent client agent argent accident talent patient continent president incident adolescent vent dent cent mont pont front lait trait portrait attrait souhait '
+    + 'marche comite cafe cote depute degre conge resume defile etranger danger leger hiver mer fer cher hier avenir plaisir loisir desir souvenir cancer laser manager leader').split(' ');
+  // Verbes fréquents au présent, que leur terminaison ne trahit pas
+  var VERBES = ('est a reste devient pese coute finance permet attire rapporte soutient protege favorise renforce freine menace ameliore reduit accroit augmente diminue progresse recule adapte depend repose '
+    + 'conduit oblige pousse profite illustre montre traduit explique entraine provoque cree genere nourrit fragilise encadre limite regule repartit mobilise contribue participe constitue represente demeure '
+    + 'apparait concentre transforme modifie evolue change offre assure garantit porte supporte vise cherche tente peine beneficie souffre resiste maintient appuie etend deplace suscite impose exige').split(' ');
+  function verbal(w, i) {
+    if (VERBES.indexOf(fold(w)) >= 0) return true;
+    if (i > 0 && /^[A-ZÀ-ÖØ-Þ]/.test(w)) return false;         // nom propre
+    var l = w.toLowerCase(), f = fold(w), sg = f.replace(/s$/, '');
+    if (f.length < 4 || NOMS.indexOf(f) >= 0 || NOMS.indexOf(sg) >= 0 || /ments?$|tes?$|iers?$|oirs?$|[qg]ues?$|eux?$/.test(f)) return false;
+    if (/é(e|es|s)?$/.test(l)) return true;                       // participe passé : fragilisé, diversifiées
+    return /(ant|ants|ante|antes|ent|ont|ait|aient|er|ir|ue|ues|us)$/.test(f) && !/(able|ible|isme|ence|ance|tion|sion)s?$/.test(f);
+  }
+  function titleCheck(text, mots) {
+    var raw = String(text || '').trim(), ws = words(raw), fw = ws.map(fold), fr = ' ' + fw.join(' ') + ' ';
+    var n = ws.length, out = [];
+    out.push({ id: 'long', ok: n >= 5 && n <= 22, t: n < 5 ? 'Trop court pour porter une idée (' + n + ' mot' + (n > 1 ? 's' : '') + ') : vise 5 à 22 mots.' : n > 22 ? 'Trop long pour un titre (' + n + ' mots) : 22 au plus, renvoie le reste au développement.' : 'Une longueur de titre (' + n + ' mots).' });
+    var lien = fw.some(function (w) { return LIENS.indexOf(w) >= 0; }) || /au dela|de plus en plus|a la fois|a l aune/.test(fr) || ws.some(verbal);
+    out.push({ id: 'lien', ok: lien, t: lien ? 'Un verbe, un participe ou un lien logique : le titre affirme quelque chose.' : 'Aucun verbe ni lien logique : c’est un thème, pas un message (essaie qui, dont, malgré, face à…).' });
+    var cat = /^(i{1,3}|[ab])?\s*(le|la|les|l|des|un|une)?\s*(constat|enjeux?|problemes?|problematique|solutions?|consequences?|causes?|avantages?|inconvenients?|limites?|bilan|perspectives?|generalites|presentation|contexte|definitions?|introduction|conclusion|mesures?|tendances?)s?\s*(du|de|des|d|et)?\s*$/.test(fw.slice(0, 4).join(' ')) || /^(i{1,3}|[ab])?\s*(le|la|les|l)?\s*(constat|enjeux?|problemes?|solutions?|consequences?|causes?|avantages?|inconvenients?|limites?|bilan|perspectives?|mesures?|tendances?) (du|de|des|d)\b/.test(fw.join(' '));
+    out.push({ id: 'cat', ok: !cat, t: cat ? 'Une étiquette de dissertation (Constat, Enjeux, Avantages, Limites…) : dis ce que montre la partie.' : 'Pas d’étiquette de dissertation.' });
+    var avis = fw.some(function (w) { return ['je', 'j', 'nous', 'on', 'faut', 'doit', 'doivent', 'devrait', 'devraient', 'malheureusement', 'heureusement', 'helas', 'absolument', 'evidemment', 'formidable', 'incroyable', 'inutile', 'inutiles', 'scandale', 'scandaleux', 'scandaleuse', 'catastrophe', 'catastrophique', 'honteux', 'honte'].indexOf(w) >= 0; });
+    out.push({ id: 'neutre', ok: !avis, t: avis ? 'Un avis ou une injonction (je, on, il faut, doit, malheureusement…) : la synthèse reste neutre.' : 'Neutre : aucun avis ni injonction.' });
+    var forme = !/\?/.test(raw) && !/^[-–—•*]/.test(raw) && !/\bdoc(ument)?s?\.?\s*\d/i.test(raw);
+    out.push({ id: 'forme', ok: forme, t: forme ? 'Une affirmation rédigée.' : /\?/.test(raw) ? 'Une question : un titre de synthèse affirme, il n’interroge pas.' : 'Un tiret ou un renvoi aux documents : rédige l’idée elle-même.' });
+    if (mots && mots.length) {
+      var found = mots.filter(function (m) { return fw.some(function (w) { return w.indexOf(fold(m)) === 0; }); });
+      out.push({ id: 'mots', ok: found.length > 0, t: found.length ? 'Des mots du dossier.' : 'Aucun mot clé de la sous-partie : reprends les mots du dossier.' });
+    }
+    return out;
+  }
+
   /* ---------- Formats français ---------- */
   function dec(x, d) {
     if (x === null || x === undefined || !isFinite(x)) return '—';
@@ -119,6 +161,6 @@ var CORE = (function () {
 
   return { num: num, uid: uid, clone: clone, blank: blank, normalize: normalize, stable: stable, pick: pick, merge: merge, same: same, live: live,
     elapsed: elapsed, pause: pause, resume: resume, finish: finish, reopen: reopen, ends: ends, phaseAt: phaseAt,
-    gridNote: gridNote, oralNote: oralNote, draw: draw, dec: dec, clock: clock, hm: hm, dur: dur, pad: pad };
+    gridNote: gridNote, oralNote: oralNote, draw: draw, titleCheck: titleCheck, fold: fold, dec: dec, clock: clock, hm: hm, dur: dur, pad: pad };
 })();
 if (typeof module !== 'undefined') module.exports = CORE;

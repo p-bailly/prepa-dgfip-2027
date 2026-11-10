@@ -16,7 +16,7 @@ const css = [
   '/* --- « 07 Charte DA/pastille/appli.css » --- */', charte('appli.css'),
   SRC('style.css')
 ].join('\n');
-const js = [SRC('data.js'), SRC('core.js'), SRC('app.js')].join('\n');
+const js = [SRC('data.js'), SRC('exos.js'), SRC('core.js'), SRC('app.js')].join('\n');
 // Synchro du compte, partagée avec les autres applis ; manifeste et service worker du site (chemins relatifs à /atelier/).
 const sync = fs.readFileSync(path.join(__dirname, '..', 'commun', 'sync.js'), 'utf8');
 // Correctif iOS de la barre d'onglets du bas, commun aux trois applis.

@@ -26,8 +26,10 @@ Les dossiers numérotés 05 (sources des fiches) et 08 (`08 Depots/`, dépôts r
 - **QRC** : `src/core.js` (aléa reproductible, arrondis, vérification) + `t_*.js` (types d'exercices, registre `T`) +
   `annales.js` (sujets réels rejouables) sont concaténés dans `dist/engine.js` (exporte `T, ANNALES, U, AM`), que
   `test/test.js` vérifie (corrigés sur sujets réels + milliers de variantes aléatoires).
-- **Écrit et oral** : `src/data.js` (données), `core.js` (fusion, chrono, notes), `app.js` ; `test/test.js` contrôle aussi
-  la page construite, et `build.js` vérifie que chaque `<script>` s'analyse.
+- **Écrit et oral** : `src/data.js` (données), `exos.js` (exercices de plan de la note de synthèse : titres à trier,
+  meilleur intitulé, titres à réécrire, libellé → plan, dossiers à ranger), `core.js` (fusion, chrono, notes, `titleCheck` :
+  repères automatiques d'un titre de plan), `app.js` (vue `#exos`, reliée à l'onglet Écrit) ; `test/test.js` contrôle aussi
+  la page construite (et que chaque titre modèle des exercices passe `titleCheck`), et `build.js` vérifie que chaque `<script>` s'analyse.
 
 ## Synchronisation (`commun/sync.js`, Firebase)
 - Projet `prepa-dgfip-2027` ; SDK Firebase 12.19.0 chargé depuis gstatic seulement après connexion. Comptes e-mail/mot de
@@ -52,7 +54,7 @@ Les dossiers numérotés 05 (sources des fiches) et 08 (`08 Depots/`, dépôts r
   connexion) écrase le compte et l'autre appareil garde ses données pour lui jusqu'à sa prochaine sauvegarde.
   Fusions : QCM carte par carte (planning de la révision la plus récente ; compteurs de réponses par appareil, 9e élément
   `{appareil: [réponses, justes]}` de la carte, fusionnés au maximum, les 7e et 8e étant les compteurs figés d'avant), QRC type par type (champ `u` ; un type vidé ou effacé reste à
-  zéro daté, une épreuve supprimée entre dans `xdel`), atelier entrée par entrée (`updatedAt`, pierres tombales).
+  zéro daté, une épreuve supprimée entre dans `xdel`), atelier entrée par entrée (`updatedAt`, pierres tombales ; `ecrits`, `oraux`, `exos`).
 - `PrepaSync.peek(clé, cb)` : lecture seule du compte. L'accueil l'utilise pour afficher la plus récente des deux
   progressions (navigateur, compte), car les applis ne fusionnent dans le navigateur que lorsqu'elles sont ouvertes.
 - Dépôts de fichiers (copies, oraux) : `users/{uid}/depots/{id}` + `parts/{n}` (base64, morceaux de 700 000 octets,
