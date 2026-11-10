@@ -3,9 +3,9 @@
   'use strict';
   var C = CORE, D = DATA;
   var KEY = 'atelier-ecrit-oral-v1', UIKEY = 'atelier-ecrit-oral-ui', TITLE = document.title || 'Atelier écrit et oral';
-  var VIEWS = ['ecrit', 'oral', 'banque', 'progres', 'reperes', 'reglages'];
+  var VIEWS = ['ecrit', 'exos', 'oral', 'banque', 'progres', 'reperes', 'reglages'];
   var S = C.blank();                                    // état synchronisable
-  var UI = { view: 'ecrit', cat: 'all', dur: 180, hist: '', sujet: {}, libre: '', oq: '', recent: [], trans: true, rep: '', park: '', bcat: 'all' }; // préférences de cet appareil
+  var UI = { view: 'ecrit', cat: 'all', dur: 180, hist: '', sujet: {}, libre: '', oq: '', recent: [], trans: true, rep: '', park: '', bcat: 'all', ex: {}, exd: {} }; // préférences de cet appareil
   var T = { open: {}, confirm: null, saved: null, lastPhase: null, over: false, oral: null, att: null, rec: null, micErr: null,
     oscores: {}, ocomment: '', oeval: false, osaved: null, olimitHit: false, pending: false, more: 0, trans: '', interim: '', tr: null, trErr: null };
   var QBY = {}; D.Q.forEach(function (q) { QBY[q.id] = q; });
@@ -55,6 +55,7 @@
     flag: '<path d="M5.5 21V4.5M5.5 5h11l-2 4 2 4h-11"/>',
     book: '<path d="M4.5 5.5c2.5-1 5-1 7.5.5v13c-2.5-1.5-5-1.5-7.5-.5zM19.5 5.5c-2.5-1-5-1-7.5.5v13c2.5-1.5 5-1.5 7.5-.5z"/>',
     redo: '<path d="M5 12a7 7 0 1 0 2.1-5M5 4.5V8h3.5"/>',
+    back: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
     minus: '<path d="M6 12h12"/>',
     plus: '<path d="M12 5v14M5 12h14"/>'
   };
@@ -89,6 +90,7 @@
       if (!(UI.dur >= 30 && UI.dur <= 900)) UI.dur = 180;
       if (!Array.isArray(UI.recent)) UI.recent = [];
       if (!UI.sujet || typeof UI.sujet !== 'object') UI.sujet = {};
+      ['ex', 'exd'].forEach(function (k) { if (!UI[k] || typeof UI[k] !== 'object' || Array.isArray(UI[k])) UI[k] = {}; });
     },
     saveLocal: function () { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } },
     save: function () { this.saveLocal(); Sync.changed(); },
@@ -273,14 +275,15 @@
   function softRender() { if (editing()) { T.pending = true; return; } render(); }
   function render() {
     T.pending = false;
-    document.querySelectorAll('#tabs [data-v], #bottomnav [data-v]').forEach(function (b) { if (b.dataset.v === UI.view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+    var nav = UI.view === 'exos' ? 'ecrit' : UI.view;
+    document.querySelectorAll('#tabs [data-v], #bottomnav [data-v]').forEach(function (b) { if (b.dataset.v === nav) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
     var ex = D.EXAMS[profil()], d = new Date(ex.date[0], ex.date[1], ex.date[2]), j = daysTo(d), st = $('#stamp');
     st.hidden = j < 0;
     st.innerHTML = '<span>Écrit</span><b>' + (j > 0 ? 'J-' + j : 'Jour J') + '</b>';
     st.title = 'Écrit ' + ex.label + ' · ' + d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
     document.querySelectorAll('#profil [data-p]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.p === profil())); });
     var v = $('#view');
-    v.innerHTML = UI.view === 'oral' ? viewOral() : UI.view === 'banque' ? viewBanque() : UI.view === 'progres' ? viewProgres() : UI.view === 'reperes' ? viewReperes() : UI.view === 'reglages' ? viewReglages() : viewEcrit();
+    v.innerHTML = UI.view === 'exos' ? viewExos() : UI.view === 'oral' ? viewOral() : UI.view === 'banque' ? viewBanque() : UI.view === 'progres' ? viewProgres() : UI.view === 'reperes' ? viewReperes() : UI.view === 'reglages' ? viewReglages() : viewEcrit();
     measure();
     if (UI.view === 'oral') { refreshRecs(); updRec(); }
     if (UI.view === 'progres') { drawChart(); fillAnswerRecs(); }
@@ -326,7 +329,7 @@
   function viewEcritHome() {
     var p = profil(), ep = epOf(p), list = sujetsOf(ep), sel = selSujet(ep);
     var h = '<section class="hero"><span class="eyebrow">Écrit · concours ' + tx(ep.concours) + '</span><h1 class="h-page">' + tx(ep.nom) + '</h1></section>';
-    h += profSeg();
+    h += ecritSeg('ecrit') + profSeg();
     var wait = S.cur.run && S.cur.run.endedAt && D.EP[S.cur.run.ep] ? S.cur.run : null;
     if (wait) {
       h += '<div class="callout warn"><span class="ic">' + ico('alert') + '</span><div><h4>Une copie attend d’être notée</h4><p class="small">' + tx(titreOf(wait) + ' · rendue le ' + fdate(wait.endedAt) + ' à ' + fhour(wait.endedAt)) + '</p>';
@@ -838,10 +841,10 @@
     var h = '<section class="hero"><h1 class="h-page">Réglages</h1></section>';
     var lab = ''; try { if (Sync.on && typeof window.PrepaSync.label === 'function') lab = window.PrepaSync.label(); } catch (e) { }
     h += '<article class="sheet"><h2 class="h-sec">Tes données</h2><p class="small">' + tx(lab ? 'Progression ' + lab + '.' : 'Historique enregistré dans ce navigateur.') + ' <span id="audioinfo"></span></p>';
-    h += '<div class="row"><button type="button" class="btn sm danger" data-act="wipeask" data-what="ecrits">Effacer l’historique écrit</button><button type="button" class="btn sm danger" data-act="wipeask" data-what="oraux">Effacer l’historique oral</button><button type="button" class="btn sm danger" data-act="wipeask" data-what="audio">Supprimer les enregistrements</button></div>';
+    h += '<div class="row"><button type="button" class="btn sm danger" data-act="wipeask" data-what="ecrits">Effacer l’historique écrit</button><button type="button" class="btn sm danger" data-act="wipeask" data-what="oraux">Effacer l’historique oral</button><button type="button" class="btn sm danger" data-act="wipeask" data-what="exos">Effacer les exercices de plan</button><button type="button" class="btn sm danger" data-act="wipeask" data-what="audio">Supprimer les enregistrements</button></div>';
     if (T.confirm && T.confirm.indexOf('wipe:') === 0) {
       var w = T.confirm.slice(5);
-      h += confirmBox(w === 'audio' ? 'Supprimer tous les enregistrements audio de cet appareil ?' : w === 'ecrits' ? 'Effacer tout l’historique écrit, sur tous tes appareils synchronisés ?' : 'Effacer tout l’historique oral, sur tous tes appareils synchronisés ? Les enregistrements liés seront aussi supprimés de cet appareil.', 'wipe', 'Effacer');
+      h += confirmBox(w === 'audio' ? 'Supprimer tous les enregistrements audio de cet appareil ?' : w === 'ecrits' ? 'Effacer tout l’historique écrit, sur tous tes appareils synchronisés ?' : w === 'exos' ? 'Effacer les résultats des exercices de plan, sur tous tes appareils synchronisés ?' : 'Effacer tout l’historique oral, sur tous tes appareils synchronisés ? Les enregistrements liés seront aussi supprimés de cet appareil.', 'wipe', 'Effacer');
     }
     return h + '</article>';
   }
@@ -901,6 +904,264 @@
       var mo = l.reduce(function (a, m) { return a + (m.size || 0); }, 0) / 1048576;
       el.textContent = l.length ? ty(l.length + ' enregistrement' + (l.length > 1 ? 's' : '') + ' audio (' + C.dec(mo, 1) + ' Mo) sur cet appareil seulement : ils ne sont jamais synchronisés.') : 'Aucun enregistrement audio sur cet appareil.';
     });
+  }
+
+  /* ===== Exercices de plan (note de synthèse) =====
+     Intitulés dynamiques (repérer, choisir, réécrire) puis plan dynamique à partir des documents (libellé, dossiers).
+     L’exercice en cours et les brouillons restent sur cet appareil (UI.ex, UI.exd) ; le dernier résultat de chaque
+     exercice est synchronisé (S.exos), pour suivre ce qui est fait. */
+  var X = EXOS, XBY = {};
+  ['TRI', 'CHOIX', 'REECRIRE', 'LIBELLES', 'DOSSIERS'].forEach(function (k) { X[k].forEach(function (o) { XBY[k + ':' + o.id] = o; }); });
+  var XKEY = { tri: 'TRI', ch: 'CHOIX', re: 'REECRIRE', lib: 'LIBELLES', dos: 'DOSSIERS' };
+  var XNOM = { tri: 'Dynamique ou à reprendre ?', ch: 'Le meilleur intitulé', re: 'Réécris le titre', lib: 'Du libellé au plan', dos: 'Du dossier au plan' };
+  function xitem(mode, id) { return XBY[XKEY[mode] + ':' + id] || null; }
+  function xres(key) { var r = S.exos[key]; return r && !r.deleted ? r : null; }
+  function exRec(key, ok, n) {
+    var now = Date.now(), p = xres(key);
+    S.exos[key] = { id: key, ok: ok, n: n, best: Math.max(ok, p ? C.num(p.best) : 0), tries: (p ? C.num(p.tries) : 0) + 1, date: now, updatedAt: now };
+    Store.save();
+  }
+  function shuffled(n) { var a = []; for (var i = 0; i < n; i++) a.push(i); for (var j = n - 1; j > 0; j--) { var k = Math.floor(Math.random() * (j + 1)), t = a[j]; a[j] = a[k]; a[k] = t; } return a; }
+  function exSet(o) { UI.ex = o; Store.saveUI(); }
+  function sujetTag(id) { var s = sujetBy(id); return s ? '<span class="badge out">' + tx(s.kind) + '</span><b>' + tx(s.titre) + '</b>' : ''; }
+  function ecritSeg(cur) {
+    return '<div class="seg wide rtabs" role="group" aria-label="Écrit"><button type="button" data-v="ecrit" aria-pressed="' + (cur === 'ecrit') + '">' + ico('clock') + 'Épreuve chronométrée</button><button type="button" data-v="exos" aria-pressed="' + (cur === 'exos') + '">' + ico('flag') + 'Exercices de plan</button></div>';
+  }
+  // Repères automatiques d’un titre ; mots : mots clés de la sous-partie
+  function motsOf(key) {
+    var a = String(key).split(':');
+    if (a[0] === 're') { var r = xitem('re', a[1]); return r ? r.mots : null; }
+    if (a[0] === 'dos') { var d = xitem('dos', a[1]), k = Number(a[2]); return d && d.parts[k] ? d.parts[k].mots : null; }
+    return null;
+  }
+  function chkHtml(text, mots) {
+    if (!String(text || '').trim()) return '<p class="small muted">Écris ton titre pour voir les repères.</p>';
+    return '<ul class="tchk">' + C.titleCheck(text, mots).map(function (c) { return '<li class="' + (c.ok ? 'ok' : 'bad') + '">' + ico(c.ok ? 'check' : 'cross') + '<span>' + tx(c.t) + '</span></li>'; }).join('') + '</ul>';
+  }
+  function chkId(key) { return 'chk-' + String(key).replace(/[^a-z0-9]/gi, '-'); }
+  function titleField(key, label, open) {
+    var v = UI.exd[key] || '';
+    return '<label class="field"><span>' + label + '</span><textarea class="input tt" data-k="' + esc(key) + '" maxlength="300" rows="2" placeholder="Une phrase, une ligne et demie au plus">' + esc(v) + '</textarea></label>'
+      + (open ? '<div class="chkbox" id="' + chkId(key) + '">' + chkHtml(v, motsOf(key)) + '</div>' : '');
+  }
+  function updChecks(t) { var b = document.getElementById(chkId(t.dataset.k)); if (b) b.innerHTML = chkHtml(t.value, motsOf(t.dataset.k)); }
+  function exHead(label, pos) {
+    return '<div class="exhead"><button type="button" class="btn sm ghost" data-act="exhome">' + ico('back') + 'Exercices</button><span class="eyebrow">' + tx(label) + '</span>' + (pos ? '<span class="small mono">' + pos + '</span>' : '') + '</div>';
+  }
+
+  function viewExos() {
+    var m = UI.ex && UI.ex.mode;
+    if (m === 'tri') return viewTri();
+    if (m === 'ch' || m === 'lib') return viewQcm();
+    if (m === 're') return viewRe();
+    if (m === 'dos' && xitem('dos', UI.ex.id)) return viewDos();
+    return viewExHome();
+  }
+  function boite() {
+    var M = X.METHODE;
+    var h = '<div class="rgrid">';
+    h += '<div class="stack"><h3 class="h-card">Ce que demandent le guide et la fiche</h3><ul class="plain small">' + M.regles.map(function (r) { return '<li>' + tx(r.t) + '</li>'; }).join('') + '</ul>' + srcsAll(M.regles) + '</div>';
+    h += '<div class="stack"><h3 class="h-card">Trouver le titre en quatre gestes</h3><ol class="rsteps small">' + M.gestes.map(function (g) { return '<li><b>' + tx(g.t) + '</b><span>' + tx(g.d) + '</span></li>'; }).join('') + '</ol></div>';
+    h += '<div class="stack"><h3 class="h-card">Formules qui font avancer</h3><ul class="plain small">' + M.formules.map(function (f) { return '<li><b>' + tx(f.f) + '</b> · ' + tx(f.ex) + '</li>'; }).join('') + '</ul></div>';
+    h += '<div class="stack"><h3 class="h-card">Pièges</h3><ul class="plain small">' + M.pieges.map(function (p) { return '<li>' + tx(p) + '</li>'; }).join('') + '</ul></div>';
+    h += '<div class="stack"><h3 class="h-card">Le mouvement du plan, souvent donné par la consigne</h3><ul class="plain small">' + M.mouvements.map(function (p) { return '<li><b>' + tx(p.t) + '</b> · ' + tx(p.ex) + '</li>'; }).join('') + '</ul><p class="small">' + tx(M.testDonc) + '</p></div>';
+    return h + '</div>';
+  }
+  function exStat(mode) {
+    var list = X[XKEY[mode]], done = 0, good = 0;
+    list.forEach(function (o) { var r = xres(mode + ':' + o.id); if (r) { done++; if (r.ok >= r.n) good++; } });
+    if (!done) return 'Pas encore commencé';
+    if (mode === 're') return done + ' titre' + (done > 1 ? 's' : '') + ' réécrit' + (done > 1 ? 's' : '') + ' sur ' + list.length + ' · ' + good + ' sans défaut repéré';
+    return done + ' sur ' + list.length + ' faits · ' + good + ' juste' + (good > 1 ? 's' : '') + ' au dernier essai';
+  }
+  function exCard(mode, id, tag, title, desc, stat) {
+    return '<button type="button" class="excard" data-act="exgo" data-mode="' + mode + '"' + (id ? ' data-id="' + esc(id) + '"' : '') + '><span class="row"><span class="badge acc">' + tx(tag) + '</span></span><b>' + tx(title) + '</b><span class="small muted">' + tx(desc) + '</span><span class="small">' + tx(stat) + '</span></button>';
+  }
+  function viewExHome() {
+    var any = Object.keys(S.exos).some(function (k) { return !S.exos[k].deleted; });
+    var h = '<section class="hero"><span class="eyebrow">Écrit · note de synthèse</span><h1 class="h-page">Exercices de plan</h1></section>' + ecritSeg('exos');
+    if (profil() === 'C') h += '<p class="small muted">Pensés pour la note de synthèse de l’inspecteur ; ils servent aussi à structurer tes réponses de l’analyse de dossier.</p>';
+    h += '<details class="sheet fold"' + (any ? '' : ' open') + '><summary><h2 class="h-sec">Boîte à outils de l’intitulé dynamique</h2><span class="small muted">Règles du guide, méthode en quatre gestes, formules, pièges</span></summary>' + boite() + '</details>';
+    h += '<h2 class="h-sec">Trouver et rédiger des intitulés dynamiques</h2><div class="exgrid">';
+    h += exCard('tri', '', 'Repérer', XNOM.tri, 'Une série de ' + X.TRI_N + ' titres : message ou simple tiroir ?', exStat('tri'));
+    h += exCard('ch', '', 'Choisir', XNOM.ch, X.CHOIX.length + ' sous-parties réelles, quatre intitulés possibles, un seul à retenir.', exStat('ch'));
+    h += exCard('re', '', 'Rédiger', XNOM.re, X.REECRIRE.length + ' titres statiques à transformer, avec des repères automatiques et des propositions.', exStat('re'));
+    h += '</div><h2 class="h-sec">Bâtir un plan dynamique à partir des documents</h2><div class="exgrid">';
+    h += exCard('lib', '', 'Consigne', XNOM.lib, X.LIBELLES.length + ' consignes d’annales : quel plan en deux parties suit la démonstration demandée ?', exStat('lib'));
+    X.DOSSIERS.forEach(function (d) {
+      var r = xres('dos:' + d.id);
+      h += exCard('dos', d.id, 'Dossier', d.titre, d.info + ' · ' + d.idees.length + ' idées à ranger, quatre titres à rédiger.', r ? 'Dernier essai : ' + r.ok + '/' + r.n + ' · meilleur : ' + r.best + '/' + r.n : 'Pas encore commencé');
+    });
+    h += '</div><p class="small muted">' + tx('Les repères automatiques signalent les défauts de forme (thème sans message, question, avis, longueur) : ils ne jugent pas le fond. Les titres à reprendre et les distracteurs sont rédigés pour l’atelier ; les plans des dossiers viennent des corrigés de tes documents.') + '</p>';
+    return h;
+  }
+  function startEx(mode, id) {
+    if (mode === 'tri') {
+      // Priorité aux titres jamais vus, puis à ceux manqués, puis aux autres
+      var rank = function (o) { var r = xres('tri:' + o.id); return !r ? 0 : r.ok < r.n ? 1 : 2; };
+      var pool = X.TRI.map(function (o) { return { id: o.id, r: rank(o), x: Math.random() }; }).sort(function (a, b) { return a.r - b.r || a.x - b.x; });
+      var pick = pool.slice(0, X.TRI_N).map(function (p) { return p.id; }), ord = shuffled(pick.length);
+      return exSet({ mode: 'tri', list: ord.map(function (i) { return pick[i]; }), i: 0, ans: {} });
+    }
+    if (mode === 'ch' || mode === 'lib') {
+      var L = X[XKEY[mode]], o2 = shuffled(L.length), ordm = {};
+      L.forEach(function (it) { ordm[it.id] = shuffled(it.o.length); });
+      return exSet({ mode: mode, list: o2.map(function (i) { return L[i].id; }), i: 0, ans: {}, ord: ordm });
+    }
+    if (mode === 're') { var first = X.REECRIRE.filter(function (r) { return !xres('re:' + r.id); })[0]; return exSet({ mode: 're', i: first ? X.REECRIRE.indexOf(first) : 0, chk: {} }); }
+    if (mode === 'dos') { var d = xitem('dos', id); if (!d) return; return exSet({ mode: 'dos', id: id, step: 1, axe: null, aord: shuffled(d.axes.length), iord: shuffled(d.idees.length), sort: {}, checked: false, tchk: false }); }
+  }
+  function bilan(mode) {
+    var e = UI.ex, good = e.list.filter(function (id) { return e.ans[id] && e.ans[id].ok; }).length;
+    var h = exHead(XNOM[mode], '') + '<div class="score"><span class="big">' + good + '<small>/' + e.list.length + '</small></span><div class="stack" style="gap:4px"><b>' + (good === e.list.length ? 'Sans faute' : good >= e.list.length / 2 ? 'Bien engagé' : 'À retravailler') + '</b><span class="small muted">' + tx(exStat(mode)) + '</span></div></div>';
+    h += '<article class="sheet"><h2 class="h-sec">Récapitulatif</h2><div class="hlist">' + e.list.map(function (id) {
+      var it = xitem(mode, id), a = e.ans[id] || {}, lab = mode === 'tri' ? it.t : mode === 'ch' ? it.o[0].t : 'I. ' + it.o[0].I + ' · II. ' + it.o[0].II;
+      return '<div class="xrow"><span class="badge ' + (a.ok ? 'ok' : 'bad') + '">' + ico(a.ok ? 'check' : 'cross') + (a.ok ? 'juste' : 'faux') + '</span><span class="small">' + tx(lab) + (mode === 'tri' ? ' · <b>' + (it.dyn ? 'dynamique' : 'à reprendre') + '</b>' : '') + '</span></div>';
+    }).join('') + '</div></article>';
+    h += '<div class="row"><button type="button" class="btn pri" data-act="exgo" data-mode="' + mode + '">' + ico('redo') + (mode === 'tri' ? 'Nouvelle série' : 'Recommencer') + '</button><button type="button" class="btn" data-act="exhome">' + ico('back') + 'Retour aux exercices</button></div>';
+    return h;
+  }
+  function viewTri() {
+    var e = UI.ex; if (e.i >= e.list.length) return bilan('tri');
+    var it = xitem('tri', e.list[e.i]); if (!it) { exSet({}); return viewExHome(); }
+    var a = e.ans[it.id], h = exHead(XNOM.tri, (e.i + 1) + ' / ' + e.list.length);
+    h += '<article class="sheet"><div class="qbox"><span class="eyebrow">Ce titre de partie est-il dynamique ?</span><p class="question">« ' + tx(it.t) + ' »</p></div>';
+    h += '<div class="opts xopts' + (a ? ' locked' : '') + '">' + [[1, 'Dynamique', 'Il affirme une idée et fait avancer la démonstration.', 'check'], [0, 'À reprendre', 'Thème, étiquette, question, avis ou paragraphe.', 'cross']].map(function (o) {
+      var cls = !a ? '' : (o[0] === (it.dyn ? 1 : 0) ? ' right' : a.v === o[0] ? ' wrong' : '');
+      return '<button type="button" class="opt' + cls + '" data-act="extri" data-ans="' + o[0] + '"' + (a ? ' disabled' : '') + '><span class="box">' + ico(o[3]) + '</span><span class="t"><b>' + tx(o[1]) + '</b><span class="small muted">' + tx(o[2]) + '</span></span><span class="lab">' + (a && a.v === o[0] ? 'ta réponse' : '') + '</span></button>';
+    }).join('') + '</div>';
+    if (a) h += '<div class="callout ' + (a.ok ? 'ok' : 'bad') + '"><span class="ic">' + ico(a.ok ? 'check' : 'cross') + '</span><div><h4>' + (a.ok ? 'Juste' : 'Faux') + ' · ' + (it.dyn ? 'titre dynamique' : 'titre à reprendre') + '</h4><p class="small">' + tx(it.why) + '</p></div></div><div class="row"><button type="button" class="btn pri" data-act="exnext">' + ico('arrow') + (e.i + 1 < e.list.length ? 'Titre suivant' : 'Voir le bilan') + '</button></div>';
+    return h + '</article>';
+  }
+  function viewQcm() {
+    var e = UI.ex, mode = e.mode; if (e.i >= e.list.length) return bilan(mode);
+    var it = xitem(mode, e.list[e.i]); if (!it) { exSet({}); return viewExHome(); }
+    var a = e.ans[it.id], ord = (e.ord && e.ord[it.id]) || shuffled(it.o.length), h = exHead(XNOM[mode], (e.i + 1) + ' / ' + e.list.length);
+    h += '<article class="sheet"><div class="qbox"><span class="row">' + sujetTag(it.sujet) + '</span>';
+    if (mode === 'ch') h += '<span class="eyebrow">' + tx(it.part) + ' · ce qu’elle contient</span><p>' + tx(it.contenu) + '</p><b>Quel intitulé retenir ?</b>';
+    else h += '<span class="eyebrow">La consigne demande</span><p>« ' + tx(it.cle) + ' »</p><b>Quel plan en deux parties retenir ?</b>';
+    h += '</div><div class="opts xopts' + (a ? ' locked' : '') + '">' + ord.map(function (k, j) {
+      var o = it.o[k], cls = !a ? '' : k === 0 ? ' right' : a.v === k ? ' wrong' : '';
+      var body = mode === 'ch' ? '<b>' + tx(o.t) + '</b>' : '<span>I. ' + tx(o.I) + '</span><span>II. ' + tx(o.II) + '</span>';
+      return '<button type="button" class="opt' + cls + '" data-act="exopt" data-k="' + k + '"' + (a ? ' disabled' : '') + '><span class="box">' + (a ? ico(k === 0 ? 'check' : 'cross') : 'ABCD'[j]) + '</span><span class="t">' + body + (a ? '<span class="small muted">' + tx(o.why) + '</span>' : '') + '</span><span class="lab">' + (a && a.v === k ? 'ta réponse' : '') + '</span></button>';
+    }).join('') + '</div>';
+    if (a) h += '<div class="row"><button type="button" class="btn pri" data-act="exnext">' + ico('arrow') + (e.i + 1 < e.list.length ? 'Suivant' : 'Voir le bilan') + '</button>' + srcs(it.src) + '</div>';
+    return h + '</article>';
+  }
+  function viewRe() {
+    var e = UI.ex, n = X.REECRIRE.length, i = Math.max(0, Math.min(n - 1, C.num(e.i))), it = X.REECRIRE[i], key = 're:' + it.id, done = !!(e.chk && e.chk[it.id]), r = xres(key);
+    var h = exHead(XNOM.re, (i + 1) + ' / ' + n);
+    h += '<article class="sheet"><div class="qbox"><span class="row">' + sujetTag(it.sujet) + '</span><span class="eyebrow">Titre à reprendre</span><p class="question">« ' + tx(it.statique) + ' »</p><span class="eyebrow">Ce que contient la sous-partie</span><p>' + tx(it.contenu) + '</p></div>';
+    h += titleField(key, 'Ton intitulé dynamique', done);
+    h += '<div class="row"><button type="button" class="btn pri" data-act="excheck">' + ico('check') + (done ? 'Revérifier' : 'Vérifier mon titre') + '</button>' + (r ? '<span class="small muted">' + tx('Dernière vérification : ' + r.ok + ' repère' + (r.ok > 1 ? 's' : '') + ' sur ' + r.n) + '</span>' : '') + '</div>';
+    h += '<details class="pistes"' + (done ? ' open' : '') + '><summary>Propositions et questions à te poser</summary><div class="body"><ul class="plain">' + it.modeles.map(function (m) { return '<li><b>' + tx(m) + '</b></li>'; }).join('') + '</ul>';
+    h += '<p class="small">' + tx('Ton titre dit-il ce que démontre la sous-partie, et pas seulement de quoi elle parle ? Reprend-il les mots du dossier ? Pourrait-il servir tel quel pour un autre dossier ? Si oui, il est trop vague.') + '</p>' + srcs(it.src) + '</div></details>';
+    h += '<div class="row between"><button type="button" class="btn" data-act="exprev"' + (i ? '' : ' disabled') + '>' + ico('back') + 'Précédent</button><button type="button" class="btn" data-act="exnext"' + (i < n - 1 ? '' : ' disabled') + '>Suivant' + ico('arrow') + '</button></div>';
+    return h + '</article>';
+  }
+  var STEPS = ['Lire', 'Choisir l’axe', 'Ranger les idées', 'Rédiger les titres', 'Corrigé'];
+  function dosReach(e, n) { return n <= 2 || (n === 3 || n === 5 ? e.axe !== null && e.axe !== undefined : e.checked); }
+  function partLab(d, k) { return X.PARTS[k] + ' · ' + d.etiquettes[k]; }
+  function viewDos() {
+    var e = UI.ex, d = xitem('dos', e.id), s = sujetBy(d.sujet); e.sort = e.sort || {};
+    var step = Math.max(1, Math.min(5, C.num(e.step) || 1));
+    if (!dosReach(e, step)) step = 1;
+    var h = exHead(XNOM.dos, 'Étape ' + step + ' / 5');
+    h += '<section class="hero"><span class="eyebrow">' + tx(d.info) + '</span><h1 class="h-sec">' + tx(d.titre) + '</h1></section>';
+    h += '<div class="chips" role="group" aria-label="Étapes">' + STEPS.map(function (t, j) { var n = j + 1; return '<button type="button" data-act="exstep" data-n="' + n + '" aria-pressed="' + (n === step) + '"' + (dosReach(e, n) ? '' : ' disabled') + '><span class="mono small">' + n + '</span>' + tx(t) + '</button>'; }).join('') + '</div>';
+    h += '<article class="sheet">';
+    if (step === 1) {
+      h += '<h2 class="h-card">La consigne de l’exercice 1</h2><p class="consigne-x">' + tx(d.consigne) + '</p>';
+      h += '<p class="small">' + tx('Repère d’abord les volets imposés (« d’une part… d’autre part », « mais aussi ») : ils donnent le mouvement du plan. Puis relève, document par document, l’idée et le chiffre qui l’illustre.') + '</p>';
+      if (d.docs) h += '<h3 class="h-card">Les ' + d.docs.length + ' documents</h3><ol class="docs-l small">' + d.docs.map(function (t) { return '<li>' + tx(t) + '</li>'; }).join('') + '</ol>';
+      h += '<div class="row">' + (s && s.pdf ? pdfBtn(s.pdf, d.docs ? 'Lire les documents' : 'Ouvrir le dossier') : '') + '</div>';
+      h += '<p class="small muted">' + tx('Les ' + d.idees.length + ' idées que tu rangeras à l’étape 3 sont celles que retient le corrigé.') + '</p>';
+      h += '<div class="row"><button type="button" class="btn pri" data-act="exstep" data-n="2">' + ico('arrow') + 'Choisir l’axe du plan</button></div>';
+    } else if (step === 2) {
+      var a = e.axe !== null && e.axe !== undefined;
+      h += '<h2 class="h-card">Quel plan en deux parties répond à la consigne ?</h2><div class="opts xopts' + (a ? ' locked' : '') + '">' + (e.aord || [0, 1, 2]).map(function (k, j) {
+        var o = d.axes[k], cls = !a ? '' : k === 0 ? ' right' : e.axe === k ? ' wrong' : '';
+        return '<button type="button" class="opt' + cls + '" data-act="exaxe" data-k="' + k + '"' + (a ? ' disabled' : '') + '><span class="box">' + (a ? ico(k === 0 ? 'check' : 'cross') : 'ABC'[j]) + '</span><span class="t"><span>I. ' + tx(o.I) + '</span><span>II. ' + tx(o.II) + '</span>' + (a ? '<span class="small muted">' + tx(o.why) + '</span>' : '') + '</span><span class="lab">' + (a && e.axe === k ? 'ta réponse' : '') + '</span></button>';
+      }).join('') + '</div>';
+      if (a) h += '<div class="row"><button type="button" class="btn pri" data-act="exstep" data-n="3">' + ico('arrow') + 'Ranger les idées</button></div>';
+    } else if (step === 3) {
+      var placed = Object.keys(e.sort || {}).length, good = 0;
+      d.idees.forEach(function (x, i) { if (e.sort[i] === x.p) good++; });
+      h += '<h2 class="h-card">Range chaque idée dans le plan</h2><div class="planm small"><div><b>I. ' + tx(d.I) + '</b><span>' + tx(partLab(d, 0)) + ' · ' + tx(partLab(d, 1)) + '</span></div><div><b>II. ' + tx(d.II) + '</b><span>' + tx(partLab(d, 2)) + ' · ' + tx(partLab(d, 3)) + '</span></div></div>';
+      h += '<p class="small muted">' + tx('Les étiquettes sont des thèmes de brouillon : à l’étape 4, tu les transformeras en titres dynamiques.') + '</p>';
+      if (e.checked) h += '<div class="callout ' + (good === d.idees.length ? 'ok' : 'warn') + '"><span class="ic">' + ico(good === d.idees.length ? 'check' : 'alert') + '</span><div><h4>' + good + ' idée' + (good > 1 ? 's' : '') + ' sur ' + d.idees.length + ' à la place du corrigé</h4><p class="small">' + tx(good === d.idees.length ? 'Ton classement suit celui du corrigé.' : 'Lis la correction sous chaque idée : c’est souvent l’angle qui décide (une recette ou un outil, un coût ou un emploi).') + '</p></div></div>';
+      h += '<div class="ideas">' + (e.iord || d.idees.map(function (x, i) { return i; })).map(function (i) {
+        var x = d.idees[i], v = e.sort[i], st = e.checked ? (v === x.p ? ' ok' : ' bad') : '';
+        var c = '<div class="idea' + st + '"><p>' + tx(x.t) + (x.d ? ' <span class="badge out">doc. ' + tx(x.d) + '</span>' : '') + '</p><div class="seg slots" role="group" aria-label="Place de l’idée">';
+        X.PARTS.forEach(function (pt, k) { c += '<button type="button" data-act="exsort" data-i="' + i + '" data-slot="' + k + '" aria-pressed="' + (v === k) + '"' + (e.checked ? ' disabled' : '') + ' title="' + esc(d.etiquettes[k]) + '">' + pt + '</button>'; });
+        c += '</div>';
+        if (e.checked) c += '<p class="fb">' + ico(v === x.p ? 'check' : 'cross') + '<span>' + tx(v === x.p ? 'Bien placée' + (x.why ? ' · ' + x.why : '') : 'Le corrigé la place en ' + partLab(d, x.p) + (x.why ? '. ' + x.why : '.')) + '</span></p>';
+        return c + '</div>';
+      }).join('') + '</div>';
+      h += '<div class="row">' + (e.checked ? '<button type="button" class="btn pri" data-act="exstep" data-n="4">' + ico('arrow') + 'Rédiger les titres</button><button type="button" class="btn" data-act="exsortreset">' + ico('redo') + 'Refaire le classement</button>' : '<button type="button" class="btn pri" data-act="exsortok"' + (placed < d.idees.length ? ' disabled' : '') + '>' + ico('check') + 'Vérifier le classement</button><span class="small muted">' + placed + ' / ' + d.idees.length + ' idées rangées</span>') + '</div>';
+    } else if (step === 4) {
+      h += '<h2 class="h-card">Transforme chaque étiquette en intitulé dynamique</h2><p class="small">' + tx('Pour chaque sous-partie : ce que montrent ses idées, en une phrase, avec un verbe ou un lien logique et les mots du dossier.') + '</p>';
+      d.parts.forEach(function (p, k) {
+        if (k === 0 || k === 2) h += '<h3 class="gpart"><span>' + (k ? 'II. ' + tx(d.II) : 'I. ' + tx(d.I)) + '</span></h3>';
+        h += '<div class="tpart"><details class="pistes"><summary>' + tx(partLab(d, k)) + ' · ' + d.idees.filter(function (x) { return x.p === k; }).length + ' idées</summary><div class="body"><ul class="plain small">' + d.idees.filter(function (x) { return x.p === k; }).map(function (x) { return '<li>' + tx(x.t) + '</li>'; }).join('') + '</ul></div></details>';
+        h += titleField('dos:' + d.id + ':' + k, tx('Titre ' + X.PARTS[k]), e.tchk) + '</div>';
+      });
+      h += '<label class="field"><span>Transition entre I et II <span class="muted">(facultatif)</span></span><textarea class="input tt" data-k="' + esc('dos:' + d.id + ':tr') + '" maxlength="600" rows="2" placeholder="Si…, … : une phrase qui fait le bilan du I et ouvre sur le II">' + esc(UI.exd['dos:' + d.id + ':tr'] || '') + '</textarea></label>';
+      h += '<div class="row"><button type="button" class="btn" data-act="extitres">' + ico('check') + 'Vérifier mes titres</button><button type="button" class="btn pri" data-act="exstep" data-n="5">' + ico('arrow') + 'Voir le corrigé</button></div>';
+    } else {
+      h += '<h2 class="h-card">Le plan du corrigé</h2><div class="planm">';
+      [0, 1].forEach(function (half) {
+        h += '<div class="pI"><b>' + (half ? 'II. ' + tx(d.II) : 'I. ' + tx(d.I)) + '</b>';
+        [half * 2, half * 2 + 1].forEach(function (k) {
+          var p = d.parts[k], mine = (UI.exd['dos:' + d.id + ':' + k] || '').trim();
+          h += '<div class="pA"><b>' + 'AB'[k % 2] + '. ' + tx(p.titre) + '</b>';
+          if (p.off) h += '<span class="small muted">' + tx('Titre du corrigé officiel : « ' + p.off + ' », plus descriptif.') + '</span>';
+          if (mine) h += '<span class="small">Ton titre : « ' + tx(mine) + ' »</span>';
+          h += '<ul class="plain small">' + d.idees.filter(function (x) { return x.p === k; }).map(function (x) { return '<li>' + tx(x.t) + (x.d ? ' (doc. ' + tx(x.d) + ')' : '') + '</li>'; }).join('') + '</ul></div>';
+        });
+        h += '</div>';
+        if (!half) {
+          var mt = (UI.exd['dos:' + d.id + ':tr'] || '').trim();
+          h += '<div class="trx"><span class="eyebrow">Transition</span><p class="small">' + tx(d.transition) + '</p>' + (mt ? '<span class="small">Ta transition : « ' + tx(mt) + ' »</span>' : '') + '</div>';
+        }
+      });
+      h += '</div><div class="callout"><span class="ic">' + ico('info') + '</span><div><h4>Pourquoi ce plan est dynamique</h4><p class="small">' + tx(d.pourquoi) + '</p></div></div>';
+      h += '<p class="small"><b>Annonce du plan :</b> ' + tx(d.annonce) + '</p><p class="small muted">' + tx(X.METHODE.testDonc) + '</p>' + srcs(d.src);
+      h += '<div class="row"><button type="button" class="btn" data-act="exgo" data-mode="dos" data-id="' + esc(d.id) + '">' + ico('redo') + 'Recommencer ce dossier</button><button type="button" class="btn pri" data-act="exhome">' + ico('back') + 'Retour aux exercices</button></div>';
+    }
+    return h + '</article>';
+  }
+  function exAct(a, b) {
+    var e = UI.ex || {}, it;
+    switch (a) {
+      case 'exhome': exSet({}); render(); return window.scrollTo(0, 0);
+      case 'exgo': startEx(b.dataset.mode, b.dataset.id); render(); return window.scrollTo(0, 0);
+      case 'extri':
+        it = xitem('tri', e.list && e.list[e.i]); if (!it || e.ans[it.id]) return;
+        var v = Number(b.dataset.ans), ok = v === (it.dyn ? 1 : 0);
+        e.ans[it.id] = { v: v, ok: ok }; exRec('tri:' + it.id, ok ? 1 : 0, 1); Store.saveUI(); return render();
+      case 'exopt':
+        it = xitem(e.mode, e.list && e.list[e.i]); if (!it || e.ans[it.id]) return;
+        var k = Number(b.dataset.k); e.ans[it.id] = { v: k, ok: k === 0 }; exRec(e.mode + ':' + it.id, k === 0 ? 1 : 0, 1); Store.saveUI(); return render();
+      case 'exnext': e.i = C.num(e.i) + 1; if (e.mode === 're') e.i = Math.min(X.REECRIRE.length - 1, e.i); Store.saveUI(); render(); return window.scrollTo(0, 0);
+      case 'exprev': e.i = Math.max(0, C.num(e.i) - 1); Store.saveUI(); render(); return window.scrollTo(0, 0);
+      case 'excheck': {
+        var r = X.REECRIRE[C.num(e.i)], key = 're:' + r.id, txt = (UI.exd[key] || '').trim();
+        if (!txt) { toast('Écris d’abord ton titre.'); return; }
+        var cs = C.titleCheck(txt, r.mots); e.chk = e.chk || {}; e.chk[r.id] = true;
+        exRec(key, cs.filter(function (c) { return c.ok; }).length, cs.length); Store.saveUI(); return render();
+      }
+      case 'exstep': { var d0 = xitem('dos', e.id), n = Number(b.dataset.n); if (!d0 || !dosReach(e, n)) return; e.step = n; Store.saveUI(); render(); return window.scrollTo(0, 0); }
+      case 'exaxe': if (e.axe !== null && e.axe !== undefined) return; e.axe = Number(b.dataset.k); Store.saveUI(); return render();
+      case 'exsort': if (e.checked) return; e.sort = e.sort || {}; var i = b.dataset.i, sl = Number(b.dataset.slot); if (e.sort[i] === sl) delete e.sort[i]; else e.sort[i] = sl; Store.saveUI(); return render();
+      case 'exsortok': {
+        var d = xitem('dos', e.id); if (!d || Object.keys(e.sort || {}).length < d.idees.length) return;
+        var good = d.idees.filter(function (x, j) { return e.sort[j] === x.p; }).length;
+        e.checked = true; exRec('dos:' + d.id, good + (e.axe === 0 ? 1 : 0), d.idees.length + 1); Store.saveUI(); return render();
+      }
+      case 'exsortreset': e.sort = {}; e.checked = false; Store.saveUI(); return render();
+      case 'extitres': e.tchk = true; Store.saveUI(); return render();
+    }
   }
 
   /* ===== Repères ===== */
@@ -988,6 +1249,7 @@
   function touchRun() { var t = Date.now(); if (S.cur.run) S.cur.run.updatedAt = t; S.cur.updatedAt = t; }
   function act(a, b) {
     var now = Date.now(), run = S.cur.run, q = curQ();
+    if (/^ex/.test(a)) return exAct(a, b);
     switch (a) {
       case 'cancel': T.confirm = null; return render();
       // Écrit
@@ -1074,7 +1336,7 @@
       case 'wipe': {
         var what = (T.confirm || '').slice(5); T.confirm = null;
         if (what === 'audio') { AudioDB.clear().then(render, render); return render(); }
-        var map = what === 'ecrits' ? S.ecrits : S.oraux, aids = Object.keys(map);
+        var map = what === 'ecrits' ? S.ecrits : what === 'exos' ? S.exos : S.oraux, aids = Object.keys(map);
         aids.forEach(function (k) { if (!map[k].deleted) map[k] = { id: k, deleted: true, date: map[k].date, updatedAt: now }; });
         if (what === 'oraux') AudioDB.list().then(function (l) { return AudioDB.del(l.filter(function (m) { return aids.indexOf(m.aid) >= 0; }).map(function (m) { return m.id; })); }).then(render, render);
         T.saved = null; Store.save(); return render();
@@ -1108,7 +1370,7 @@
     if (ds.rdelyes) { var row = b.closest('.r'); AudioDB.del(ds.rdelyes).then(function () { if (row) row.remove(); if (UI.view === 'oral') refreshRecs(); else fillAudioInfo(); }); return; }
     if (ds.act) return act(ds.act, b);
   });
-  var tSave = null;
+  var tSave = null, tUi = null;
   function onInput(ev) {
     var t = ev.target, run = S.cur.run;
     if (t.id === 'libre-t') { UI.libre = t.value; Store.saveUI(); return; }
@@ -1117,6 +1379,7 @@
     if (t.id === 'o-trans') { T.trans = t.value; return; }
     if (t.id === 'dep-in' && ev.type === 'change') { depAdd(t.files); t.value = ''; return; }
     if (t.id === 'o-trans-on') { UI.trans = t.checked; Store.saveUI(); return; }
+    if (t.dataset && t.dataset.k) { UI.exd[t.dataset.k] = t.value; updChecks(t); clearTimeout(tUi); tUi = setTimeout(function () { Store.saveUI(); }, 500); return; }
     if (!run || !run.endedAt) return;
     if (t.id === 'g-comment') { run.comment = t.value; touchRun(); clearTimeout(tSave); tSave = setTimeout(function () { Store.save(); }, 600); return; }
     if (t.dataset && t.dataset.defaut && ev.type === 'change') {
@@ -1136,7 +1399,7 @@
   var rz = null;
   window.addEventListener('resize', function () { measure(); clearTimeout(rz); rz = setTimeout(function () { if (UI.view === 'progres') drawChart(); }, 150); });
   document.addEventListener('visibilitychange', function () { if (!document.hidden) tick(); });
-  window.addEventListener('pagehide', function () { if (T.rec) Rec.stop(); clearTimeout(tSave); Store.saveLocal(); });
+  window.addEventListener('pagehide', function () { if (T.rec) Rec.stop(); clearTimeout(tSave); Store.saveLocal(); Store.saveUI(); });
   // Autre onglet : l’état local a changé (même navigateur)
   window.addEventListener('storage', function (ev) {
     if (ev.key !== KEY || !ev.newValue) return;

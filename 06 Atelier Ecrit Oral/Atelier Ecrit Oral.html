@@ -758,6 +758,47 @@ details.fold:not([open]) { gap: 0; }
 .depst.ok { color: var(--ok); font-weight: 800; }
 .depst svg { width: 16px; height: 16px; flex: none; }
 
+/* Exercices de plan */
+.exgrid { display: grid; gap: var(--s3); grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.excard { display: flex; flex-direction: column; gap: 6px; text-align: left; padding: var(--s4); border: var(--bw) solid var(--line-2); border-radius: var(--r-md); background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; min-height: var(--tap); }
+.excard:hover { border-color: var(--edge); }
+.excard b { font-size: var(--t-base); font-weight: 800; }
+.exhead { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); }
+.exhead .eyebrow { flex: 1 1 auto; }
+.rtabs button svg { width: 16px; height: 16px; vertical-align: -3px; margin-right: 6px; }
+.chips button[disabled] { opacity: .45; cursor: default; }
+.xopts .opt .t { display: flex; flex-direction: column; gap: 4px; }
+.xopts .opt .t b { font-weight: 800; }
+.qbox p { margin: 0; }
+.tchk { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: var(--t-sm); }
+.tchk li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 6px; align-items: start; }
+.tchk li svg { width: 16px; height: 16px; margin-top: 2px; stroke-width: 2.4; }
+.tchk li.ok svg { color: var(--ok); }
+.tchk li.bad { color: var(--bad); font-weight: 700; }
+textarea.input.tt { min-height: 64px; }
+.tpart { display: flex; flex-direction: column; gap: var(--s2); }
+.ideas { display: flex; flex-direction: column; gap: var(--s2); }
+.idea { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border: var(--bw) solid var(--line); border-radius: var(--r-md); background: var(--surface); }
+.idea p { margin: 0; font-size: var(--t-md); }
+.idea.ok { border-color: var(--ok); background: var(--ok-soft); }
+.idea.bad { border-color: var(--bad); background: var(--bad-soft); }
+.idea .fb { display: flex; gap: 6px; align-items: flex-start; font-size: var(--t-sm); font-weight: 700; }
+.idea .fb svg { width: 16px; height: 16px; flex: none; margin-top: 2px; stroke-width: 2.4; }
+.idea.ok .fb { color: var(--ok); }
+.idea.bad .fb { color: var(--bad); }
+.seg.slots { align-self: flex-start; }
+.seg.slots button { min-width: 52px; font-variant-numeric: tabular-nums; }
+.seg.slots button[disabled] { cursor: default; }
+.planm { display: flex; flex-direction: column; gap: var(--s3); }
+.planm > div { display: flex; flex-direction: column; gap: 4px; }
+.planm .pI > b { font-weight: 900; }
+.planm .pA { display: flex; flex-direction: column; gap: 4px; margin-left: 4px; padding-left: 12px; border-left: 3px solid var(--app); }
+.planm .trx { padding: 8px 12px; border-radius: 10px; background: var(--side); }
+.consigne-x { margin: 0; font-weight: 700; }
+.docs-l { margin: 0; padding-left: 22px; columns: 2 260px; column-gap: var(--s5); }
+.docs-l li { break-inside: avoid; padding: 2px 0; }
+.xrow { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; padding: 8px 2px; border-bottom: var(--bw) solid var(--line); }
+
 </style>
 </head>
 <body>
@@ -1531,6 +1572,374 @@ var DATA = (function () {
 })();
 if (typeof module !== 'undefined') module.exports = DATA;
 
+/* ===== Exercices de plan pour la note de synthèse =====
+   Deux familles : trouver et rédiger des intitulés dynamiques, puis bâtir un plan dynamique à partir de plusieurs documents.
+   Les règles portent leur source (« clé:page », voir DATA.SRC). Les dossiers reprennent les idées relevées dans les corrigés
+   de tes documents (fiche Sujets blancs, corrigé officiel du sujet test) ; les titres « à reprendre » et les distracteurs sont
+   rédigés pour l’atelier. Contrôlé par test/test.js : chaque titre modèle passe les repères automatiques de CORE.titleCheck. */
+var EXOS = (function () {
+  'use strict';
+
+  /* ---------- Boîte à outils ---------- */
+  var METHODE = {
+    regles: [
+      { t: 'Les parties ne sont pas des tiroirs thématiques mais les étapes d’une démonstration : c’est ce qu’on appelle un plan dynamique.', src: ['gnds:9', 'f05:3'] },
+      { t: 'Des titres apparents rédigés sous forme de phrases, précis et explicites ; jamais « Constat » ni « Problème ».', src: ['gnds:9', 'gnds:11', 'f05:3'] },
+      { t: 'Les mots du dossier, et des parties équilibrées en longueur comme en intérêt.', src: ['gnds:9', 'f05:3'] },
+      { t: 'Quand l’énoncé impose les volets (« d’une part… d’autre part »), le plan les suit à la lettre et dans cet ordre.', src: ['gnds:9', 'f05:3'] },
+      { t: 'Un plan détaillé indique les relations logiques entre les idées et formule clairement les messages essentiels.', src: ['gnds:9'] }
+    ],
+    gestes: [
+      { t: 'Résume la sous-partie en une phrase', d: 'Qui ? Fait quoi ? Avec quel effet ? Pars des idées que tu as regroupées, pas du thème.' },
+      { t: 'Garde le nom, le verbe et l’effet', d: 'Un nom (le secteur, l’État, les habitants), un verbe ou un participe (pèse, fragilisé, diversifiés), le complément qui dit l’effet.' },
+      { t: 'Ajoute le lien logique', d: 'qui, dont, mais, malgré, face à, au prix de, au-delà de : c’est lui qui fait avancer la démonstration.' },
+      { t: 'Reprends les mots du dossier et coupe', d: 'Une ligne, une ligne et demie au plus. Pas de chiffre isolé, pas d’énumération.' }
+    ],
+    formules: [
+      { f: 'Un… qui…', ex: 'Un patrimoine qui rapporte à la France bien au-delà de son coût' },
+      { f: 'Un…, dont…', ex: 'Un parc considérable et fragile, dont l’État supporte seul les risques' },
+      { f: 'Un…, participe + par…', ex: 'Un atout économique majeur, fragilisé par la concentration des flux' },
+      { f: 'Un… malgré…', ex: 'Une industrie de la cosmétique économiquement forte malgré la crise' },
+      { f: 'Des… de plus en plus…', ex: 'Des financements de plus en plus diversifiés' },
+      { f: 'Un levier, un moteur de…', ex: 'Un levier de rayonnement et de cohésion territoriale' },
+      { f: 'Verbe à l’infinitif', ex: 'Mieux répartir les visiteurs dans le temps et dans l’espace' }
+    ],
+    pieges: [
+      'Un thème sans message : « Le financement », « La crise ».',
+      'Une étiquette de dissertation : « Constat », « Enjeux », « Limites ».',
+      'Une question : elle relève de l’avis, pas de la synthèse.',
+      'Un jugement : « il faut », « malheureusement », un adjectif excessif.',
+      'Une liste d’exemples ou un chiffre isolé à la place de l’idée.',
+      'Un paragraphe : au-delà d’une ligne et demie, ce n’est plus un titre.',
+      'Un plan document par document ou exemple par exemple.'
+    ],
+    // Mouvements tirés des consignes réelles (voir les annales dans l’onglet Écrit)
+    mouvements: [
+      { t: 'Leviers, puis résultats', ex: 'Externe 2022 : le programme « Logement d’abord »' },
+      { t: 'Apports, mais aussi risques', ex: 'Externe 2025 : l’économie des Jeux de Paris 2024' },
+      { t: 'Dérives, puis premières mesures', ex: 'Externe 2024 : le marketing d’influence' },
+      { t: 'Raisons du succès, puis moyens de le renforcer', ex: 'Externe 2023 : le jeu vidéo' },
+      { t: 'Difficultés et financements, puis avantages', ex: 'Session 2026 : le patrimoine historique de l’État' }
+    ],
+    testDonc: 'Le test du « donc » : lis tes titres I et II à la suite. Si « donc », « mais » ou « c’est pourquoi » peut les relier, le plan avance. Si seul « et » convient, c’est un catalogue. Même test entre A et B.'
+  };
+
+  /* ---------- 1. Dynamique ou à reprendre ? ---------- */
+  var TRI = [
+    { id: 's01', dyn: true, t: 'Un patrimoine immense et vieillissant, dont l’entretien coûteux conduit l’État à diversifier ses financements', why: 'Un constat et sa conséquence, reliés par « dont… conduit » : le titre annonce une démonstration.' },
+    { id: 's02', dyn: true, t: 'Un atout économique majeur, fragilisé par la concentration des flux', why: 'Le participe « fragilisé » fait passer de l’atout à sa limite : les deux sous-parties sont déjà là.' },
+    { id: 's03', dyn: true, t: 'Des pouvoirs publics qui cherchent à réguler et à mieux répartir la fréquentation', why: 'Un acteur, une action, un objectif : on sait ce que démontre la partie.' },
+    { id: 's04', dyn: true, t: 'Une industrie de la cosmétique économiquement forte malgré la crise', why: 'Titre du corrigé officiel : « malgré » articule la force du secteur et l’épreuve de la crise.' },
+    { id: 's05', dyn: true, t: 'Un secteur qui s’adapte aux nouvelles exigences des consommateurs', why: 'Un mouvement (« s’adapte ») et sa cause (les nouvelles exigences).' },
+    { id: 's06', dyn: true, t: 'Des jauges et des réservations qui protègent les sites naturels les plus fragiles', why: 'Les outils et leur effet : la sous-partie démontre, elle ne fait pas qu’énumérer.' },
+    { id: 's07', dyn: true, t: 'Une taxe de séjour devenue une ressource majeure pour les collectivités', why: '« Devenue » dit une évolution, appuyée sur les chiffres du dossier (238 puis 845 M€).' },
+    { id: 's08', dyn: true, t: 'Des consommateurs plus attentifs à la composition et à l’impact environnemental des produits', why: 'Un changement de comportement, formulé avec les mots du dossier.' },
+    { id: 's09', dyn: true, t: 'Des flux qui se déplacent plus qu’ils ne disparaissent', why: 'Une idée nuancée, reprise du dossier : l’étalement a ses limites.' },
+    { id: 's10', dyn: true, t: 'Un mécénat populaire qui prend une place croissante dans le financement des monuments', why: 'Une tendance (« place croissante ») et son objet : un vrai message.' },
+    { id: 's11', dyn: true, t: 'Des chantiers de restauration qui soutiennent l’emploi et les savoir-faire', why: 'Le titre dit à quoi servent les chantiers, pas seulement qu’ils existent.' },
+    { id: 's12', dyn: true, t: 'Une acceptabilité du tourisme fragilisée par la crise du logement', why: 'Une cause et un effet, sans jugement : neutre et dynamique.' },
+    { id: 's13', dyn: false, t: 'Le financement du patrimoine', why: 'Un tiroir : on sait de quoi parle la partie, pas ce qu’elle affirme.' },
+    { id: 's14', dyn: false, t: 'Constat', why: 'Le guide de l’ENFiP écarte expressément les titres du type « Constat » ou « Problème ».' },
+    { id: 's15', dyn: false, t: 'Les enjeux du tourisme', why: 'Un mot-valise : « enjeux » ne dit rien du contenu.' },
+    { id: 's16', dyn: false, t: 'Faut-il faire payer l’accès aux sites naturels ?', why: 'Une question : c’est le sujet de l’avis, pas un titre de synthèse.' },
+    { id: 's17', dyn: false, t: 'Un patrimoine que l’État doit absolument sauver', why: 'Un avis et une injonction : la synthèse reste neutre.' },
+    { id: 's18', dyn: false, t: 'Malheureusement, des habitants exaspérés par les touristes', why: '« Malheureusement » est un jugement, et le ton devient journalistique.' },
+    { id: 's19', dyn: false, t: 'Documents 3 et 4 : les sites naturels', why: 'Un plan document par document, que le jury assimile à un résumé.' },
+    { id: 's20', dyn: false, t: 'Les Calanques, Porquerolles, Bréhat et Étretat', why: 'Une liste d’exemples à la place de l’idée qu’ils illustrent.' },
+    { id: 's21', dyn: false, t: '846 millions d’euros', why: 'Un chiffre isolé : il illustre une idée, il ne la remplace pas.' },
+    { id: 's22', dyn: false, t: 'La cosmétique et la crise', why: '« Et » juxtapose deux thèmes sans dire le lien entre eux.' },
+    { id: 's23', dyn: false, t: 'Une industrie qui, malgré la crise sanitaire, le recul du maquillage de 35 %, la chute du rouge à lèvres de 53 % et l’essor du bio, a su maintenir son activité grâce aux soins du visage et à la vente en ligne', why: 'Un paragraphe, pas un titre : garde l’idée, renvoie les chiffres au développement.' },
+    { id: 's24', dyn: false, t: 'Les solutions', why: 'Une catégorie vide : quelles solutions, et pour quoi faire ?' },
+    { id: 's25', dyn: false, t: 'Un tourisme qui détruit la planète', why: 'Excessif et hors des mots du dossier, qui parle de 11 % des émissions du pays.' },
+    { id: 's26', dyn: false, t: 'Les avantages du patrimoine', why: 'Le volet de la consigne recopié, sans rien affirmer.' }
+  ];
+
+  /* ---------- 2. Le meilleur intitulé ---------- */
+  // La première proposition est la bonne ; l’ordre est mélangé à l’affichage.
+  var CHOIX = [
+    { id: 'c01', sujet: 'i2026', part: 'Sous-partie I.A', src: 'f06:1',
+      contenu: 'Environ 1 300 monuments protégés, dont 84 cathédrales ; un Louvre qui souffre de fuites d’eau ; Villers-Cotterêts passé de 110 à plus de 200 M€ ; un État « son propre assureur » depuis 1889.',
+      o: [
+        { t: 'Un parc considérable et fragile, dont l’État supporte seul les risques', why: 'L’ampleur, la fragilité et la conséquence, avec les mots du dossier.' },
+        { t: 'L’état du patrimoine', why: 'Un tiroir : rien n’est affirmé.' },
+        { t: 'Un patrimoine en ruine que l’État abandonne', why: 'Exagéré et non neutre : le dossier décrit des travaux, pas un abandon.' },
+        { t: 'Le Louvre, Villers-Cotterêts et Notre-Dame', why: 'Une liste d’exemples à la place de l’idée.' }
+      ] },
+    { id: 'c02', sujet: 'i2026', part: 'Sous-partie I.B', src: 'f06:2',
+      contenu: 'Crédits de l’État et compte d’affectation spéciale immobilier ; 244 M€ de ressources propres du Louvre en 2023 ; un tarif majoré pour les visiteurs hors Union européenne ; 846 M€ de dons pour Notre-Dame.',
+      o: [
+        { t: 'Des financements de plus en plus diversifiés', why: 'Un mouvement (« de plus en plus ») qui couvre toutes les idées de la sous-partie.' },
+        { t: 'Les sources de financement', why: 'La consigne recopiée, sans message.' },
+        { t: 'Il faut faire payer davantage les touristes étrangers', why: 'Un avis, qui ne couvre en plus qu’une seule idée.' },
+        { t: 'Le budget de l’État, les ressources propres et le mécénat', why: 'Un catalogue juxtaposé : la relation entre les trois n’est pas dite.' }
+      ] },
+    { id: 'c03', sujet: 'i2026', part: 'Sous-partie II.A', src: 'f06:3',
+      contenu: '14 millions de visites par an à Notre-Dame avant l’incendie ; 50 millions de touristes et 21,5 Md€ de chiffre d’affaires touristique en Île-de-France ; plus de 2 000 personnes sur le chantier de Notre-Dame.',
+      o: [
+        { t: 'Un moteur économique et touristique, qui fait aussi vivre l’emploi et les savoir-faire', why: 'La fonction (« moteur ») et ses deux effets, visites et emplois.' },
+        { t: 'Le tourisme', why: 'Un thème, et trop étroit : il oublie les chantiers.' },
+        { t: 'Un patrimoine qui rapporte 21,5 milliards d’euros', why: 'Déformation : ce chiffre est le chiffre d’affaires du tourisme francilien, pas le rendement du patrimoine.' },
+        { t: 'Les retombées sont-elles à la hauteur ?', why: 'Une question, et une prise de distance qui n’a pas sa place dans la synthèse.' }
+      ] },
+    { id: 'c04', sujet: 'iblanc', part: 'Sous-partie I.B', src: 'f06:12',
+      contenu: '80 % de l’activité touristique sur 20 % du territoire ; 36 000 personnes au Mont-Saint-Michel en une journée ; des loyers en hausse ; 11 % des émissions du pays ; 107 M€ de secours en montagne.',
+      o: [
+        { t: 'Une fréquentation concentrée qui pèse sur les sites, les habitants et les budgets publics', why: 'La cause (la concentration) et ses trois effets, dans l’ordre des idées.' },
+        { t: 'Les inconvénients du tourisme', why: 'Une catégorie de dissertation, sans message.' },
+        { t: 'Le surtourisme, un fléau qu’il faut combattre', why: 'Un jugement et une injonction.' },
+        { t: 'La concentration des flux', why: 'La cause sans ses effets : l’idée est incomplète.' }
+      ] },
+    { id: 'c05', sujet: 'iblanc', part: 'Sous-partie II.A', src: 'f06:12',
+      contenu: 'Réservation obligatoire à Sugiton, jauge à Porquerolles ; loi du 19 novembre 2024 sur les meublés ; surtaxe de séjour de 200 % en Île-de-France ; droit d’accès à Venise.',
+      o: [
+        { t: 'Une régulation qui s’étend de l’accès aux sites au logement et à la fiscalité', why: 'Une idée d’ensemble (la régulation) et son extension, qui couvre les quatre exemples.' },
+        { t: 'Les mesures', why: 'Une étiquette : lesquelles, et pour quoi faire ?' },
+        { t: 'Documents 3, 5, 7 et 8', why: 'Un renvoi aux documents à la place d’une idée.' },
+        { t: 'La France doit imiter Venise', why: 'Un avis, et l’exemple étranger pris pour le cœur de la sous-partie.' }
+      ] },
+    { id: 'c06', sujet: 'iblanc', part: 'Sous-partie II.B', src: 'f06:12',
+      contenu: 'Stratégie nationale de 2023 et 25 territoires lauréats ; parking moins cher avant 10 h au Mont-Saint-Michel ; promotion du hors-saison ; pendant les Jeux, des flux déplacés plutôt que réduits.',
+      o: [
+        { t: 'Un étalement des flux dans le temps et l’espace, dont les effets restent à confirmer', why: 'L’objectif commun et sa limite, que le dossier signale avec l’exemple des Jeux.' },
+        { t: 'La répartition', why: 'Un mot seul : rien n’est démontré.' },
+        { t: 'Une stratégie nationale en quatre axes et quinze mesures', why: 'Une seule idée, celle d’un document, pour toute la sous-partie.' },
+        { t: 'Des campagnes de promotion inutiles', why: 'Un jugement que le dossier ne porte pas.' }
+      ] },
+    { id: 'c07', sujet: 'itest', part: 'Sous-partie I.A', src: 'sti:24',
+      contenu: '315 entreprises et 26 000 salariés ; trois régions qui concentrent la moitié des emplois ; la Cosmetic Valley à Chartres ; des laboratoires de recherche à Orléans.',
+      o: [
+        { t: 'Une industrie de la cosmétique bien implantée sur le territoire', why: 'Le titre du corrigé officiel : une idée d’ensemble que chaque exemple vient prouver.' },
+        { t: 'Implantation', why: 'Un mot seul, sans message.' },
+        { t: 'La Cosmetic Valley', why: 'Un exemple pris pour toute la sous-partie.' },
+        { t: 'Pourquoi la France domine-t-elle la cosmétique ?', why: 'Une question, et un verbe que le dossier ne justifie pas.' }
+      ] },
+    { id: 'c08', sujet: 'itest', part: 'Sous-partie II.A', src: 'sti:26',
+      contenu: 'Le maquillage recule, les soins du visage progressent de 32 % ; la cosmétique verte passe de 157 à 353 M€ en dix ans ; un Français sur deux achète un soin bio ; un secteur parmi les plus polluants.',
+      o: [
+        { t: 'Des consommateurs dont la crise sanitaire a déplacé les attentes vers le soin, le bio et l’environnement', why: 'La cause (la crise) et la direction du changement, avec les trois tendances du dossier.' },
+        { t: 'Les nouvelles tendances', why: 'Trop vague : quelles tendances ?' },
+        { t: 'Le bio, avenir de la beauté', why: 'Un slogan, et une prédiction que le dossier ne fait pas.' },
+        { t: 'Maquillage, soins du visage, bio et environnement', why: 'Une énumération sans lien.' }
+      ] },
+    { id: 'c09', sujet: 'iblanc', part: 'Titre de la partie I', src: 'f06:12',
+      contenu: 'A : un secteur de premier rang pour l’économie et les finances publiques. B : une fréquentation concentrée qui pèse sur les sites, les habitants et les budgets publics.',
+      o: [
+        { t: 'Un atout économique majeur, fragilisé par la concentration des flux', why: 'Le titre de partie relie A et B : l’atout, puis ce qui le fragilise.' },
+        { t: 'Les atouts et les déséquilibres du tourisme', why: 'La consigne recopiée : « et » juxtapose sans relier.' },
+        { t: 'Un tourisme record', why: 'Ne couvre que la sous-partie A.' },
+        { t: 'Constat', why: 'Un titre que le guide de l’ENFiP écarte expressément.' }
+      ] },
+    { id: 'c10', sujet: 'i2026', part: 'Titre de la partie II', src: 'f06:3',
+      contenu: 'A : un moteur économique et touristique. B : un levier de rayonnement et de cohésion territoriale.',
+      o: [
+        { t: 'Un patrimoine qui rapporte à la France bien au-delà de son coût', why: 'Il répond à la partie I (le coût) : on peut dire « mais » entre les deux.' },
+        { t: 'Les avantages', why: 'Le volet de la consigne, sans message.' },
+        { t: 'Un patrimoine rentable qu’il faut développer', why: 'Un avis et une injonction.' },
+        { t: 'Le rayonnement de la France', why: 'Ne couvre que la sous-partie B.' }
+      ] }
+  ];
+
+  /* ---------- 3. Réécris le titre ---------- */
+  // mots : débuts de mots du dossier (sans accent ni majuscule) dont un au moins devrait figurer dans le titre.
+  var REECRIRE = [
+    { id: 'r01', sujet: 'i2026', statique: 'Les risques', src: 'f06:2',
+      contenu: 'Depuis une décision de 1889, l’État est « son propre assureur ». L’incendie de Notre-Dame l’a exposé seul à plus d’un milliard d’euros de travaux, l’assurance des entreprises du chantier étant plafonnée à quelques millions.',
+      mots: ['assur', 'risque', 'sinistre', 'incendie', 'etat'],
+      modeles: ['Un État qui, en restant son propre assureur, supporte seul le coût des sinistres', 'Un risque de sinistre que l’État assume seul depuis 1889'] },
+    { id: 'r02', sujet: 'i2026', statique: 'Le Louvre', src: 'f06:2',
+      contenu: 'Fuites d’eau et variations de température menacent les œuvres ; la pyramide, conçue pour 4 millions de visiteurs par an, en reçoit deux fois plus. La rénovation est estimée à 700 à 800 M€ ; la nouvelle entrée serait autofinancée.',
+      mots: ['louvre', 'renov', 'vetust', 'ressource', 'fuite', 'pyramide', 'sature'],
+      modeles: ['Un Louvre saturé et vétuste, dont la rénovation s’appuiera sur ses ressources propres', 'Une rénovation du Louvre rendue urgente par l’usure et la saturation du musée'] },
+    { id: 'r03', sujet: 'i2026', statique: 'Les chantiers', src: 'f06:3',
+      contenu: 'Près de 250 entreprises et ateliers d’art et plus de 2 000 personnes ont restauré Notre-Dame. À Villers-Cotterêts, 600 compagnons et plus de 200 entreprises sont intervenus ; les clauses d’insertion ont permis 140 recrutements.',
+      mots: ['chantier', 'emploi', 'entreprise', 'savoir', 'insertion', 'compagnon', 'restaur'],
+      modeles: ['Des chantiers de restauration qui soutiennent l’emploi et les savoir-faire', 'Des restaurations qui font travailler les entreprises et favorisent l’insertion'] },
+    { id: 'r04', sujet: 'i2026', statique: 'La Cité de la langue française', src: 'f06:3',
+      contenu: 'Plus de 260 000 visiteurs la première année, au-delà de l’objectif de 200 000 ; près de 40 % venus de l’Aisne et plus de 15 000 scolaires ; le Sommet de la Francophonie accueilli en octobre 2024.',
+      mots: ['cite', 'langue', 'territ', 'rayonn', 'aisne', 'francophon', 'visiteur'],
+      modeles: ['Une Cité de la langue française qui fait rayonner la France tout en attirant les habitants de l’Aisne', 'Un monument restauré qui sert à la fois le rayonnement du pays et son territoire'] },
+    { id: 'r05', sujet: 'iblanc', statique: 'La taxe de séjour', src: 'f06:8',
+      contenu: 'Facultative, de 0,20 € à 4,90 € par nuitée ; son produit passe de 238 M€ en 2012 à 845 M€ en 2022 ; une plateforme en reverse à elle seule 187 M€ en 2023 ; surtaxe régionale de 200 % en Île-de-France depuis 2024.',
+      mots: ['taxe', 'sejour', 'collectiv', 'produit', 'ressource', 'recette'],
+      modeles: ['Une taxe de séjour dont le produit a plus que triplé en dix ans', 'Une taxe de séjour devenue une ressource majeure pour les collectivités'] },
+    { id: 'r06', sujet: 'iblanc', statique: 'Les meublés de tourisme', src: 'f06:9',
+      contenu: 'De 300 000 à 1,2 million de meublés en huit ans, des loyers en hausse de 20 % dans les zones concernées. La loi du 19 novembre 2024 réduit l’abattement fiscal, impose l’enregistrement et permet aux communes de fixer des quotas.',
+      mots: ['meuble', 'loi', 'loyer', 'enregistr', 'encadr', 'abattement', 'quota'],
+      modeles: ['Des meublés de tourisme en plein essor, que la loi de 2024 encadre désormais', 'Une loi de 2024 qui rend les meublés de tourisme moins avantageux et mieux contrôlés'] },
+    { id: 'r07', sujet: 'iblanc', statique: 'L’environnement', src: 'f06:10',
+      contenu: '97 millions de tonnes équivalent CO2 en 2022, soit 11 % des émissions du pays, dont 69 % pour les transports. Dans les Calanques, le piétinement érode les sentiers ; en 2022, la baignade a été interdite dans les gorges du Verdon.',
+      mots: ['emission', 'climat', 'milieu', 'erosion', 'transport', 'gaz', 'environnement'],
+      modeles: ['Un tourisme qui pèse sur le climat et dégrade les milieux les plus fréquentés', 'Des émissions et une érosion des milieux qui rendent la fréquentation plus coûteuse pour l’environnement'] },
+    { id: 'r08', sujet: 'iblanc', statique: 'Les habitants', src: 'f06:10',
+      contenu: '74 % des Français jugent que les effets positifs du tourisme égalent ou dépassent ses effets négatifs ; 52 % sont favorables à des quotas ; au Pays basque, 3 500 personnes manifestent pour des logements accessibles.',
+      mots: ['habitant', 'logement', 'francais', 'accept', 'quota', 'tourisme'],
+      modeles: ['Des habitants attachés au tourisme, mais inquiets pour leur logement', 'Une acceptabilité du tourisme fragilisée par la crise du logement'] },
+    { id: 'r09', sujet: 'itest', statique: 'La crise', src: 'sti:25',
+      contenu: 'Pendant la pandémie, le maquillage perd 35 % de ses ventes et le rouge à lèvres 53 %. Le chiffre d’affaires recule de 6 % en 2020, puis atteint 45 Md€ en 2021, en hausse de 14 %.',
+      mots: ['crise', 'sanitaire', 'vente', 'recul', 'activite', 'chiffre', 'maquillage', 'pandemie'],
+      modeles: ['Un secteur durement touché par la crise sanitaire, mais qui a vite retrouvé son niveau d’activité', 'Une industrie qui a surmonté la crise sanitaire après un net recul de ses ventes'] },
+    { id: 'r10', sujet: 'itest', statique: 'La vente en ligne', src: 'sti:27',
+      contenu: 'Pendant le confinement, les ventes en boutique reculent de 26 % tandis que les ventes en ligne progressent de 52 % ; la part du commerce en ligne passe de 8 % en 2019 à 16 % en 2020.',
+      mots: ['ligne', 'commerce', 'boutique', 'confinement', 'vente', 'distance'],
+      modeles: ['Un confinement qui a accéléré le passage à la vente en ligne', 'Des achats qui se déplacent des boutiques vers la vente en ligne'] }
+  ];
+
+  /* ---------- 4. Du libellé au plan ---------- */
+  // Consignes réelles (annales) ; la première proposition est la bonne. Les plans sont rédigés pour l’atelier, sans chiffre.
+  var LIBELLES = [
+    { id: 'l01', sujet: 'i2026', cle: 'd’une part, les difficultés de son entretien et les sources de financement qui permettent de le supporter, et d’autre part, les avantages que la France tire d’un tel patrimoine',
+      o: [
+        { I: 'Un patrimoine immense et vieillissant, dont l’entretien coûteux conduit l’État à diversifier ses financements', II: 'Un patrimoine qui rapporte à la France bien au-delà de son coût', why: 'Les deux volets dans l’ordre imposé, et un « mais » possible entre I et II.' },
+        { I: 'Un patrimoine qui rapporte à la France bien au-delà de son coût', II: 'Un entretien coûteux qui oblige l’État à chercher de nouveaux financements', why: 'L’ordre imposé (« d’une part… d’autre part ») est inversé.' },
+        { I: 'Le Louvre et Notre-Dame', II: 'Les monuments en région', why: 'Des tiroirs géographiques, étrangers aux volets de la consigne.' }
+      ] },
+    { id: 'l02', sujet: 'iblanc', cle: 'd’une part les atouts que le tourisme représente pour le pays et les déséquilibres que crée la concentration des flux, et d’autre part les réponses apportées par les pouvoirs publics pour mieux répartir et réguler cette fréquentation',
+      o: [
+        { I: 'Un atout économique majeur, fragilisé par la concentration des flux', II: 'Des pouvoirs publics qui cherchent à réguler et à mieux répartir la fréquentation', why: 'Le problème, puis les réponses : le I appelle le II.' },
+        { I: 'Le tourisme en France', II: 'Le tourisme à l’étranger', why: 'Un découpage géographique : les exemples étrangers servent seulement d’illustration.' },
+        { I: 'Des pouvoirs publics qui régulent la fréquentation', II: 'Un atout économique fragilisé par la concentration des flux', why: 'Les réponses avant le problème : la démonstration est à l’envers.' }
+      ] },
+    { id: 'l03', sujet: 'itest', cle: 'en expliquant comment ce secteur qui disposait de réels atouts est parvenu à résister à la crise, et a su s’adapter pour maintenir son niveau d’activité',
+      o: [
+        { I: 'La cosmétique : une industrie économiquement forte et bien implantée sur l’hexagone', II: 'Un secteur qui s’adapte aux nouvelles exigences des consommateurs', why: 'Le plan du corrigé officiel : des atouts qui expliquent la résistance, puis l’adaptation.' },
+        { I: 'Le marché du bien-être', II: 'Le marché de la cosmétique', why: 'Deux thèmes juxtaposés, sans démonstration.' },
+        { I: 'Une industrie frappée par la crise sanitaire', II: 'Une industrie qui doit se réinventer pour survivre', why: 'Contraire à la consigne, qui parle de résistance et de maintien de l’activité.' }
+      ] },
+    { id: 'l04', sujet: 'i2025e', cle: 'en soulignant l’apport de cet évènement sportif sur le plan économique pour la France, mais aussi les risques financiers qu’il peut représenter',
+      o: [
+        { I: 'Un évènement qui apporte à l’économie française des retombées multiples', II: 'Une organisation qui expose aussi les finances publiques à des risques', why: 'L’apport, puis les risques : le « mais aussi » de la consigne devient le pivot du plan.' },
+        { I: 'Avantages', II: 'Inconvénients', why: 'Des étiquettes vides, sans les mots du dossier.' },
+        { I: 'L’organisation des épreuves', II: 'Le bilan sportif des Jeux', why: 'Hors sujet : la consigne porte sur l’économie et les finances.' }
+      ] },
+    { id: 'l05', sujet: 'i2024e', cle: 'présentant les dérives qui justifient un meilleur encadrement du marketing d’influence, ainsi que les premières mesures engagées',
+      o: [
+        { I: 'Des dérives qui rendent nécessaire un meilleur encadrement du marketing d’influence', II: 'De premières mesures engagées pour encadrer les pratiques des influenceurs', why: 'Les dérives justifient l’encadrement, puis les mesures y répondent : la logique de la consigne.' },
+        { I: 'Qu’est-ce que le marketing d’influence ?', II: 'Les influenceurs', why: 'Une question et un thème : ni dérives, ni mesures.' },
+        { I: 'Les dérives', II: 'Des propositions pour éduquer les internautes', why: 'Le II mélange la synthèse et la note de propositions, qui est un autre exercice.' }
+      ] },
+    { id: 'l06', sujet: 'i2023e', cle: 'en expliquant les raisons d’un tel succès et les moyens qui contribuent à le renforcer',
+      o: [
+        { I: 'Un succès économique qui s’explique par des raisons multiples', II: 'Des moyens qui contribuent à consolider ce succès', why: 'Les raisons, puis les moyens : chaque partie répond à un verbe de la consigne.' },
+        { I: 'L’histoire du jeu vidéo', II: 'Les jeux les plus vendus', why: 'Des tiroirs hors de la problématique.' },
+        { I: 'Un succès fragile', II: 'Un secteur menacé', why: 'Contraire à la consigne, qui demande d’expliquer et de renforcer un succès.' }
+      ] },
+    { id: 'l07', sujet: 'i2022e', cle: 'en présentant d’une part les leviers utilisés et d’autre part les résultats obtenus, la note démontrera si le programme atteint son objectif',
+      o: [
+        { I: 'Un programme qui mobilise plusieurs leviers contre le sans-abrisme', II: 'Des résultats qui permettent de mesurer si l’objectif est atteint', why: 'Les leviers, puis les résultats ; la question posée devient la ligne d’arrivée du II.' },
+        { I: 'Le sans-abrisme en France', II: 'Le programme « Logement d’abord »', why: 'Deux thèmes : les volets imposés ont disparu.' },
+        { I: 'Des résultats encourageants', II: 'Des leviers à renforcer', why: 'L’ordre est inversé et « à renforcer » glisse un avis dans la synthèse.' }
+      ] }
+  ];
+
+  /* ---------- 5. Du dossier au plan ---------- */
+  // p : place de l’idée dans le plan du corrigé (0 = I.A, 1 = I.B, 2 = II.A, 3 = II.B) ; why : pour les idées ambiguës.
+  var DOSSIERS = [
+    { id: 'tour', sujet: 'iblanc', titre: 'La surfréquentation touristique en France', info: '12 documents résumés dans la fiche Sujets blancs', src: ['f06:6', 'f06:11', 'f06:12', 'f06:13'],
+      consigne: 'À l’aide des seuls documents joints, vous réaliserez une note de synthèse relative à la surfréquentation touristique en France. Vous présenterez d’une part les atouts que le tourisme représente pour le pays et les déséquilibres que crée la concentration des flux, et d’autre part les réponses apportées par les pouvoirs publics pour mieux répartir et réguler cette fréquentation.',
+      docs: ['Une année record pour le tourisme en France', 'Une stratégie nationale pour gérer les flux touristiques', 'Quand les sites naturels font le tri à l’entrée', 'Le Mont-Saint-Michel et Étretat face aux pics de fréquentation', 'Venise, Amsterdam, mont Fuji : faire payer pour réguler ?', 'Barcelone : quand les habitants disent « assez »', 'La taxe de séjour, une ressource en forte hausse pour les collectivités', 'Meublés de tourisme : la loi du 19 novembre 2024 resserre les règles', 'Ce que coûte la surfréquentation aux finances publiques', 'Le tourisme, 11 % des émissions de gaz à effet de serre du pays', 'Ce que les Français pensent du tourisme', 'Étaler les flux dans le temps et dans l’espace'],
+      axes: LIBELLES[1].o,
+      etiquettes: ['Poids économique et recettes', 'Effets de la concentration', 'Outils de régulation', 'Répartition des visiteurs'],
+      I: 'Un atout économique majeur, fragilisé par la concentration des flux',
+      II: 'Des pouvoirs publics qui cherchent à réguler et à mieux répartir la fréquentation',
+      parts: [
+        { titre: 'Un secteur de premier rang pour l’économie et les finances publiques', mots: ['econom', 'recette', 'secteur', 'finance', 'emploi', 'ressource', 'atout'] },
+        { titre: 'Une fréquentation concentrée qui pèse sur les sites, les habitants et les budgets publics', mots: ['concentr', 'frequent', 'flux', 'site', 'habitant', 'pression', 'desequilib'] },
+        { titre: 'Réguler l’accès, le logement et la fiscalité', mots: ['regul', 'acces', 'logement', 'fiscal', 'jauge', 'reserv', 'encadr', 'taxe'] },
+        { titre: 'Mieux répartir les visiteurs dans le temps et dans l’espace', mots: ['repart', 'etal', 'visiteur', 'flux', 'saison', 'espace', 'temps'] }
+      ],
+      idees: [
+        { t: '102 millions de touristes internationaux et 77,5 Md€ de recettes en 2025 ; un solde touristique de 20,1 Md€.', d: '1', p: 0 },
+        { t: '1,3 million de salariés dans l’hôtellerie-restauration ; un objectif de 100 Md€ de recettes en 2030.', d: '1', p: 0 },
+        { t: 'Une taxe de séjour passée de 238 M€ en 2012 à 845 M€ en 2022.', d: '7', p: 0, why: 'Le même document sert deux fois : ici le produit de la taxe (une recette), en II.A la surtaxe (un outil).' },
+        { t: '80 % de l’activité touristique sur 20 % du territoire.', d: '2', p: 1 },
+        { t: 'Plus de 36 000 personnes au Mont-Saint-Michel le 18 août 2022 ; jusqu’à 10 000 visiteurs par jour à Étretat.', d: '4', p: 1 },
+        { t: 'Des meublés de tourisme passés de 300 000 à 1,2 million en huit ans ; des loyers en hausse de 68 % en dix ans à Barcelone.', d: '6, 8', p: 1 },
+        { t: '41 % des Français disent avoir déjà subi le surtourisme ; 3 500 manifestants au Pays basque pour des logements accessibles.', d: '11', p: 1 },
+        { t: 'Le tourisme pèse 11 % des émissions du pays ; dans les Calanques, l’érosion des sentiers et la destruction des herbiers de posidonie.', d: '10', p: 1 },
+        { t: 'Un secours en montagne à 107 M€ en 2024 ; des déchets multipliés par 2,5 l’été dans le sud de la Corse.', d: '9', p: 1 },
+        { t: 'Réservation à Sugiton (400 personnes par jour), jauge de 6 000 visiteurs à Porquerolles, plafond à Bréhat.', d: '3', p: 2 },
+        { t: 'Loi du 19 novembre 2024 : abattement fiscal réduit, enregistrement obligatoire, quotas communaux.', d: '8', p: 2 },
+        { t: 'Une surtaxe de séjour de 200 % en Île-de-France depuis 2024.', d: '7', p: 2 },
+        { t: 'Droit d’accès à Venise, sentier du mont Fuji limité à 4 000 personnes par jour, gel hôtelier à Amsterdam.', d: '5', p: 2, why: 'Les exemples étrangers illustrent les outils de régulation : ils ne forment pas une partie à eux seuls.' },
+        { t: 'Stratégie nationale de 2023 : observatoire, outils de comptage, 25 territoires lauréats.', d: '2', p: 3 },
+        { t: 'Au Mont-Saint-Michel, le parking réservé coûte 17 € au lieu de 25 € pour venir avant 10 h ou après 16 h.', d: '4', p: 3, why: 'Ce n’est pas une interdiction mais une incitation à venir à d’autres heures : elle répartit les flux.' },
+        { t: 'Promotion du hors-saison et des territoires moins visités ; plan Avenir Montagnes de 331 M€.', d: '12', p: 3 },
+        { t: 'Pendant les Jeux de 2024, des musées parisiens en baisse d’environ 20 % : les flux se déplacent plus qu’ils ne disparaissent.', d: '12', p: 3, why: 'Une limite de l’étalement, placée à la fin de la sous-partie qu’elle nuance.' }
+      ],
+      transition: 'Si le tourisme reste un atout majeur, la concentration de ses flux en menace l’acceptabilité et l’équilibre : les pouvoirs publics ont donc développé des outils pour la réguler et la répartir.',
+      annonce: 'Après avoir présenté les atouts du tourisme et les déséquilibres nés de la concentration des flux (I), on exposera les réponses apportées pour mieux répartir et réguler la fréquentation (II).',
+      pourquoi: 'Le I passe de l’atout à ce qui le fragilise ; le II répond à ce déséquilibre, d’abord en contraignant (A), puis en incitant (B). Entre I et II, « donc » convient : le plan démontre. Les douze documents trouvent leur place.' },
+    { id: 'patr', sujet: 'i2026', titre: 'Le patrimoine immobilier historique de l’État', info: 'Session 2026 · 12 documents, 24 pages', src: ['f06:1', 'f06:2', 'f06:3', 'f05:3'],
+      consigne: 'À l’aide des seuls documents joints, vous réaliserez une note de synthèse relative au patrimoine immobilier historique de l’État. Vous présenterez d’une part, les difficultés de son entretien et les sources de financement qui permettent de le supporter, et d’autre part, les avantages que la France tire d’un tel patrimoine.',
+      docs: null,
+      axes: LIBELLES[0].o,
+      etiquettes: ['Ampleur et fragilité du parc', 'Financements', 'Retombées économiques', 'Rayonnement et territoires'],
+      I: 'Un patrimoine immense et vieillissant, dont l’entretien coûteux conduit l’État à diversifier ses financements',
+      II: 'Un patrimoine qui rapporte à la France bien au-delà de son coût',
+      parts: [
+        { titre: 'Un parc considérable et fragile, dont l’État supporte seul les risques', mots: ['parc', 'patrimoine', 'monument', 'fragil', 'vieill', 'risque', 'entretien', 'assur'] },
+        { titre: 'Des financements de plus en plus diversifiés', mots: ['financ', 'ressource', 'mecenat', 'don', 'credit', 'budget'] },
+        { titre: 'Un moteur économique et touristique', mots: ['econom', 'touris', 'emploi', 'visite', 'chantier', 'moteur'] },
+        { titre: 'Un levier de rayonnement et de cohésion territoriale', mots: ['rayonn', 'territ', 'image', 'cohesion', 'francophon', 'local'] }
+      ],
+      idees: [
+        { t: 'Environ 1 300 monuments protégés appartiennent à l’État, dont 84 cathédrales, Versailles, Chambord ou le Mont-Saint-Michel.', p: 0 },
+        { t: 'Le Louvre souffre de fuites d’eau ; sa pyramide, conçue pour 4 millions de visiteurs par an, en reçoit deux fois plus.', p: 0 },
+        { t: 'La restauration de Villers-Cotterêts devait coûter 110 M€ et en a coûté plus de 200.', p: 0 },
+        { t: 'Depuis 1889, l’État est « son propre assureur » : l’incendie de Notre-Dame l’a exposé seul à plus d’un milliard d’euros de travaux.', p: 0 },
+        { t: 'Crédits des ministères, compte d’affectation spéciale immobilier, programme d’un milliard d’euros pour les cités administratives.', p: 1 },
+        { t: '244 M€ de ressources propres du Louvre en 2023, dont 83,1 M€ de licence de marque versés par le Louvre Abou Dhabi.', p: 1, why: 'Ici l’angle est financier (une ressource du musée) ; le rayonnement du Louvre à l’étranger relève du II.B.' },
+        { t: 'Un tarif majoré pour les visiteurs venus de pays hors de l’Union européenne, qui pourrait rapporter 20 M€ par an.', p: 1 },
+        { t: '846 M€ de dons de 340 000 donateurs pour la restauration de Notre-Dame.', p: 1 },
+        { t: '14 millions de visites par an à Notre-Dame avant l’incendie ; 10,12 millions de visiteurs dans le réseau des monuments nationaux en 2022.', p: 2 },
+        { t: '50 millions de touristes et 21,5 Md€ de chiffre d’affaires touristique en Île-de-France en 2018.', p: 2 },
+        { t: 'Près de 250 entreprises et plus de 2 000 personnes sur le chantier de Notre-Dame ; 140 recrutements en insertion à Villers-Cotterêts.', p: 2, why: 'Les chantiers coûtent (I), mais ils font aussi travailler : c’est cet angle, l’emploi, qui les place en II.A.' },
+        { t: 'Le Louvre exporte sa marque à Abou Dhabi ; la Cité de la langue française accueille le Sommet de la Francophonie en 2024.', p: 3 },
+        { t: 'Plus de 260 000 visiteurs la première année à la Cité de la langue française, dont près de 40 % venus de l’Aisne et 15 000 scolaires.', p: 3, why: 'Le chiffre de visiteurs sert ici la cohésion territoriale : la part venue de l’Aisne compte plus que le total.' },
+        { t: 'Des tiers-lieux pour artisans et entrepreneurs dans des monuments peu visités, comme au château de Jossigny.', p: 3 }
+      ],
+      transition: 'Si l’entretien de ce patrimoine pèse lourdement sur les finances publiques et appelle de nouveaux financements, ce coût doit être mis en regard des avantages que la France en retire.',
+      annonce: 'Les difficultés d’entretien de ce patrimoine et les financements mobilisés pour y faire face (I) doivent être mis en regard des avantages que la France en retire (II).',
+      pourquoi: 'Le I va du problème (un parc immense et fragile, que l’État assure seul) à sa conséquence (chercher d’autres financements) ; le II retourne la perspective : ce coût rapporte. Entre I et II, « mais » convient, et le plan suit exactement l’ordre imposé par la consigne.' },
+    { id: 'cosm', sujet: 'itest', titre: 'Le marché du bien-être et de la cosmétique', info: 'Sujet test · 8 documents, 20 pages · corrigé officiel', src: ['sti:24', 'sti:25', 'sti:26', 'sti:27'],
+      consigne: 'À l’aide des seuls documents joints, vous réaliserez une note de synthèse sur le marché du bien-être en France, en expliquant comment ce secteur qui disposait de réels atouts est parvenu à résister à la crise, et a su s’adapter pour maintenir son niveau d’activité.',
+      docs: null,
+      axes: LIBELLES[2].o,
+      etiquettes: ['Implantation', 'Poids économique et crise', 'Attentes des consommateurs', 'Façons d’acheter et perspectives'],
+      I: 'La cosmétique : une industrie économiquement forte et bien implantée sur l’hexagone',
+      II: 'Un secteur qui s’adapte aux nouvelles exigences des consommateurs',
+      parts: [
+        { titre: 'Une industrie de la cosmétique bien implantée sur le territoire', mots: ['implant', 'territ', 'region', 'site', 'pole', 'industrie'] },
+        { titre: 'Une industrie de la cosmétique française économiquement forte malgré la crise', mots: ['econom', 'crise', 'production', 'export', 'industrie', 'resist'] },
+        { titre: 'Des exigences et des préoccupations des consommateurs revues à l’aune de la crise sanitaire', mots: ['consommat', 'exigence', 'attente', 'bio', 'soin', 'environnement', 'preoccup'] },
+        { titre: 'Des modes de consommation qui évoluent, au profit des emballages écoresponsables et de la vente en ligne', off: 'Une évolution des modalités de consommation et des perspectives économiques', mots: ['consommation', 'ligne', 'emballage', 'achat', 'vente', 'perspective', 'modalit'] }
+      ],
+      idees: [
+        { t: '315 entreprises et 26 000 salariés dans la production de parfums et de produits de toilette en 2015.', p: 0 },
+        { t: 'Île-de-France, Centre-Val de Loire et Hauts-de-France concentrent la moitié des emplois du secteur.', p: 0 },
+        { t: 'La Cosmetic Valley, pôle de compétitivité installé à Chartres ; des laboratoires de grandes marques à Orléans.', p: 0 },
+        { t: '9,1 Md€ de production en 2015, soit un tiers de la production européenne.', p: 1 },
+        { t: 'Une balance commerciale du secteur excédentaire de plus de 9,2 Md€.', p: 1 },
+        { t: 'Pendant la pandémie, le maquillage perd 35 % de ses ventes et le rouge à lèvres 53 %, le parfum 15 % seulement.', p: 1, why: 'Le corrigé officiel place la crise dans le I.B : elle montre que le secteur a résisté, comme le demande la consigne.' },
+        { t: 'Les soins du visage progressent de 32 % et ceux des cheveux de 27 %.', p: 2 },
+        { t: 'La cosmétique verte passe de 157 M€ en 2013 à 353 M€ en 2023 ; un Français sur deux a acheté un soin bio dans l’année.', p: 2 },
+        { t: 'L’industrie cosmétique est la troisième plus polluante, derrière l’alimentaire et la mode.', p: 2 },
+        { t: 'Le succès des shampooings solides pousse les grandes marques vers des emballages écoresponsables.', p: 3 },
+        { t: 'Les ventes en boutique reculent de 26 % tandis que les ventes en ligne progressent de 52 %.', p: 3 },
+        { t: 'Un chiffre d’affaires en recul de 6 % en 2020, puis estimé à 45 Md€ en 2021, en hausse de 14 %.', p: 3, why: 'Le corrigé le garde pour la fin : une perspective de reprise, qui clôt la démonstration sur le maintien de l’activité.' }
+      ],
+      transition: 'L’industrie de la cosmétique constitue depuis longtemps un secteur économique particulièrement florissant pour la France. Résiliente, elle est parvenue à surmonter la crise de la Covid, mais elle doit à présent s’adapter aux nouveaux comportements que celle-ci a fait naître chez les consommateurs.',
+      annonce: 'L’implantation de l’industrie de la cosmétique en France, ainsi que son poids économique, seront présentés, avant d’examiner la manière dont cette industrie s’adapte aux nouvelles exigences des consommateurs pour conserver sa place.',
+      pourquoi: 'Le I établit les atouts qui expliquent la résistance à la crise ; le II montre l’adaptation qui permet de maintenir l’activité : c’est le fil exact de la consigne. Le dernier titre du corrigé officiel reste descriptif ; la version proposée ici dit le sens de l’évolution.' }
+  ];
+
+  var PARTS = ['I.A', 'I.B', 'II.A', 'II.B'];
+  var TRI_N = 8; // titres par série
+
+  return { METHODE: METHODE, TRI: TRI, CHOIX: CHOIX, REECRIRE: REECRIRE, LIBELLES: LIBELLES, DOSSIERS: DOSSIERS, PARTS: PARTS, TRI_N: TRI_N };
+})();
+if (typeof module !== 'undefined') module.exports = EXOS;
+
 /* ===== Logique sans interface : état, fusion, chrono, notes (testée par test/test.js) ===== */
 var CORE = (function () {
   'use strict';
@@ -1541,18 +1950,19 @@ var CORE = (function () {
 
   /* ---------- État synchronisable ----------
      settings : profil choisi ; cur : entraînement écrit en cours (ou null) ;
-     ecrits / oraux : entrées indexées par id. Chaque objet porte updatedAt :
+     ecrits / oraux : entrées indexées par id ; exos : dernier résultat de chaque exercice de plan
+     ({ id, ok, n, tries, date }). Chaque objet porte updatedAt :
      la fusion garde la version la plus récente. Une suppression est une
      entrée marquée deleted (pierre tombale), pour qu’elle se propage. */
   function blank() {
-    return { v: 1, app: 'atelier', settings: { profil: 'I', updatedAt: 0 }, cur: { run: null, updatedAt: 0 }, ecrits: {}, oraux: {} };
+    return { v: 1, app: 'atelier', settings: { profil: 'I', updatedAt: 0 }, cur: { run: null, updatedAt: 0 }, ecrits: {}, oraux: {}, exos: {} };
   }
   function normalize(p) {
     var b = blank();
     if (!isObj(p)) return b;
     if (isObj(p.settings)) b.settings = { profil: p.settings.profil === 'C' ? 'C' : 'I', updatedAt: num(p.settings.updatedAt) };
     if (isObj(p.cur)) b.cur = { run: isObj(p.cur.run) ? p.cur.run : null, updatedAt: num(p.cur.updatedAt) };
-    ['ecrits', 'oraux'].forEach(function (k) {
+    ['ecrits', 'oraux', 'exos'].forEach(function (k) {
       var src = p[k], add = function (e) { if (isObj(e) && typeof e.id === 'string' && e.id) b[k][e.id] = e; };
       if (Array.isArray(src)) src.forEach(add);
       else if (isObj(src)) Object.keys(src).forEach(function (id) { add(src[id]); });
@@ -1575,7 +1985,7 @@ var CORE = (function () {
   // Fusion idempotente et commutative : merge(merge(L, R), R) = merge(L, R).
   function merge(local, remote) {
     var L = normalize(clone(local)), R = normalize(clone(remote));
-    ['ecrits', 'oraux'].forEach(function (k) {
+    ['ecrits', 'oraux', 'exos'].forEach(function (k) {
       Object.keys(R[k]).forEach(function (id) { L[k][id] = pick(L[k][id], R[k][id]); });
     });
     L.settings = pick(L.settings, R.settings);
@@ -1638,6 +2048,47 @@ var CORE = (function () {
     return pool[pool.length - 1];
   }
 
+  /* ---------- Repères automatiques pour un titre de plan ----------
+     Des indices, pas une note : ils repèrent les défauts que le guide et le jury signalent
+     (thème sans message, étiquette de dissertation, question, avis, paragraphe). */
+  function fold(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+  function words(s) { return String(s || '').replace(/[’']/g, ' ').split(/[^A-Za-zÀ-ÖØ-öø-ÿŒœÆæ0-9%€]+/).filter(Boolean); }
+  var LIENS = ['qui', 'que', 'qu', 'dont', 'ou', 'mais', 'malgre', 'grace', 'face', 'sans', 'pour', 'afin', 'car', 'donc', 'tandis', 'alors', 'si', 'prix', 'dela', 'service', 'faute', 'sous', 'desormais', 'encore', 'toujours', 'plus', 'moins', 'mieux', 'davantage', 'entre', 'vers', 'aussi', 'meme', 'pourtant', 'cependant', 'ainsi', 'levier', 'moteur', 'source', 'frein', 'atout', 'pilier', 'vecteur', 'outil', 'cle', 'devenu', 'devenue', 'devenus', 'devenues'];
+  // Noms courants qui ressemblent à des participes, à des infinitifs ou à des verbes conjugués
+  var NOMS = ('annee entree idee journee duree musee lycee vallee armee enfant habitant restaurant montant etudiant commercant occupant participant representant dirigeant intervenant '
+    + 'parent client agent argent accident talent patient continent president incident adolescent vent dent cent mont pont front lait trait portrait attrait souhait '
+    + 'marche comite cafe cote depute degre conge resume defile etranger danger leger hiver mer fer cher hier avenir plaisir loisir desir souvenir cancer laser manager leader').split(' ');
+  // Verbes fréquents au présent, que leur terminaison ne trahit pas
+  var VERBES = ('est a reste devient pese coute finance permet attire rapporte soutient protege favorise renforce freine menace ameliore reduit accroit augmente diminue progresse recule adapte depend repose '
+    + 'conduit oblige pousse profite illustre montre traduit explique entraine provoque cree genere nourrit fragilise encadre limite regule repartit mobilise contribue participe constitue represente demeure '
+    + 'apparait concentre transforme modifie evolue change offre assure garantit porte supporte vise cherche tente peine beneficie souffre resiste maintient appuie etend deplace suscite impose exige').split(' ');
+  function verbal(w, i) {
+    if (VERBES.indexOf(fold(w)) >= 0) return true;
+    if (i > 0 && /^[A-ZÀ-ÖØ-Þ]/.test(w)) return false;         // nom propre
+    var l = w.toLowerCase(), f = fold(w), sg = f.replace(/s$/, '');
+    if (f.length < 4 || NOMS.indexOf(f) >= 0 || NOMS.indexOf(sg) >= 0 || /ments?$|tes?$|iers?$|oirs?$|[qg]ues?$|eux?$/.test(f)) return false;
+    if (/é(e|es|s)?$/.test(l)) return true;                       // participe passé : fragilisé, diversifiées
+    return /(ant|ants|ante|antes|ent|ont|ait|aient|er|ir|ue|ues|us)$/.test(f) && !/(able|ible|isme|ence|ance|tion|sion)s?$/.test(f);
+  }
+  function titleCheck(text, mots) {
+    var raw = String(text || '').trim(), ws = words(raw), fw = ws.map(fold), fr = ' ' + fw.join(' ') + ' ';
+    var n = ws.length, out = [];
+    out.push({ id: 'long', ok: n >= 5 && n <= 22, t: n < 5 ? 'Trop court pour porter une idée (' + n + ' mot' + (n > 1 ? 's' : '') + ') : vise 5 à 22 mots.' : n > 22 ? 'Trop long pour un titre (' + n + ' mots) : 22 au plus, renvoie le reste au développement.' : 'Une longueur de titre (' + n + ' mots).' });
+    var lien = fw.some(function (w) { return LIENS.indexOf(w) >= 0; }) || /au dela|de plus en plus|a la fois|a l aune/.test(fr) || ws.some(verbal);
+    out.push({ id: 'lien', ok: lien, t: lien ? 'Un verbe, un participe ou un lien logique : le titre affirme quelque chose.' : 'Aucun verbe ni lien logique : c’est un thème, pas un message (essaie qui, dont, malgré, face à…).' });
+    var cat = /^(i{1,3}|[ab])?\s*(le|la|les|l|des|un|une)?\s*(constat|enjeux?|problemes?|problematique|solutions?|consequences?|causes?|avantages?|inconvenients?|limites?|bilan|perspectives?|generalites|presentation|contexte|definitions?|introduction|conclusion|mesures?|tendances?)s?\s*(du|de|des|d|et)?\s*$/.test(fw.slice(0, 4).join(' ')) || /^(i{1,3}|[ab])?\s*(le|la|les|l)?\s*(constat|enjeux?|problemes?|solutions?|consequences?|causes?|avantages?|inconvenients?|limites?|bilan|perspectives?|mesures?|tendances?) (du|de|des|d)\b/.test(fw.join(' '));
+    out.push({ id: 'cat', ok: !cat, t: cat ? 'Une étiquette de dissertation (Constat, Enjeux, Avantages, Limites…) : dis ce que montre la partie.' : 'Pas d’étiquette de dissertation.' });
+    var avis = fw.some(function (w) { return ['je', 'j', 'nous', 'on', 'faut', 'doit', 'doivent', 'devrait', 'devraient', 'malheureusement', 'heureusement', 'helas', 'absolument', 'evidemment', 'formidable', 'incroyable', 'inutile', 'inutiles', 'scandale', 'scandaleux', 'scandaleuse', 'catastrophe', 'catastrophique', 'honteux', 'honte'].indexOf(w) >= 0; });
+    out.push({ id: 'neutre', ok: !avis, t: avis ? 'Un avis ou une injonction (je, on, il faut, doit, malheureusement…) : la synthèse reste neutre.' : 'Neutre : aucun avis ni injonction.' });
+    var forme = !/\?/.test(raw) && !/^[-–—•*]/.test(raw) && !/\bdoc(ument)?s?\.?\s*\d/i.test(raw);
+    out.push({ id: 'forme', ok: forme, t: forme ? 'Une affirmation rédigée.' : /\?/.test(raw) ? 'Une question : un titre de synthèse affirme, il n’interroge pas.' : 'Un tiret ou un renvoi aux documents : rédige l’idée elle-même.' });
+    if (mots && mots.length) {
+      var found = mots.filter(function (m) { return fw.some(function (w) { return w.indexOf(fold(m)) === 0; }); });
+      out.push({ id: 'mots', ok: found.length > 0, t: found.length ? 'Des mots du dossier.' : 'Aucun mot clé de la sous-partie : reprends les mots du dossier.' });
+    }
+    return out;
+  }
+
   /* ---------- Formats français ---------- */
   function dec(x, d) {
     if (x === null || x === undefined || !isFinite(x)) return '—';
@@ -1652,7 +2103,7 @@ var CORE = (function () {
 
   return { num: num, uid: uid, clone: clone, blank: blank, normalize: normalize, stable: stable, pick: pick, merge: merge, same: same, live: live,
     elapsed: elapsed, pause: pause, resume: resume, finish: finish, reopen: reopen, ends: ends, phaseAt: phaseAt,
-    gridNote: gridNote, oralNote: oralNote, draw: draw, dec: dec, clock: clock, hm: hm, dur: dur, pad: pad };
+    gridNote: gridNote, oralNote: oralNote, draw: draw, titleCheck: titleCheck, fold: fold, dec: dec, clock: clock, hm: hm, dur: dur, pad: pad };
 })();
 if (typeof module !== 'undefined') module.exports = CORE;
 
@@ -1661,9 +2112,9 @@ if (typeof module !== 'undefined') module.exports = CORE;
   'use strict';
   var C = CORE, D = DATA;
   var KEY = 'atelier-ecrit-oral-v1', UIKEY = 'atelier-ecrit-oral-ui', TITLE = document.title || 'Atelier écrit et oral';
-  var VIEWS = ['ecrit', 'oral', 'banque', 'progres', 'reperes', 'reglages'];
+  var VIEWS = ['ecrit', 'exos', 'oral', 'banque', 'progres', 'reperes', 'reglages'];
   var S = C.blank();                                    // état synchronisable
-  var UI = { view: 'ecrit', cat: 'all', dur: 180, hist: '', sujet: {}, libre: '', oq: '', recent: [], trans: true, rep: '', park: '', bcat: 'all' }; // préférences de cet appareil
+  var UI = { view: 'ecrit', cat: 'all', dur: 180, hist: '', sujet: {}, libre: '', oq: '', recent: [], trans: true, rep: '', park: '', bcat: 'all', ex: {}, exd: {} }; // préférences de cet appareil
   var T = { open: {}, confirm: null, saved: null, lastPhase: null, over: false, oral: null, att: null, rec: null, micErr: null,
     oscores: {}, ocomment: '', oeval: false, osaved: null, olimitHit: false, pending: false, more: 0, trans: '', interim: '', tr: null, trErr: null };
   var QBY = {}; D.Q.forEach(function (q) { QBY[q.id] = q; });
@@ -1713,6 +2164,7 @@ if (typeof module !== 'undefined') module.exports = CORE;
     flag: '<path d="M5.5 21V4.5M5.5 5h11l-2 4 2 4h-11"/>',
     book: '<path d="M4.5 5.5c2.5-1 5-1 7.5.5v13c-2.5-1.5-5-1.5-7.5-.5zM19.5 5.5c-2.5-1-5-1-7.5.5v13c2.5-1.5 5-1.5 7.5-.5z"/>',
     redo: '<path d="M5 12a7 7 0 1 0 2.1-5M5 4.5V8h3.5"/>',
+    back: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
     minus: '<path d="M6 12h12"/>',
     plus: '<path d="M12 5v14M5 12h14"/>'
   };
@@ -1747,6 +2199,7 @@ if (typeof module !== 'undefined') module.exports = CORE;
       if (!(UI.dur >= 30 && UI.dur <= 900)) UI.dur = 180;
       if (!Array.isArray(UI.recent)) UI.recent = [];
       if (!UI.sujet || typeof UI.sujet !== 'object') UI.sujet = {};
+      ['ex', 'exd'].forEach(function (k) { if (!UI[k] || typeof UI[k] !== 'object' || Array.isArray(UI[k])) UI[k] = {}; });
     },
     saveLocal: function () { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } },
     save: function () { this.saveLocal(); Sync.changed(); },
@@ -1931,14 +2384,15 @@ if (typeof module !== 'undefined') module.exports = CORE;
   function softRender() { if (editing()) { T.pending = true; return; } render(); }
   function render() {
     T.pending = false;
-    document.querySelectorAll('#tabs [data-v], #bottomnav [data-v]').forEach(function (b) { if (b.dataset.v === UI.view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+    var nav = UI.view === 'exos' ? 'ecrit' : UI.view;
+    document.querySelectorAll('#tabs [data-v], #bottomnav [data-v]').forEach(function (b) { if (b.dataset.v === nav) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
     var ex = D.EXAMS[profil()], d = new Date(ex.date[0], ex.date[1], ex.date[2]), j = daysTo(d), st = $('#stamp');
     st.hidden = j < 0;
     st.innerHTML = '<span>Écrit</span><b>' + (j > 0 ? 'J-' + j : 'Jour J') + '</b>';
     st.title = 'Écrit ' + ex.label + ' · ' + d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
     document.querySelectorAll('#profil [data-p]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.p === profil())); });
     var v = $('#view');
-    v.innerHTML = UI.view === 'oral' ? viewOral() : UI.view === 'banque' ? viewBanque() : UI.view === 'progres' ? viewProgres() : UI.view === 'reperes' ? viewReperes() : UI.view === 'reglages' ? viewReglages() : viewEcrit();
+    v.innerHTML = UI.view === 'exos' ? viewExos() : UI.view === 'oral' ? viewOral() : UI.view === 'banque' ? viewBanque() : UI.view === 'progres' ? viewProgres() : UI.view === 'reperes' ? viewReperes() : UI.view === 'reglages' ? viewReglages() : viewEcrit();
     measure();
     if (UI.view === 'oral') { refreshRecs(); updRec(); }
     if (UI.view === 'progres') { drawChart(); fillAnswerRecs(); }
@@ -1984,7 +2438,7 @@ if (typeof module !== 'undefined') module.exports = CORE;
   function viewEcritHome() {
     var p = profil(), ep = epOf(p), list = sujetsOf(ep), sel = selSujet(ep);
     var h = '<section class="hero"><span class="eyebrow">Écrit · concours ' + tx(ep.concours) + '</span><h1 class="h-page">' + tx(ep.nom) + '</h1></section>';
-    h += profSeg();
+    h += ecritSeg('ecrit') + profSeg();
     var wait = S.cur.run && S.cur.run.endedAt && D.EP[S.cur.run.ep] ? S.cur.run : null;
     if (wait) {
       h += '<div class="callout warn"><span class="ic">' + ico('alert') + '</span><div><h4>Une copie attend d’être notée</h4><p class="small">' + tx(titreOf(wait) + ' · rendue le ' + fdate(wait.endedAt) + ' à ' + fhour(wait.endedAt)) + '</p>';
@@ -2496,10 +2950,10 @@ if (typeof module !== 'undefined') module.exports = CORE;
     var h = '<section class="hero"><h1 class="h-page">Réglages</h1></section>';
     var lab = ''; try { if (Sync.on && typeof window.PrepaSync.label === 'function') lab = window.PrepaSync.label(); } catch (e) { }
     h += '<article class="sheet"><h2 class="h-sec">Tes données</h2><p class="small">' + tx(lab ? 'Progression ' + lab + '.' : 'Historique enregistré dans ce navigateur.') + ' <span id="audioinfo"></span></p>';
-    h += '<div class="row"><button type="button" class="btn sm danger" data-act="wipeask" data-what="ecrits">Effacer l’historique écrit</button><button type="button" class="btn sm danger" data-act="wipeask" data-what="oraux">Effacer l’historique oral</button><button type="button" class="btn sm danger" data-act="wipeask" data-what="audio">Supprimer les enregistrements</button></div>';
+    h += '<div class="row"><button type="button" class="btn sm danger" data-act="wipeask" data-what="ecrits">Effacer l’historique écrit</button><button type="button" class="btn sm danger" data-act="wipeask" data-what="oraux">Effacer l’historique oral</button><button type="button" class="btn sm danger" data-act="wipeask" data-what="exos">Effacer les exercices de plan</button><button type="button" class="btn sm danger" data-act="wipeask" data-what="audio">Supprimer les enregistrements</button></div>';
     if (T.confirm && T.confirm.indexOf('wipe:') === 0) {
       var w = T.confirm.slice(5);
-      h += confirmBox(w === 'audio' ? 'Supprimer tous les enregistrements audio de cet appareil ?' : w === 'ecrits' ? 'Effacer tout l’historique écrit, sur tous tes appareils synchronisés ?' : 'Effacer tout l’historique oral, sur tous tes appareils synchronisés ? Les enregistrements liés seront aussi supprimés de cet appareil.', 'wipe', 'Effacer');
+      h += confirmBox(w === 'audio' ? 'Supprimer tous les enregistrements audio de cet appareil ?' : w === 'ecrits' ? 'Effacer tout l’historique écrit, sur tous tes appareils synchronisés ?' : w === 'exos' ? 'Effacer les résultats des exercices de plan, sur tous tes appareils synchronisés ?' : 'Effacer tout l’historique oral, sur tous tes appareils synchronisés ? Les enregistrements liés seront aussi supprimés de cet appareil.', 'wipe', 'Effacer');
     }
     return h + '</article>';
   }
@@ -2559,6 +3013,264 @@ if (typeof module !== 'undefined') module.exports = CORE;
       var mo = l.reduce(function (a, m) { return a + (m.size || 0); }, 0) / 1048576;
       el.textContent = l.length ? ty(l.length + ' enregistrement' + (l.length > 1 ? 's' : '') + ' audio (' + C.dec(mo, 1) + ' Mo) sur cet appareil seulement : ils ne sont jamais synchronisés.') : 'Aucun enregistrement audio sur cet appareil.';
     });
+  }
+
+  /* ===== Exercices de plan (note de synthèse) =====
+     Intitulés dynamiques (repérer, choisir, réécrire) puis plan dynamique à partir des documents (libellé, dossiers).
+     L’exercice en cours et les brouillons restent sur cet appareil (UI.ex, UI.exd) ; le dernier résultat de chaque
+     exercice est synchronisé (S.exos), pour suivre ce qui est fait. */
+  var X = EXOS, XBY = {};
+  ['TRI', 'CHOIX', 'REECRIRE', 'LIBELLES', 'DOSSIERS'].forEach(function (k) { X[k].forEach(function (o) { XBY[k + ':' + o.id] = o; }); });
+  var XKEY = { tri: 'TRI', ch: 'CHOIX', re: 'REECRIRE', lib: 'LIBELLES', dos: 'DOSSIERS' };
+  var XNOM = { tri: 'Dynamique ou à reprendre ?', ch: 'Le meilleur intitulé', re: 'Réécris le titre', lib: 'Du libellé au plan', dos: 'Du dossier au plan' };
+  function xitem(mode, id) { return XBY[XKEY[mode] + ':' + id] || null; }
+  function xres(key) { var r = S.exos[key]; return r && !r.deleted ? r : null; }
+  function exRec(key, ok, n) {
+    var now = Date.now(), p = xres(key);
+    S.exos[key] = { id: key, ok: ok, n: n, best: Math.max(ok, p ? C.num(p.best) : 0), tries: (p ? C.num(p.tries) : 0) + 1, date: now, updatedAt: now };
+    Store.save();
+  }
+  function shuffled(n) { var a = []; for (var i = 0; i < n; i++) a.push(i); for (var j = n - 1; j > 0; j--) { var k = Math.floor(Math.random() * (j + 1)), t = a[j]; a[j] = a[k]; a[k] = t; } return a; }
+  function exSet(o) { UI.ex = o; Store.saveUI(); }
+  function sujetTag(id) { var s = sujetBy(id); return s ? '<span class="badge out">' + tx(s.kind) + '</span><b>' + tx(s.titre) + '</b>' : ''; }
+  function ecritSeg(cur) {
+    return '<div class="seg wide rtabs" role="group" aria-label="Écrit"><button type="button" data-v="ecrit" aria-pressed="' + (cur === 'ecrit') + '">' + ico('clock') + 'Épreuve chronométrée</button><button type="button" data-v="exos" aria-pressed="' + (cur === 'exos') + '">' + ico('flag') + 'Exercices de plan</button></div>';
+  }
+  // Repères automatiques d’un titre ; mots : mots clés de la sous-partie
+  function motsOf(key) {
+    var a = String(key).split(':');
+    if (a[0] === 're') { var r = xitem('re', a[1]); return r ? r.mots : null; }
+    if (a[0] === 'dos') { var d = xitem('dos', a[1]), k = Number(a[2]); return d && d.parts[k] ? d.parts[k].mots : null; }
+    return null;
+  }
+  function chkHtml(text, mots) {
+    if (!String(text || '').trim()) return '<p class="small muted">Écris ton titre pour voir les repères.</p>';
+    return '<ul class="tchk">' + C.titleCheck(text, mots).map(function (c) { return '<li class="' + (c.ok ? 'ok' : 'bad') + '">' + ico(c.ok ? 'check' : 'cross') + '<span>' + tx(c.t) + '</span></li>'; }).join('') + '</ul>';
+  }
+  function chkId(key) { return 'chk-' + String(key).replace(/[^a-z0-9]/gi, '-'); }
+  function titleField(key, label, open) {
+    var v = UI.exd[key] || '';
+    return '<label class="field"><span>' + label + '</span><textarea class="input tt" data-k="' + esc(key) + '" maxlength="300" rows="2" placeholder="Une phrase, une ligne et demie au plus">' + esc(v) + '</textarea></label>'
+      + (open ? '<div class="chkbox" id="' + chkId(key) + '">' + chkHtml(v, motsOf(key)) + '</div>' : '');
+  }
+  function updChecks(t) { var b = document.getElementById(chkId(t.dataset.k)); if (b) b.innerHTML = chkHtml(t.value, motsOf(t.dataset.k)); }
+  function exHead(label, pos) {
+    return '<div class="exhead"><button type="button" class="btn sm ghost" data-act="exhome">' + ico('back') + 'Exercices</button><span class="eyebrow">' + tx(label) + '</span>' + (pos ? '<span class="small mono">' + pos + '</span>' : '') + '</div>';
+  }
+
+  function viewExos() {
+    var m = UI.ex && UI.ex.mode;
+    if (m === 'tri') return viewTri();
+    if (m === 'ch' || m === 'lib') return viewQcm();
+    if (m === 're') return viewRe();
+    if (m === 'dos' && xitem('dos', UI.ex.id)) return viewDos();
+    return viewExHome();
+  }
+  function boite() {
+    var M = X.METHODE;
+    var h = '<div class="rgrid">';
+    h += '<div class="stack"><h3 class="h-card">Ce que demandent le guide et la fiche</h3><ul class="plain small">' + M.regles.map(function (r) { return '<li>' + tx(r.t) + '</li>'; }).join('') + '</ul>' + srcsAll(M.regles) + '</div>';
+    h += '<div class="stack"><h3 class="h-card">Trouver le titre en quatre gestes</h3><ol class="rsteps small">' + M.gestes.map(function (g) { return '<li><b>' + tx(g.t) + '</b><span>' + tx(g.d) + '</span></li>'; }).join('') + '</ol></div>';
+    h += '<div class="stack"><h3 class="h-card">Formules qui font avancer</h3><ul class="plain small">' + M.formules.map(function (f) { return '<li><b>' + tx(f.f) + '</b> · ' + tx(f.ex) + '</li>'; }).join('') + '</ul></div>';
+    h += '<div class="stack"><h3 class="h-card">Pièges</h3><ul class="plain small">' + M.pieges.map(function (p) { return '<li>' + tx(p) + '</li>'; }).join('') + '</ul></div>';
+    h += '<div class="stack"><h3 class="h-card">Le mouvement du plan, souvent donné par la consigne</h3><ul class="plain small">' + M.mouvements.map(function (p) { return '<li><b>' + tx(p.t) + '</b> · ' + tx(p.ex) + '</li>'; }).join('') + '</ul><p class="small">' + tx(M.testDonc) + '</p></div>';
+    return h + '</div>';
+  }
+  function exStat(mode) {
+    var list = X[XKEY[mode]], done = 0, good = 0;
+    list.forEach(function (o) { var r = xres(mode + ':' + o.id); if (r) { done++; if (r.ok >= r.n) good++; } });
+    if (!done) return 'Pas encore commencé';
+    if (mode === 're') return done + ' titre' + (done > 1 ? 's' : '') + ' réécrit' + (done > 1 ? 's' : '') + ' sur ' + list.length + ' · ' + good + ' sans défaut repéré';
+    return done + ' sur ' + list.length + ' faits · ' + good + ' juste' + (good > 1 ? 's' : '') + ' au dernier essai';
+  }
+  function exCard(mode, id, tag, title, desc, stat) {
+    return '<button type="button" class="excard" data-act="exgo" data-mode="' + mode + '"' + (id ? ' data-id="' + esc(id) + '"' : '') + '><span class="row"><span class="badge acc">' + tx(tag) + '</span></span><b>' + tx(title) + '</b><span class="small muted">' + tx(desc) + '</span><span class="small">' + tx(stat) + '</span></button>';
+  }
+  function viewExHome() {
+    var any = Object.keys(S.exos).some(function (k) { return !S.exos[k].deleted; });
+    var h = '<section class="hero"><span class="eyebrow">Écrit · note de synthèse</span><h1 class="h-page">Exercices de plan</h1></section>' + ecritSeg('exos');
+    if (profil() === 'C') h += '<p class="small muted">Pensés pour la note de synthèse de l’inspecteur ; ils servent aussi à structurer tes réponses de l’analyse de dossier.</p>';
+    h += '<details class="sheet fold"' + (any ? '' : ' open') + '><summary><h2 class="h-sec">Boîte à outils de l’intitulé dynamique</h2><span class="small muted">Règles du guide, méthode en quatre gestes, formules, pièges</span></summary>' + boite() + '</details>';
+    h += '<h2 class="h-sec">Trouver et rédiger des intitulés dynamiques</h2><div class="exgrid">';
+    h += exCard('tri', '', 'Repérer', XNOM.tri, 'Une série de ' + X.TRI_N + ' titres : message ou simple tiroir ?', exStat('tri'));
+    h += exCard('ch', '', 'Choisir', XNOM.ch, X.CHOIX.length + ' sous-parties réelles, quatre intitulés possibles, un seul à retenir.', exStat('ch'));
+    h += exCard('re', '', 'Rédiger', XNOM.re, X.REECRIRE.length + ' titres statiques à transformer, avec des repères automatiques et des propositions.', exStat('re'));
+    h += '</div><h2 class="h-sec">Bâtir un plan dynamique à partir des documents</h2><div class="exgrid">';
+    h += exCard('lib', '', 'Consigne', XNOM.lib, X.LIBELLES.length + ' consignes d’annales : quel plan en deux parties suit la démonstration demandée ?', exStat('lib'));
+    X.DOSSIERS.forEach(function (d) {
+      var r = xres('dos:' + d.id);
+      h += exCard('dos', d.id, 'Dossier', d.titre, d.info + ' · ' + d.idees.length + ' idées à ranger, quatre titres à rédiger.', r ? 'Dernier essai : ' + r.ok + '/' + r.n + ' · meilleur : ' + r.best + '/' + r.n : 'Pas encore commencé');
+    });
+    h += '</div><p class="small muted">' + tx('Les repères automatiques signalent les défauts de forme (thème sans message, question, avis, longueur) : ils ne jugent pas le fond. Les titres à reprendre et les distracteurs sont rédigés pour l’atelier ; les plans des dossiers viennent des corrigés de tes documents.') + '</p>';
+    return h;
+  }
+  function startEx(mode, id) {
+    if (mode === 'tri') {
+      // Priorité aux titres jamais vus, puis à ceux manqués, puis aux autres
+      var rank = function (o) { var r = xres('tri:' + o.id); return !r ? 0 : r.ok < r.n ? 1 : 2; };
+      var pool = X.TRI.map(function (o) { return { id: o.id, r: rank(o), x: Math.random() }; }).sort(function (a, b) { return a.r - b.r || a.x - b.x; });
+      var pick = pool.slice(0, X.TRI_N).map(function (p) { return p.id; }), ord = shuffled(pick.length);
+      return exSet({ mode: 'tri', list: ord.map(function (i) { return pick[i]; }), i: 0, ans: {} });
+    }
+    if (mode === 'ch' || mode === 'lib') {
+      var L = X[XKEY[mode]], o2 = shuffled(L.length), ordm = {};
+      L.forEach(function (it) { ordm[it.id] = shuffled(it.o.length); });
+      return exSet({ mode: mode, list: o2.map(function (i) { return L[i].id; }), i: 0, ans: {}, ord: ordm });
+    }
+    if (mode === 're') { var first = X.REECRIRE.filter(function (r) { return !xres('re:' + r.id); })[0]; return exSet({ mode: 're', i: first ? X.REECRIRE.indexOf(first) : 0, chk: {} }); }
+    if (mode === 'dos') { var d = xitem('dos', id); if (!d) return; return exSet({ mode: 'dos', id: id, step: 1, axe: null, aord: shuffled(d.axes.length), iord: shuffled(d.idees.length), sort: {}, checked: false, tchk: false }); }
+  }
+  function bilan(mode) {
+    var e = UI.ex, good = e.list.filter(function (id) { return e.ans[id] && e.ans[id].ok; }).length;
+    var h = exHead(XNOM[mode], '') + '<div class="score"><span class="big">' + good + '<small>/' + e.list.length + '</small></span><div class="stack" style="gap:4px"><b>' + (good === e.list.length ? 'Sans faute' : good >= e.list.length / 2 ? 'Bien engagé' : 'À retravailler') + '</b><span class="small muted">' + tx(exStat(mode)) + '</span></div></div>';
+    h += '<article class="sheet"><h2 class="h-sec">Récapitulatif</h2><div class="hlist">' + e.list.map(function (id) {
+      var it = xitem(mode, id), a = e.ans[id] || {}, lab = mode === 'tri' ? it.t : mode === 'ch' ? it.o[0].t : 'I. ' + it.o[0].I + ' · II. ' + it.o[0].II;
+      return '<div class="xrow"><span class="badge ' + (a.ok ? 'ok' : 'bad') + '">' + ico(a.ok ? 'check' : 'cross') + (a.ok ? 'juste' : 'faux') + '</span><span class="small">' + tx(lab) + (mode === 'tri' ? ' · <b>' + (it.dyn ? 'dynamique' : 'à reprendre') + '</b>' : '') + '</span></div>';
+    }).join('') + '</div></article>';
+    h += '<div class="row"><button type="button" class="btn pri" data-act="exgo" data-mode="' + mode + '">' + ico('redo') + (mode === 'tri' ? 'Nouvelle série' : 'Recommencer') + '</button><button type="button" class="btn" data-act="exhome">' + ico('back') + 'Retour aux exercices</button></div>';
+    return h;
+  }
+  function viewTri() {
+    var e = UI.ex; if (e.i >= e.list.length) return bilan('tri');
+    var it = xitem('tri', e.list[e.i]); if (!it) { exSet({}); return viewExHome(); }
+    var a = e.ans[it.id], h = exHead(XNOM.tri, (e.i + 1) + ' / ' + e.list.length);
+    h += '<article class="sheet"><div class="qbox"><span class="eyebrow">Ce titre de partie est-il dynamique ?</span><p class="question">« ' + tx(it.t) + ' »</p></div>';
+    h += '<div class="opts xopts' + (a ? ' locked' : '') + '">' + [[1, 'Dynamique', 'Il affirme une idée et fait avancer la démonstration.', 'check'], [0, 'À reprendre', 'Thème, étiquette, question, avis ou paragraphe.', 'cross']].map(function (o) {
+      var cls = !a ? '' : (o[0] === (it.dyn ? 1 : 0) ? ' right' : a.v === o[0] ? ' wrong' : '');
+      return '<button type="button" class="opt' + cls + '" data-act="extri" data-ans="' + o[0] + '"' + (a ? ' disabled' : '') + '><span class="box">' + ico(o[3]) + '</span><span class="t"><b>' + tx(o[1]) + '</b><span class="small muted">' + tx(o[2]) + '</span></span><span class="lab">' + (a && a.v === o[0] ? 'ta réponse' : '') + '</span></button>';
+    }).join('') + '</div>';
+    if (a) h += '<div class="callout ' + (a.ok ? 'ok' : 'bad') + '"><span class="ic">' + ico(a.ok ? 'check' : 'cross') + '</span><div><h4>' + (a.ok ? 'Juste' : 'Faux') + ' · ' + (it.dyn ? 'titre dynamique' : 'titre à reprendre') + '</h4><p class="small">' + tx(it.why) + '</p></div></div><div class="row"><button type="button" class="btn pri" data-act="exnext">' + ico('arrow') + (e.i + 1 < e.list.length ? 'Titre suivant' : 'Voir le bilan') + '</button></div>';
+    return h + '</article>';
+  }
+  function viewQcm() {
+    var e = UI.ex, mode = e.mode; if (e.i >= e.list.length) return bilan(mode);
+    var it = xitem(mode, e.list[e.i]); if (!it) { exSet({}); return viewExHome(); }
+    var a = e.ans[it.id], ord = (e.ord && e.ord[it.id]) || shuffled(it.o.length), h = exHead(XNOM[mode], (e.i + 1) + ' / ' + e.list.length);
+    h += '<article class="sheet"><div class="qbox"><span class="row">' + sujetTag(it.sujet) + '</span>';
+    if (mode === 'ch') h += '<span class="eyebrow">' + tx(it.part) + ' · ce qu’elle contient</span><p>' + tx(it.contenu) + '</p><b>Quel intitulé retenir ?</b>';
+    else h += '<span class="eyebrow">La consigne demande</span><p>« ' + tx(it.cle) + ' »</p><b>Quel plan en deux parties retenir ?</b>';
+    h += '</div><div class="opts xopts' + (a ? ' locked' : '') + '">' + ord.map(function (k, j) {
+      var o = it.o[k], cls = !a ? '' : k === 0 ? ' right' : a.v === k ? ' wrong' : '';
+      var body = mode === 'ch' ? '<b>' + tx(o.t) + '</b>' : '<span>I. ' + tx(o.I) + '</span><span>II. ' + tx(o.II) + '</span>';
+      return '<button type="button" class="opt' + cls + '" data-act="exopt" data-k="' + k + '"' + (a ? ' disabled' : '') + '><span class="box">' + (a ? ico(k === 0 ? 'check' : 'cross') : 'ABCD'[j]) + '</span><span class="t">' + body + (a ? '<span class="small muted">' + tx(o.why) + '</span>' : '') + '</span><span class="lab">' + (a && a.v === k ? 'ta réponse' : '') + '</span></button>';
+    }).join('') + '</div>';
+    if (a) h += '<div class="row"><button type="button" class="btn pri" data-act="exnext">' + ico('arrow') + (e.i + 1 < e.list.length ? 'Suivant' : 'Voir le bilan') + '</button>' + srcs(it.src) + '</div>';
+    return h + '</article>';
+  }
+  function viewRe() {
+    var e = UI.ex, n = X.REECRIRE.length, i = Math.max(0, Math.min(n - 1, C.num(e.i))), it = X.REECRIRE[i], key = 're:' + it.id, done = !!(e.chk && e.chk[it.id]), r = xres(key);
+    var h = exHead(XNOM.re, (i + 1) + ' / ' + n);
+    h += '<article class="sheet"><div class="qbox"><span class="row">' + sujetTag(it.sujet) + '</span><span class="eyebrow">Titre à reprendre</span><p class="question">« ' + tx(it.statique) + ' »</p><span class="eyebrow">Ce que contient la sous-partie</span><p>' + tx(it.contenu) + '</p></div>';
+    h += titleField(key, 'Ton intitulé dynamique', done);
+    h += '<div class="row"><button type="button" class="btn pri" data-act="excheck">' + ico('check') + (done ? 'Revérifier' : 'Vérifier mon titre') + '</button>' + (r ? '<span class="small muted">' + tx('Dernière vérification : ' + r.ok + ' repère' + (r.ok > 1 ? 's' : '') + ' sur ' + r.n) + '</span>' : '') + '</div>';
+    h += '<details class="pistes"' + (done ? ' open' : '') + '><summary>Propositions et questions à te poser</summary><div class="body"><ul class="plain">' + it.modeles.map(function (m) { return '<li><b>' + tx(m) + '</b></li>'; }).join('') + '</ul>';
+    h += '<p class="small">' + tx('Ton titre dit-il ce que démontre la sous-partie, et pas seulement de quoi elle parle ? Reprend-il les mots du dossier ? Pourrait-il servir tel quel pour un autre dossier ? Si oui, il est trop vague.') + '</p>' + srcs(it.src) + '</div></details>';
+    h += '<div class="row between"><button type="button" class="btn" data-act="exprev"' + (i ? '' : ' disabled') + '>' + ico('back') + 'Précédent</button><button type="button" class="btn" data-act="exnext"' + (i < n - 1 ? '' : ' disabled') + '>Suivant' + ico('arrow') + '</button></div>';
+    return h + '</article>';
+  }
+  var STEPS = ['Lire', 'Choisir l’axe', 'Ranger les idées', 'Rédiger les titres', 'Corrigé'];
+  function dosReach(e, n) { return n <= 2 || (n === 3 || n === 5 ? e.axe !== null && e.axe !== undefined : e.checked); }
+  function partLab(d, k) { return X.PARTS[k] + ' · ' + d.etiquettes[k]; }
+  function viewDos() {
+    var e = UI.ex, d = xitem('dos', e.id), s = sujetBy(d.sujet); e.sort = e.sort || {};
+    var step = Math.max(1, Math.min(5, C.num(e.step) || 1));
+    if (!dosReach(e, step)) step = 1;
+    var h = exHead(XNOM.dos, 'Étape ' + step + ' / 5');
+    h += '<section class="hero"><span class="eyebrow">' + tx(d.info) + '</span><h1 class="h-sec">' + tx(d.titre) + '</h1></section>';
+    h += '<div class="chips" role="group" aria-label="Étapes">' + STEPS.map(function (t, j) { var n = j + 1; return '<button type="button" data-act="exstep" data-n="' + n + '" aria-pressed="' + (n === step) + '"' + (dosReach(e, n) ? '' : ' disabled') + '><span class="mono small">' + n + '</span>' + tx(t) + '</button>'; }).join('') + '</div>';
+    h += '<article class="sheet">';
+    if (step === 1) {
+      h += '<h2 class="h-card">La consigne de l’exercice 1</h2><p class="consigne-x">' + tx(d.consigne) + '</p>';
+      h += '<p class="small">' + tx('Repère d’abord les volets imposés (« d’une part… d’autre part », « mais aussi ») : ils donnent le mouvement du plan. Puis relève, document par document, l’idée et le chiffre qui l’illustre.') + '</p>';
+      if (d.docs) h += '<h3 class="h-card">Les ' + d.docs.length + ' documents</h3><ol class="docs-l small">' + d.docs.map(function (t) { return '<li>' + tx(t) + '</li>'; }).join('') + '</ol>';
+      h += '<div class="row">' + (s && s.pdf ? pdfBtn(s.pdf, d.docs ? 'Lire les documents' : 'Ouvrir le dossier') : '') + '</div>';
+      h += '<p class="small muted">' + tx('Les ' + d.idees.length + ' idées que tu rangeras à l’étape 3 sont celles que retient le corrigé.') + '</p>';
+      h += '<div class="row"><button type="button" class="btn pri" data-act="exstep" data-n="2">' + ico('arrow') + 'Choisir l’axe du plan</button></div>';
+    } else if (step === 2) {
+      var a = e.axe !== null && e.axe !== undefined;
+      h += '<h2 class="h-card">Quel plan en deux parties répond à la consigne ?</h2><div class="opts xopts' + (a ? ' locked' : '') + '">' + (e.aord || [0, 1, 2]).map(function (k, j) {
+        var o = d.axes[k], cls = !a ? '' : k === 0 ? ' right' : e.axe === k ? ' wrong' : '';
+        return '<button type="button" class="opt' + cls + '" data-act="exaxe" data-k="' + k + '"' + (a ? ' disabled' : '') + '><span class="box">' + (a ? ico(k === 0 ? 'check' : 'cross') : 'ABC'[j]) + '</span><span class="t"><span>I. ' + tx(o.I) + '</span><span>II. ' + tx(o.II) + '</span>' + (a ? '<span class="small muted">' + tx(o.why) + '</span>' : '') + '</span><span class="lab">' + (a && e.axe === k ? 'ta réponse' : '') + '</span></button>';
+      }).join('') + '</div>';
+      if (a) h += '<div class="row"><button type="button" class="btn pri" data-act="exstep" data-n="3">' + ico('arrow') + 'Ranger les idées</button></div>';
+    } else if (step === 3) {
+      var placed = Object.keys(e.sort || {}).length, good = 0;
+      d.idees.forEach(function (x, i) { if (e.sort[i] === x.p) good++; });
+      h += '<h2 class="h-card">Range chaque idée dans le plan</h2><div class="planm small"><div><b>I. ' + tx(d.I) + '</b><span>' + tx(partLab(d, 0)) + ' · ' + tx(partLab(d, 1)) + '</span></div><div><b>II. ' + tx(d.II) + '</b><span>' + tx(partLab(d, 2)) + ' · ' + tx(partLab(d, 3)) + '</span></div></div>';
+      h += '<p class="small muted">' + tx('Les étiquettes sont des thèmes de brouillon : à l’étape 4, tu les transformeras en titres dynamiques.') + '</p>';
+      if (e.checked) h += '<div class="callout ' + (good === d.idees.length ? 'ok' : 'warn') + '"><span class="ic">' + ico(good === d.idees.length ? 'check' : 'alert') + '</span><div><h4>' + good + ' idée' + (good > 1 ? 's' : '') + ' sur ' + d.idees.length + ' à la place du corrigé</h4><p class="small">' + tx(good === d.idees.length ? 'Ton classement suit celui du corrigé.' : 'Lis la correction sous chaque idée : c’est souvent l’angle qui décide (une recette ou un outil, un coût ou un emploi).') + '</p></div></div>';
+      h += '<div class="ideas">' + (e.iord || d.idees.map(function (x, i) { return i; })).map(function (i) {
+        var x = d.idees[i], v = e.sort[i], st = e.checked ? (v === x.p ? ' ok' : ' bad') : '';
+        var c = '<div class="idea' + st + '"><p>' + tx(x.t) + (x.d ? ' <span class="badge out">doc. ' + tx(x.d) + '</span>' : '') + '</p><div class="seg slots" role="group" aria-label="Place de l’idée">';
+        X.PARTS.forEach(function (pt, k) { c += '<button type="button" data-act="exsort" data-i="' + i + '" data-slot="' + k + '" aria-pressed="' + (v === k) + '"' + (e.checked ? ' disabled' : '') + ' title="' + esc(d.etiquettes[k]) + '">' + pt + '</button>'; });
+        c += '</div>';
+        if (e.checked) c += '<p class="fb">' + ico(v === x.p ? 'check' : 'cross') + '<span>' + tx(v === x.p ? 'Bien placée' + (x.why ? ' · ' + x.why : '') : 'Le corrigé la place en ' + partLab(d, x.p) + (x.why ? '. ' + x.why : '.')) + '</span></p>';
+        return c + '</div>';
+      }).join('') + '</div>';
+      h += '<div class="row">' + (e.checked ? '<button type="button" class="btn pri" data-act="exstep" data-n="4">' + ico('arrow') + 'Rédiger les titres</button><button type="button" class="btn" data-act="exsortreset">' + ico('redo') + 'Refaire le classement</button>' : '<button type="button" class="btn pri" data-act="exsortok"' + (placed < d.idees.length ? ' disabled' : '') + '>' + ico('check') + 'Vérifier le classement</button><span class="small muted">' + placed + ' / ' + d.idees.length + ' idées rangées</span>') + '</div>';
+    } else if (step === 4) {
+      h += '<h2 class="h-card">Transforme chaque étiquette en intitulé dynamique</h2><p class="small">' + tx('Pour chaque sous-partie : ce que montrent ses idées, en une phrase, avec un verbe ou un lien logique et les mots du dossier.') + '</p>';
+      d.parts.forEach(function (p, k) {
+        if (k === 0 || k === 2) h += '<h3 class="gpart"><span>' + (k ? 'II. ' + tx(d.II) : 'I. ' + tx(d.I)) + '</span></h3>';
+        h += '<div class="tpart"><details class="pistes"><summary>' + tx(partLab(d, k)) + ' · ' + d.idees.filter(function (x) { return x.p === k; }).length + ' idées</summary><div class="body"><ul class="plain small">' + d.idees.filter(function (x) { return x.p === k; }).map(function (x) { return '<li>' + tx(x.t) + '</li>'; }).join('') + '</ul></div></details>';
+        h += titleField('dos:' + d.id + ':' + k, tx('Titre ' + X.PARTS[k]), e.tchk) + '</div>';
+      });
+      h += '<label class="field"><span>Transition entre I et II <span class="muted">(facultatif)</span></span><textarea class="input tt" data-k="' + esc('dos:' + d.id + ':tr') + '" maxlength="600" rows="2" placeholder="Si…, … : une phrase qui fait le bilan du I et ouvre sur le II">' + esc(UI.exd['dos:' + d.id + ':tr'] || '') + '</textarea></label>';
+      h += '<div class="row"><button type="button" class="btn" data-act="extitres">' + ico('check') + 'Vérifier mes titres</button><button type="button" class="btn pri" data-act="exstep" data-n="5">' + ico('arrow') + 'Voir le corrigé</button></div>';
+    } else {
+      h += '<h2 class="h-card">Le plan du corrigé</h2><div class="planm">';
+      [0, 1].forEach(function (half) {
+        h += '<div class="pI"><b>' + (half ? 'II. ' + tx(d.II) : 'I. ' + tx(d.I)) + '</b>';
+        [half * 2, half * 2 + 1].forEach(function (k) {
+          var p = d.parts[k], mine = (UI.exd['dos:' + d.id + ':' + k] || '').trim();
+          h += '<div class="pA"><b>' + 'AB'[k % 2] + '. ' + tx(p.titre) + '</b>';
+          if (p.off) h += '<span class="small muted">' + tx('Titre du corrigé officiel : « ' + p.off + ' », plus descriptif.') + '</span>';
+          if (mine) h += '<span class="small">Ton titre : « ' + tx(mine) + ' »</span>';
+          h += '<ul class="plain small">' + d.idees.filter(function (x) { return x.p === k; }).map(function (x) { return '<li>' + tx(x.t) + (x.d ? ' (doc. ' + tx(x.d) + ')' : '') + '</li>'; }).join('') + '</ul></div>';
+        });
+        h += '</div>';
+        if (!half) {
+          var mt = (UI.exd['dos:' + d.id + ':tr'] || '').trim();
+          h += '<div class="trx"><span class="eyebrow">Transition</span><p class="small">' + tx(d.transition) + '</p>' + (mt ? '<span class="small">Ta transition : « ' + tx(mt) + ' »</span>' : '') + '</div>';
+        }
+      });
+      h += '</div><div class="callout"><span class="ic">' + ico('info') + '</span><div><h4>Pourquoi ce plan est dynamique</h4><p class="small">' + tx(d.pourquoi) + '</p></div></div>';
+      h += '<p class="small"><b>Annonce du plan :</b> ' + tx(d.annonce) + '</p><p class="small muted">' + tx(X.METHODE.testDonc) + '</p>' + srcs(d.src);
+      h += '<div class="row"><button type="button" class="btn" data-act="exgo" data-mode="dos" data-id="' + esc(d.id) + '">' + ico('redo') + 'Recommencer ce dossier</button><button type="button" class="btn pri" data-act="exhome">' + ico('back') + 'Retour aux exercices</button></div>';
+    }
+    return h + '</article>';
+  }
+  function exAct(a, b) {
+    var e = UI.ex || {}, it;
+    switch (a) {
+      case 'exhome': exSet({}); render(); return window.scrollTo(0, 0);
+      case 'exgo': startEx(b.dataset.mode, b.dataset.id); render(); return window.scrollTo(0, 0);
+      case 'extri':
+        it = xitem('tri', e.list && e.list[e.i]); if (!it || e.ans[it.id]) return;
+        var v = Number(b.dataset.ans), ok = v === (it.dyn ? 1 : 0);
+        e.ans[it.id] = { v: v, ok: ok }; exRec('tri:' + it.id, ok ? 1 : 0, 1); Store.saveUI(); return render();
+      case 'exopt':
+        it = xitem(e.mode, e.list && e.list[e.i]); if (!it || e.ans[it.id]) return;
+        var k = Number(b.dataset.k); e.ans[it.id] = { v: k, ok: k === 0 }; exRec(e.mode + ':' + it.id, k === 0 ? 1 : 0, 1); Store.saveUI(); return render();
+      case 'exnext': e.i = C.num(e.i) + 1; if (e.mode === 're') e.i = Math.min(X.REECRIRE.length - 1, e.i); Store.saveUI(); render(); return window.scrollTo(0, 0);
+      case 'exprev': e.i = Math.max(0, C.num(e.i) - 1); Store.saveUI(); render(); return window.scrollTo(0, 0);
+      case 'excheck': {
+        var r = X.REECRIRE[C.num(e.i)], key = 're:' + r.id, txt = (UI.exd[key] || '').trim();
+        if (!txt) { toast('Écris d’abord ton titre.'); return; }
+        var cs = C.titleCheck(txt, r.mots); e.chk = e.chk || {}; e.chk[r.id] = true;
+        exRec(key, cs.filter(function (c) { return c.ok; }).length, cs.length); Store.saveUI(); return render();
+      }
+      case 'exstep': { var d0 = xitem('dos', e.id), n = Number(b.dataset.n); if (!d0 || !dosReach(e, n)) return; e.step = n; Store.saveUI(); render(); return window.scrollTo(0, 0); }
+      case 'exaxe': if (e.axe !== null && e.axe !== undefined) return; e.axe = Number(b.dataset.k); Store.saveUI(); return render();
+      case 'exsort': if (e.checked) return; e.sort = e.sort || {}; var i = b.dataset.i, sl = Number(b.dataset.slot); if (e.sort[i] === sl) delete e.sort[i]; else e.sort[i] = sl; Store.saveUI(); return render();
+      case 'exsortok': {
+        var d = xitem('dos', e.id); if (!d || Object.keys(e.sort || {}).length < d.idees.length) return;
+        var good = d.idees.filter(function (x, j) { return e.sort[j] === x.p; }).length;
+        e.checked = true; exRec('dos:' + d.id, good + (e.axe === 0 ? 1 : 0), d.idees.length + 1); Store.saveUI(); return render();
+      }
+      case 'exsortreset': e.sort = {}; e.checked = false; Store.saveUI(); return render();
+      case 'extitres': e.tchk = true; Store.saveUI(); return render();
+    }
   }
 
   /* ===== Repères ===== */
@@ -2646,6 +3358,7 @@ if (typeof module !== 'undefined') module.exports = CORE;
   function touchRun() { var t = Date.now(); if (S.cur.run) S.cur.run.updatedAt = t; S.cur.updatedAt = t; }
   function act(a, b) {
     var now = Date.now(), run = S.cur.run, q = curQ();
+    if (/^ex/.test(a)) return exAct(a, b);
     switch (a) {
       case 'cancel': T.confirm = null; return render();
       // Écrit
@@ -2732,7 +3445,7 @@ if (typeof module !== 'undefined') module.exports = CORE;
       case 'wipe': {
         var what = (T.confirm || '').slice(5); T.confirm = null;
         if (what === 'audio') { AudioDB.clear().then(render, render); return render(); }
-        var map = what === 'ecrits' ? S.ecrits : S.oraux, aids = Object.keys(map);
+        var map = what === 'ecrits' ? S.ecrits : what === 'exos' ? S.exos : S.oraux, aids = Object.keys(map);
         aids.forEach(function (k) { if (!map[k].deleted) map[k] = { id: k, deleted: true, date: map[k].date, updatedAt: now }; });
         if (what === 'oraux') AudioDB.list().then(function (l) { return AudioDB.del(l.filter(function (m) { return aids.indexOf(m.aid) >= 0; }).map(function (m) { return m.id; })); }).then(render, render);
         T.saved = null; Store.save(); return render();
@@ -2766,7 +3479,7 @@ if (typeof module !== 'undefined') module.exports = CORE;
     if (ds.rdelyes) { var row = b.closest('.r'); AudioDB.del(ds.rdelyes).then(function () { if (row) row.remove(); if (UI.view === 'oral') refreshRecs(); else fillAudioInfo(); }); return; }
     if (ds.act) return act(ds.act, b);
   });
-  var tSave = null;
+  var tSave = null, tUi = null;
   function onInput(ev) {
     var t = ev.target, run = S.cur.run;
     if (t.id === 'libre-t') { UI.libre = t.value; Store.saveUI(); return; }
@@ -2775,6 +3488,7 @@ if (typeof module !== 'undefined') module.exports = CORE;
     if (t.id === 'o-trans') { T.trans = t.value; return; }
     if (t.id === 'dep-in' && ev.type === 'change') { depAdd(t.files); t.value = ''; return; }
     if (t.id === 'o-trans-on') { UI.trans = t.checked; Store.saveUI(); return; }
+    if (t.dataset && t.dataset.k) { UI.exd[t.dataset.k] = t.value; updChecks(t); clearTimeout(tUi); tUi = setTimeout(function () { Store.saveUI(); }, 500); return; }
     if (!run || !run.endedAt) return;
     if (t.id === 'g-comment') { run.comment = t.value; touchRun(); clearTimeout(tSave); tSave = setTimeout(function () { Store.save(); }, 600); return; }
     if (t.dataset && t.dataset.defaut && ev.type === 'change') {
@@ -2794,7 +3508,7 @@ if (typeof module !== 'undefined') module.exports = CORE;
   var rz = null;
   window.addEventListener('resize', function () { measure(); clearTimeout(rz); rz = setTimeout(function () { if (UI.view === 'progres') drawChart(); }, 150); });
   document.addEventListener('visibilitychange', function () { if (!document.hidden) tick(); });
-  window.addEventListener('pagehide', function () { if (T.rec) Rec.stop(); clearTimeout(tSave); Store.saveLocal(); });
+  window.addEventListener('pagehide', function () { if (T.rec) Rec.stop(); clearTimeout(tSave); Store.saveLocal(); Store.saveUI(); });
   // Autre onglet : l’état local a changé (même navigateur)
   window.addEventListener('storage', function (ev) {
     if (ev.key !== KEY || !ev.newValue) return;
